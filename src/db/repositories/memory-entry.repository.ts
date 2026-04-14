@@ -190,4 +190,34 @@ export class MemoryEntryRepository {
       updatedAt: new Date(row.updated_at),
     };
   }
+
+  /**
+   * Auto-stale all validated entries whose TTL has expired.
+   * Called on retrieval to ensure expired entries are never served as validated.
+   * Returns the number of entries transitioned to 'stale'.
+   */
+  async enforceExpiry(): Promise<number> {
+    const result = await this.sql`
+      UPDATE memory_entries
+      SET trust_status = 'stale',
+          updated_at = NOW()
+      WHERE trust_status = 'validated'
+        AND expires_at < NOW()
+      RETURNING id
+    `;
+
+    if (result.length > 0) {
+      // Record status changes for audit trail
+      for (const row of result) {
+        await this.sql`
+          INSERT INTO memory_status_history (memory_entry_id, from_status, to_status, reason, triggered_by)
+          VALUES (${row.id}, 'validated', 'stale', 'TTL expired (auto-stale)', 'system:expiry')
+        `;
+      }
+      logger.info({ count: result.length }, "Auto-staled expired entries");
+    }
+
+    return result.length;
+  }
 }
+
