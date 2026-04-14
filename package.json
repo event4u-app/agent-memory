@@ -1,0 +1,51 @@
+{
+  "name": "@event4u/agent-memory",
+  "version": "0.1.0",
+  "description": "Persistent, trust-scored project memory for AI coding agents — MCP server + CLI",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "memory": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome check src/ tests/",
+    "lint:fix": "biome check --write src/ tests/",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate:rollback": "tsx src/db/rollback.ts",
+    "mcp:start": "tsx src/mcp/server.ts"
+  },
+  "keywords": [
+    "agent-memory",
+    "mcp",
+    "ai-coding",
+    "knowledge-management",
+    "vector-search"
+  ],
+  "author": "event4u",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "commander": "^14.0.3",
+    "pgvector": "^0.2.1",
+    "pino": "^10.3.1",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}

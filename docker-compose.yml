@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: agent_memory
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: memory_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory -d agent_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-test:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: agent_memory_test
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: memory_dev
+    ports:
+      - "5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  pgdata:
