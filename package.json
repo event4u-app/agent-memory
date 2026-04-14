@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:rollback": "tsx src/db/rollback.ts",
-    "mcp:start": "tsx src/mcp/server.ts"
+    "mcp:start": "tsx src/mcp/server.ts",
+    "postinstall": "bash node_modules/@event4u/agent-config/scripts/install.sh --quiet"
   },
   "keywords": [
     "agent-memory",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
+    "@event4u/agent-config": "github:event4u-app/agent-config#feat/hybrid-agent-memory",
     "@types/node": "^25.6.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
