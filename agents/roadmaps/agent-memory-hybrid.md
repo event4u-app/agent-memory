@@ -637,32 +637,32 @@ Find relevant knowledge snippets for the current task.
 
 ### Checklist
 
-- [ ] Implement BM25 lexical search (stemmed keyword matching)
-- [ ] Implement vector search (cosine similarity over embeddings)
-- [ ] Implement RRF fusion (Reciprocal Rank Fusion, k=60) combining both streams
-- [ ] Implement session diversification (max 3 results per source session)
-- [ ] Implement filters by repository / module / type / trust / status / consolidation tier
-- [ ] Implement ranking function (relevance + trust + freshness + access frequency + tier)
-- [ ] Implement Progressive Disclosure:
-  - [ ] Layer 1: Index response (~50-100 tokens/result) — ID, title, trust, type
-  - [ ] Layer 2: Timeline response (~200-300 tokens/result) — chronological context
-  - [ ] Layer 3: Full response (~500-1000 tokens/result) — complete entry with evidence
-- [ ] Implement token budget (default: 2000, configurable via `--budget`)
-- [ ] Implement embedding provider auto-detection + fallback chain
-- [ ] Enforce hard trust threshold — entries below 0.6 never returned by default
-- [ ] Implement explicit low-trust mode (0.3 min, with `⚠️ LOW TRUST` marker)
-- [ ] Filter out `quarantine`, `invalidated`, `rejected`, `poisoned`, `archived` statuses
-- [ ] Check TTL on every retrieval — auto-stale expired entries before ranking
-- [ ] Factor Ebbinghaus strength into ranking (access_count + last_accessed_at)
-- [ ] Update access_count and last_accessed_at on every retrieval hit
-- [ ] Include trust status + evidence count + tier in response format
-- [ ] Provide query API and CLI command
-- [ ] Define agent-friendly response format (always includes trust metadata)
-- [ ] Write tests: ensure stale entries are not returned without warning
-- [ ] Write tests: ensure quarantined entries are never returned
-- [ ] Write tests: progressive disclosure returns correct detail levels
-- [ ] Write tests: token budget is respected
-- [ ] Write tests with realistic queries
+- [x] Implement BM25 lexical search → `retrieval/bm25.ts`
+- [x] Implement vector search (cosine similarity) → `retrieval/vector-search.ts`
+- [x] Implement RRF fusion (k=60) → `retrieval/rrf-fusion.ts`
+- [x] Implement session diversification → `retrieval/engine.ts`
+- [x] Implement filters by repository / module / type / trust / status / tier → `RetrievalOptions.filters`
+- [x] Implement ranking function (relevance + trust + freshness + access + tier) → `retrieval/engine.ts` trust-aware re-ranking
+- [x] Implement Progressive Disclosure → `retrieval/progressive-disclosure.ts`
+  - [x] Layer 1: Index response (~50-100 tokens/result) — ID, title, trust, type
+  - [x] Layer 2: Timeline response (~200-300 tokens/result) — chronological context
+  - [x] Layer 3: Full response (~500-1000 tokens/result) — complete entry with evidence
+- [x] Implement token budget (default: 2000, configurable) → `config.tokenBudget`
+- [ ] Implement embedding provider auto-detection + fallback chain (V2)
+- [x] Enforce hard trust threshold → `config.trust.thresholdDefault` (0.6)
+- [x] Implement explicit low-trust mode (0.3 min) → `RetrievalOptions.lowTrustMode`
+- [x] Filter out quarantine/invalidated/rejected/poisoned/archived → `retrieval/engine.ts`
+- [x] Check TTL on every retrieval → auto-stale in `retrieve()`
+- [x] Factor Ebbinghaus strength into ranking → access_count + last_accessed_at in re-ranking
+- [x] Update access_count and last_accessed_at on every retrieval hit → `recordAccess()`
+- [x] Include trust status + evidence count + tier in response format
+- [x] Provide query API and CLI command → MCP `memory_retrieve` tool
+- [x] Define agent-friendly response format → JSON with trust metadata
+- [x] Write tests: ensure stale entries are not returned without warning
+- [x] Write tests: ensure quarantined entries are never returned
+- [x] Write tests: progressive disclosure returns correct detail levels
+- [x] Write tests: token budget is respected
+- [x] Write tests with realistic queries
 
 ### Acceptance Criteria
 
