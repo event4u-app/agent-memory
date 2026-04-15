@@ -22,6 +22,13 @@ export class ContradictionRepository {
     return rows.map((r) => this.mapRow(r));
   }
 
+  async findById(id: string): Promise<Contradiction | null> {
+    const [row] = await this.sql`
+      SELECT * FROM memory_contradictions WHERE id = ${id}
+    `;
+    return row ? this.mapRow(row) : null;
+  }
+
   async findByEntryId(entryId: string): Promise<Contradiction[]> {
     const rows = await this.sql`
       SELECT * FROM memory_contradictions

@@ -156,4 +156,44 @@ export const TOOL_DEFINITIONS: Tool[] = [
       },
     },
   },
+  {
+    name: "memory_audit",
+    description: "Full history of an entry: status changes, evidence, contradictions, access patterns.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { id: { type: "string", description: "Entry ID to audit" } },
+      required: ["id"],
+    },
+  },
+  {
+    name: "memory_review",
+    description: "List questionable entries for human review: low trust, stale, contradictions, duplicates.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { maxResults: { type: "number", default: 10 } },
+    },
+  },
+  {
+    name: "memory_resolve_contradiction",
+    description: "Resolve a contradiction between two entries.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        contradictionId: { type: "string", description: "Contradiction ID" },
+        strategy: { type: "string", enum: ["keep_a", "keep_b", "keep_both", "reject_both"], description: "Resolution strategy" },
+      },
+      required: ["contradictionId", "strategy"],
+    },
+  },
+  {
+    name: "memory_merge_duplicates",
+    description: "Merge duplicate entries: keep highest-trust entry, archive others, transfer evidence.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        entryIds: { type: "array", items: { type: "string" }, description: "Entry IDs to merge (min 2)" },
+      },
+      required: ["entryIds"],
+    },
+  },
 ];

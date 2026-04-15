@@ -8,6 +8,9 @@ import { softInvalidate, hardInvalidate } from "../invalidation/invalidation-flo
 import { RollbackService } from "../invalidation/rollback.js";
 import { WorkingToEpisodicConsolidator } from "../consolidation/working-to-episodic.js";
 import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
+import { calculateMetrics } from "../quality/metrics.js";
+import { findDuplicates, mergeDuplicates } from "../quality/dedup.js";
+import { listUnresolved, resolveContradiction, type ResolutionStrategy } from "../quality/contradiction-resolution.js";
 
 function ok(data: unknown): CallToolResult {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -36,6 +39,10 @@ export async function handleToolCall(name: string, args: Args, ctx: McpContext):
     case "memory_observe": return handleObserve(args, ctx);
     case "memory_session_end": return handleSessionEnd(args, ctx);
     case "memory_run_invalidation": return handleRunInvalidation(args, ctx);
+    case "memory_audit": return handleAudit(args, ctx);
+    case "memory_review": return handleReview(args, ctx);
+    case "memory_resolve_contradiction": return handleResolveContradiction(args, ctx);
+    case "memory_merge_duplicates": return handleMergeDuplicates(args, ctx);
     default: return err(`Unknown tool: ${name}`);
   }
 }
@@ -184,5 +191,61 @@ async function handleRunInvalidation(args: Args, ctx: McpContext): Promise<CallT
     fromRef: args.fromRef as string | undefined,
     sinceDate: args.sinceDate as string | undefined,
   });
+  return ok(result);
+}
+
+
+async function handleAudit(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const id = args.id as string;
+  const entry = await ctx.entryRepo.findById(id);
+  if (!entry) return err("Entry not found");
+  const evidence = await ctx.evidenceRepo.findByEntryId(id);
+  const contradictions = await ctx.contradictionRepo.findByEntryId(id);
+  const history = await ctx.sql`
+    SELECT from_status, to_status, reason, triggered_by, created_at
+    FROM memory_status_history WHERE memory_entry_id = ${id}
+    ORDER BY created_at ASC
+  `;
+  return ok({
+    entry, evidence, contradictions,
+    statusHistory: history,
+    accessPattern: { count: entry.accessCount, lastAccessed: entry.lastAccessedAt },
+  });
+}
+
+async function handleReview(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const max = (args.maxResults as number) ?? 10;
+  const metrics = await calculateMetrics(ctx.sql);
+  const unresolved = await listUnresolved(ctx.sql);
+  const duplicates = await findDuplicates(ctx.sql);
+  const stale = await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' ORDER BY impact_level LIMIT ${max}`;
+  const lowTrust = await ctx.sql`SELECT id, title, trust_score FROM memory_entries WHERE trust_status = 'validated' AND trust_score < 0.4 ORDER BY trust_score LIMIT ${max}`;
+  return ok({ metrics, unresolvedContradictions: unresolved.slice(0, max), duplicates: duplicates.slice(0, max), staleEntries: stale, lowTrustEntries: lowTrust });
+}
+
+async function handleResolveContradiction(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const result = await resolveContradiction(
+    args.contradictionId as string,
+    args.strategy as ResolutionStrategy,
+    ctx.contradictionRepo,
+    ctx.entryRepo,
+    ctx.sql,
+  );
+  return ok(result);
+}
+
+async function handleMergeDuplicates(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const ids = args.entryIds as string[];
+  if (ids.length < 2) return err("Need at least 2 entry IDs to merge");
+  const entries = [];
+  for (const id of ids) {
+    const entry = await ctx.entryRepo.findById(id);
+    if (!entry) return err(`Entry not found: ${id}`);
+    entries.push({ id: entry.id, title: entry.title, trustScore: entry.trust.score, accessCount: entry.accessCount });
+  }
+  const result = await mergeDuplicates(
+    { entries, reason: "Manual merge via MCP" },
+    ctx.entryRepo, ctx.evidenceRepo, ctx.sql,
+  );
   return ok(result);
 }
