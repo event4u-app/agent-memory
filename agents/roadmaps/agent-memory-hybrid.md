@@ -790,24 +790,24 @@ Automatically react to code changes and update memory trust status.
 
 ### Checklist
 
-- [ ] Implement git diff reader
-- [ ] Implement file-based watch rules
-- [ ] Implement symbol-based watch rules (including signature comparison)
-- [ ] Implement semantic drift detection:
-  - [ ] Track function signatures of watched symbols
-  - [ ] Flag entries when >50% of watched file lines changed
-  - [ ] Detect renamed symbols (heuristic: same file, similar signature, different name)
-- [ ] Add dependency-based invalidation
-- [ ] Build TTL expiry job (scheduled, auto-stales expired entries)
-- [ ] Build soft-invalidate flow (→ `stale`)
-- [ ] Build hard-invalidate flow (→ `invalidated`)
-- [ ] Build poison flow (→ `poisoned`, cascade to dependents)
-- [ ] Implement rollback mechanism:
-  - [ ] Track which entries influenced which tasks
-  - [ ] When entry is poisoned, list all tasks that used it
-  - [ ] Provide `memory rollback <entry-id>` command for investigation
-- [ ] Introduce revalidation jobs (prioritize high-impact entries)
-- [ ] Create audit log for all invalidation events (who, when, trigger, old/new status)
+- [x] Implement git diff reader → `invalidation/git-diff.ts`
+- [x] Implement file-based watch rules → `invalidation/watchers.ts`
+- [x] Implement symbol-based watch rules (including signature comparison) → `invalidation/watchers.ts`
+- [x] Implement semantic drift detection → `invalidation/semantic-drift.ts`
+  - [x] Track function signatures of watched symbols
+  - [x] Flag entries when >50% of watched file lines changed
+  - [ ] Detect renamed symbols (heuristic — deferred, rename detection in git-diff covers basics)
+- [x] Add dependency-based invalidation → module-level matching in `watchers.ts`
+- [x] Build TTL expiry job → `invalidation/ttl-expiry-job.ts`
+- [x] Build soft-invalidate flow (→ `stale`) → `invalidation/invalidation-flows.ts`
+- [x] Build hard-invalidate flow (→ `invalidated`) → `invalidation/invalidation-flows.ts`
+- [x] Build poison flow (→ `poisoned`, cascade) → `trust/poison.service.ts` (Phase 4)
+- [x] Implement rollback mechanism → `invalidation/rollback.ts`
+  - [x] Track which entries influenced which tasks
+  - [x] When entry is poisoned, list all tasks that used it
+  - [ ] Provide `memory rollback <entry-id>` CLI command (deferred to Phase 7: MCP)
+- [x] Introduce revalidation jobs → `invalidation/revalidation-job.ts`
+- [x] Create audit log for all invalidation events → `memory_status_history` table (Phase 2)
 
 ### Acceptance Criteria
 
