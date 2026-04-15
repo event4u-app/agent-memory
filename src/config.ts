@@ -1,5 +1,19 @@
 import { env } from "node:process";
 
+function parseIntSafe(value: string | undefined, fallback: number, min = 0, max = Infinity): number {
+  if (!value) return fallback;
+  const n = parseInt(value, 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function parseFloatSafe(value: string | undefined, fallback: number, min = 0, max = 1): number {
+  if (!value) return fallback;
+  const n = parseFloat(value);
+  if (Number.isNaN(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 export const config = {
   database: {
     url: env.DATABASE_URL ?? "postgresql://memory:memory_dev@localhost:5433/agent_memory",
@@ -12,13 +26,24 @@ export const config = {
     voyageApiKey: env.VOYAGE_API_KEY,
   },
   trust: {
-    thresholdDefault: parseFloat(env.MEMORY_TRUST_THRESHOLD_DEFAULT ?? "0.6"),
-    thresholdLow: parseFloat(env.MEMORY_TRUST_THRESHOLD_LOW ?? "0.3"),
+    /** Minimum trust score for retrieval (0.0–1.0) */
+    thresholdDefault: parseFloatSafe(env.MEMORY_TRUST_THRESHOLD_DEFAULT, 0.6, 0, 1),
+    /** Lower threshold for low-trust mode (0.0–1.0) */
+    thresholdLow: parseFloatSafe(env.MEMORY_TRUST_THRESHOLD_LOW, 0.3, 0, 1),
   },
-  tokenBudget: parseInt(env.MEMORY_TOKEN_BUDGET ?? "2000", 10),
+  /** Max tokens for progressive disclosure (100–50000) */
+  tokenBudget: parseIntSafe(env.MEMORY_TOKEN_BUDGET, 2000, 100, 50000),
   mcp: {
-    port: parseInt(env.MCP_PORT ?? "3100", 10),
+    port: parseIntSafe(env.MCP_PORT, 3100, 1024, 65535),
   },
+  /** Archival: days before auto-archiving invalidated entries */
+  archivalAgeDays: parseIntSafe(env.MEMORY_ARCHIVAL_AGE_DAYS, 30, 1, 365),
+  /** Purge: days before hard-deleting archived entries */
+  purgeAgeDays: parseIntSafe(env.MEMORY_PURGE_AGE_DAYS, 90, 7, 730),
+  /** Max entries per invalidation run */
+  maxInvalidationBatch: parseIntSafe(env.MEMORY_MAX_INVALIDATION_BATCH, 500, 10, 5000),
+  /** Max entries per revalidation run */
+  maxRevalidationBatch: parseIntSafe(env.MEMORY_MAX_REVALIDATION_BATCH, 20, 1, 100),
   log: {
     level: env.LOG_LEVEL ?? "info",
     format: (env.LOG_FORMAT ?? "json") as "json" | "pretty",
