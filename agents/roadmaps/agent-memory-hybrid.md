@@ -910,11 +910,13 @@ System is safe for team use.
 
 ### Checklist
 
-- [ ] Define access scopes (repo-level, team-level)
-- [ ] Ensure secrets / tokens are never stored in memory
-- [ ] Filter PII / sensitive data
-- [ ] Enable change log for memory entries
-- [ ] Define team review process
+- [x] Define access scopes (repo-level, team-level) → `security/access-scope.ts`
+- [x] Ensure secrets / tokens are never stored in memory → `ingestion/privacy-filter.ts` + audit tests
+- [x] Filter PII / sensitive data → `ingestion/privacy-filter.ts` (email, phone, env vars, private tags)
+- [x] Enable change log for memory entries → `quality/export.ts` (snapshot + diff)
+- [x] Define team review process → `memory_review` + `memory_resolve_contradiction` + `memory_merge_duplicates` tools
+- [x] Config hardening: safe parsing, bounds checking, env var overrides → `config.ts`
+- [x] Privacy audit tests: 22 tests verifying no sensitive data leaks → `tests/unit/privacy-audit.test.ts`
 
 ### Acceptance Criteria
 
