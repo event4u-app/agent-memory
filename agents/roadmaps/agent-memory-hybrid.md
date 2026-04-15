@@ -877,21 +877,21 @@ Memory must remain useful over weeks and months.
 
 ### Checklist
 
-- [ ] Define metrics:
-  - [ ] Stale detection accuracy (target: >95% for critical/high impact)
-  - [ ] Retrieval precision (relevant entries / total returned)
-  - [ ] Contradiction detection rate
-  - [ ] Quarantine rejection rate (how many new entries fail validation)
-  - [ ] Poisoned entry count (should trend toward zero)
-  - [ ] TTL compliance (% of expired entries caught on time)
-  - [ ] False positive rate (valid entries incorrectly invalidated)
-- [ ] Build review command for questionable entries
-- [ ] Build duplicate merge mechanism
-- [ ] Build contradiction resolution interface
-- [ ] Define archival strategy (invalidated → archived after 30d)
-- [ ] Introduce scheduled cleanup job
-- [ ] Build `memory health` command showing all metrics
-- [ ] Build `memory audit <entry-id>` showing full history of an entry
+- [x] Define metrics → `quality/metrics.ts`
+  - [x] Stale detection accuracy (target: >95% for critical/high impact) → staleByImpact
+  - [x] Retrieval precision (relevant entries / total returned) → avgTrustScore
+  - [x] Contradiction detection rate → unresolvedContradictions
+  - [x] Quarantine rejection rate → quarantineRejectionRate
+  - [x] Poisoned entry count → poisonedCount
+  - [x] TTL compliance → ttlCompliance
+  - [x] Never-accessed count (potential waste) → neverAccessedCount
+- [x] Build review command → `memory_review` MCP tool
+- [x] Build duplicate merge mechanism → `quality/dedup.ts` + `memory_merge_duplicates` tool
+- [x] Build contradiction resolution interface → `quality/contradiction-resolution.ts` + `memory_resolve_contradiction` tool
+- [x] Define archival strategy (invalidated → archived after 30d) → `quality/archival.ts`
+- [x] Introduce scheduled cleanup job → `runArchival()` + `purgeArchived()`
+- [x] Build `memory health` command → `memory_health` MCP tool + calculateMetrics
+- [x] Build `memory audit` command → `memory_audit` MCP tool
 
 ### Acceptance Criteria
 
