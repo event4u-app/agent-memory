@@ -14,6 +14,19 @@ import {
 import { applyExpiryFilter } from "../trust/expiry.js";
 import { logger } from "../utils/logger.js";
 
+// --- Trust-aware ranking weights ---
+
+const TIER_WEIGHT: Record<ConsolidationTier, number> = {
+  procedural: 1.0,
+  semantic: 0.75,
+  episodic: 0.5,
+  working: 0.25,
+};
+
+const TRUST_RANKING_WEIGHT = 0.3;
+const ACCESS_RANKING_WEIGHT = 0.1;
+const TIER_RANKING_WEIGHT = 0.1;
+
 // --- Configuration ---
 
 const DEFAULT_TOKEN_BUDGET = 2000;
@@ -135,18 +148,32 @@ export class RetrievalEngine {
       { limit }
     );
 
-    // 7. Resolve fused IDs to full entries (preserving fusion order)
+    // 7. Resolve fused IDs to full entries, apply trust-aware re-ranking
     const entryMap = new Map(filtered.map((e) => [e.id, e]));
-    const rankedEntries: MemoryEntry[] = [];
+    const fusedWithEntries: { entry: MemoryEntry; fusionScore: number }[] = [];
     for (const result of fused) {
       const entry = entryMap.get(result.id);
-      if (entry) rankedEntries.push(entry);
+      if (entry) fusedWithEntries.push({ entry, fusionScore: result.score });
     }
 
-    // 8. Progressive disclosure
+    // 8. Trust-aware re-ranking: blend fusion score with trust signals
+    const rankedEntries = fusedWithEntries
+      .map(({ entry, fusionScore }) => ({
+        entry,
+        finalScore: this.computeFinalScore(entry, fusionScore),
+      }))
+      .sort((a, b) => b.finalScore - a.finalScore)
+      .map(({ entry }) => entry);
+
+    // 9. Record access for returned entries (Ebbinghaus strengthening)
+    for (const entry of rankedEntries) {
+      await this.recordAccess(entry.id);
+    }
+
+    // 10. Progressive disclosure
     const projected = project(rankedEntries, level);
 
-    // 9. Token budget
+    // 11. Token budget
     const budgeted = applyTokenBudget(projected as L1IndexEntry[], tokenBudget);
 
     return {
@@ -185,5 +212,38 @@ export class RetrievalEngine {
 
       return true;
     });
+  }
+
+  /**
+   * Compute final ranking score blending RRF fusion score with trust signals.
+   * Higher trust, higher tier, more accesses = higher final score.
+   */
+  private computeFinalScore(entry: MemoryEntry, fusionScore: number): number {
+    const trustBoost = entry.trust.score * TRUST_RANKING_WEIGHT;
+    const tierBoost = (TIER_WEIGHT[entry.consolidationTier] ?? 0.5) * TIER_RANKING_WEIGHT;
+    const accessBoost = Math.min(entry.accessCount / 100, 1) * ACCESS_RANKING_WEIGHT;
+
+    // Fusion score is the primary signal (~50%), trust signals are secondary
+    return fusionScore * (1 - TRUST_RANKING_WEIGHT - ACCESS_RANKING_WEIGHT - TIER_RANKING_WEIGHT)
+      + trustBoost
+      + tierBoost
+      + accessBoost;
+  }
+
+  /**
+   * Record access for Ebbinghaus strengthening.
+   * Non-blocking — errors are logged but don't fail retrieval.
+   */
+  private async recordAccess(id: string): Promise<void> {
+    try {
+      await this.sql`
+        UPDATE memory_entries
+        SET access_count = access_count + 1,
+            last_accessed_at = NOW()
+        WHERE id = ${id}
+      `;
+    } catch (err) {
+      logger.warn({ id, err }, "Failed to record access (non-critical)");
+    }
   }
 }
