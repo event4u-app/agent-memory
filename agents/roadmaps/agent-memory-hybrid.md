@@ -734,40 +734,40 @@ Generate memory candidates from code, docs, and git history.
 
 **Observation capture (Working Memory):**
 
-- [ ] Implement PostToolUse hook — capture raw observations automatically
-- [ ] Implement SHA-256 dedup with 5-minute time window (prevent duplicate observations)
-- [ ] Run pre-storage privacy filter on every observation
-- [ ] Store observations in `memory_observations` table with session ID + timestamp
+- [ ] Implement PostToolUse hook — capture raw observations automatically (Phase 7: MCP hooks)
+- [x] Implement SHA-256 dedup with 5-minute time window → `observation.repository.ts` (Phase 2)
+- [x] Run pre-storage privacy filter on every observation → `ingestion/privacy-filter.ts`
+- [x] Store observations in `memory_observations` table with session ID + timestamp → `observation.repository.ts` (Phase 2)
 
 **Consolidation (Working → Episodic → Semantic):**
 
-- [ ] Implement Working → Episodic consolidation (compress observations into session summary)
-- [ ] Implement Episodic → Semantic extraction (stable knowledge from summaries)
-- [ ] Implement Semantic → Procedural promotion (after 3+ successful validations)
-- [ ] Implement session-end trigger for consolidation
+- [x] Implement Working → Episodic consolidation → `consolidation/working-to-episodic.ts`
+- [x] Implement Episodic → Semantic extraction → `consolidation/episodic-to-semantic.ts`
+- [x] Implement Semantic → Procedural promotion → `consolidation/tier-promotion.ts` (Phase 2)
+- [ ] Implement session-end trigger for consolidation (Phase 7: MCP hooks)
 
 **Source scanners:**
 
-- [ ] Implement file scanner
-- [ ] Integrate symbol extraction (including function signatures for semantic drift detection)
-- [ ] Integrate documentation reader
-- [ ] Integrate git commit reader
-- [ ] Define candidate model
-- [ ] Define heuristics for relevant knowledge extraction
+- [x] Implement file scanner → `ingestion/scanners/file-scanner.ts`
+- [x] Integrate symbol extraction (including function signatures) → `ingestion/scanners/symbol-extractor.ts`
+- [x] Integrate documentation reader → `ingestion/scanners/doc-reader.ts`
+- [x] Integrate git commit reader → `ingestion/scanners/git-reader.ts`
+- [x] Define candidate model → `ingestion/candidate.ts`
+- [x] Define heuristics for relevant knowledge extraction → auto-classification in `candidate.ts`
 
 **Safety gates:**
 
-- [ ] Implement contradiction check on ingestion (compare with existing entries in overlapping scope)
-- [ ] Integrate embedding creation (using fallback provider chain)
-- [ ] Implement post-task extraction guard:
-  - [ ] Check test results before allowing extraction
-  - [ ] Check quality tool results (if available)
-  - [ ] Block extraction if tests fail or quality degrades
-  - [ ] All new Semantic entries enter quarantine (never directly validated)
-- [ ] Assign impact level automatically based on memory type
-- [ ] Assign knowledge class automatically (evergreen/semi-stable/volatile)
-- [ ] Assign consolidation tier based on source (observation=working, extraction=semantic)
-- [ ] Calculate and set TTL based on knowledge class + Ebbinghaus base
+- [x] Implement contradiction check on ingestion → `trust/contradiction.service.ts` + `ingestion/pipeline.ts`
+- [ ] Integrate embedding creation (using fallback provider chain) — deferred to Phase 7
+- [x] Implement post-task extraction guard → `ingestion/extraction-guard.ts`
+  - [x] Check test results before allowing extraction
+  - [x] Check quality tool results (if available)
+  - [x] Block extraction if tests fail or quality degrades
+  - [x] All new Semantic entries enter quarantine (never directly validated) → `memory-entry.repository.ts`
+- [x] Assign impact level automatically based on memory type → `candidate.ts` `classifyCandidate()`
+- [x] Assign knowledge class automatically (evergreen/semi-stable/volatile) → `candidate.ts`
+- [x] Assign consolidation tier based on source (observation=working, extraction=semantic) → `candidate.ts`
+- [x] Calculate and set TTL based on knowledge class + Ebbinghaus base → `scoring.ts` (Phase 2)
 
 ### Acceptance Criteria
 
