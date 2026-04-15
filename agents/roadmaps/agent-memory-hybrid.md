@@ -829,32 +829,33 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 
 **MCP tools:**
 
-- [ ] `memory_retrieve` — query with progressive disclosure (Layer 1/2/3), token budget
-- [ ] `memory_retrieve_details` — Layer 3 full details for specific entry IDs
-- [ ] `memory_ingest` — manual entry creation (enters quarantine)
-- [ ] `memory_validate` — trigger validation for specific entry
-- [ ] `memory_invalidate` — mark entry as stale/invalidated
-- [ ] `memory_poison` — mark entry as confirmed wrong (triggers cascade)
-- [ ] `memory_verify` — trace entry back to source evidence (citation provenance)
-- [ ] `memory_health` — show system health + quality metrics
-- [ ] `memory_diagnose` — identify issues (stale entries, low trust, contradictions)
+- [x] `memory_retrieve` — query with progressive disclosure (L1/L2/L3), token budget → `mcp/tool-handlers.ts`
+- [x] `memory_retrieve_details` — Layer 3 full details for specific entry IDs → `mcp/tool-handlers.ts`
+- [x] `memory_ingest` — manual entry creation (enters quarantine) → `mcp/tool-handlers.ts`
+- [x] `memory_validate` — trigger validation for specific entry → `mcp/tool-handlers.ts`
+- [x] `memory_invalidate` — mark entry as stale/invalidated → `mcp/tool-handlers.ts`
+- [x] `memory_poison` — mark entry as confirmed wrong (triggers cascade) → `mcp/tool-handlers.ts`
+- [x] `memory_verify` — trace entry back to source evidence (citation provenance) → `mcp/tool-handlers.ts`
+- [x] `memory_health` — show system health + quality metrics → `mcp/tool-handlers.ts`
+- [x] `memory_diagnose` — identify issues (stale entries, low trust, contradictions) → `mcp/tool-handlers.ts`
 
 **Lifecycle hooks:**
 
-- [ ] Implement SessionStart hook — inject relevant context (Layer 1, within token budget)
-- [ ] Implement PostToolUse hook — capture observation to Working Memory
-- [ ] Implement PostToolUseFailure hook — capture error context
-- [ ] Implement Stop hook — trigger post-task extraction (with guard checks)
-- [ ] Implement SessionEnd hook — consolidate Working → Episodic, run dedup
+- [x] Implement SessionStart hook → `memory_session_start` tool
+- [x] Implement PostToolUse hook → `memory_observe` tool
+- [ ] Implement PostToolUseFailure hook — capture error context (V2)
+- [ ] Implement Stop hook — trigger post-task extraction (V2: auto-trigger)
+- [x] Implement SessionEnd hook → `memory_session_end` tool
+- [x] `memory_run_invalidation` — run invalidation against recent code changes
 
 **Workflow integration:**
 
-- [ ] Define standard task workflow (pre-task retrieval, post-task extraction)
-- [ ] Integrate retrieval into pre-task flow (auto-inject on session start)
-- [ ] Integrate validation before usage
-- [ ] Integrate post-task knowledge extraction (with guard: tests must pass)
-- [ ] Define memory update flow after merge
-- [ ] Separate Working Memory (session) from persistent Semantic/Procedural Memory
+- [x] Define standard task workflow (pre-task retrieval, post-task extraction) → session_start/session_end
+- [x] Integrate retrieval into pre-task flow (auto-inject on session start)
+- [x] Integrate validation before usage → quarantine system
+- [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard
+- [ ] Define memory update flow after merge (V2)
+- [x] Separate Working Memory (session) from persistent Semantic/Procedural Memory → consolidation
 - [ ] Test with at least 2 different agents (e.g., Claude Code + Augment)
 
 ### Acceptance Criteria
