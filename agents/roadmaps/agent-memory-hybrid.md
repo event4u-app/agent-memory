@@ -684,26 +684,26 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 
 ### Checklist
 
-- [ ] Define trust model (scores, thresholds, caps per impact level)
-- [ ] Implement quarantine flow (new entries start in quarantine)
-- [ ] Implement quarantine → validated transition (evidence check + no contradictions)
-- [ ] Implement quarantine → rejected transition
-- [ ] Create validator interfaces
-- [ ] Build file-exists validator
-- [ ] Build symbol-exists validator (including signature comparison)
-- [ ] Build diff-impact validator
-- [ ] Build test-linked validator (check if related tests still pass)
-- [ ] Implement contradiction detection (overlapping scope, opposing claims)
-- [ ] Implement contradiction resolution flow (flag both, block both)
-- [ ] Implement impact-level trust score cap (critical with 1 evidence → max 0.7)
-- [ ] Implement trust score calculation (evidence count × type weight × freshness)
-- [ ] Implement TTL enforcement per knowledge class
-- [ ] Implement `poisoned` status + cascade review trigger
-- [ ] Document all status transitions with validation rules
-- [ ] Connect trust with retrieval ranking
-- [ ] Write tests: quarantined entry never bypasses validation
-- [ ] Write tests: contradiction blocks both entries
-- [ ] Write tests: TTL expiry correctly triggers staleness
+- [x] Define trust model (scores, thresholds, caps per impact level) → `types.ts`, `scoring.ts`
+- [x] Implement quarantine flow (new entries start in quarantine) → `memory-entry.repository.ts`
+- [x] Implement quarantine → validated transition (evidence check + no contradictions) → `quarantine.service.ts`
+- [x] Implement quarantine → rejected transition → `quarantine.service.ts`
+- [x] Create validator interfaces → `trust/validators/types.ts`
+- [x] Build file-exists validator → `trust/validators/file-exists.validator.ts`
+- [x] Build symbol-exists validator (including signature comparison) → `trust/validators/symbol-exists.validator.ts`
+- [x] Build diff-impact validator → `trust/validators/diff-impact.validator.ts`
+- [x] Build test-linked validator (check if related tests still pass) → `trust/validators/test-linked.validator.ts`
+- [x] Implement contradiction detection (overlapping scope, opposing claims) → `trust/contradiction.service.ts`
+- [x] Implement contradiction resolution flow (flag both, block both) → `contradiction.service.ts` + `contradiction.repository.ts`
+- [x] Implement impact-level trust score cap (critical with 1 evidence → max 0.7) → `types.ts` (Phase 2)
+- [x] Implement trust score calculation (evidence count × type weight × freshness) → `scoring.ts` (Phase 2)
+- [x] Implement TTL enforcement per knowledge class → `expiry.ts` (Phase 2)
+- [x] Implement `poisoned` status + cascade review trigger → `trust/poison.service.ts`
+- [x] Document all status transitions with validation rules → `types.ts` VALID_TRANSITIONS
+- [x] Connect trust with retrieval ranking → `retrieval/engine.ts` (trust-aware re-ranking)
+- [x] Write tests: quarantined entry never bypasses validation → `quarantine.test.ts`
+- [x] Write tests: contradiction blocks both entries → `quarantine.test.ts`
+- [x] Write tests: TTL expiry correctly triggers staleness → `expiry.test.ts` (Phase 2)
 
 ### Acceptance Criteria
 
