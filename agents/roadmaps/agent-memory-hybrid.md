@@ -578,9 +578,9 @@ A runnable base project with clean local development setup.
 - [x] Create `.env.example`
 - [x] Integrate logging (structured, JSON) → pino logger
 - [x] Define error handling and structured error codes → `InvalidTransitionError`
-- [ ] Implement circuit breaker for external dependencies (embedding APIs, etc.)
+- [x] Implement circuit breaker for external dependencies (embedding APIs, etc.) → `src/infra/circuit-breaker.ts`
 - [x] Implement health monitoring (`memory health` command) → CLI stub
-- [ ] Implement self-healing: auto-recovery from transient failures, provider fallback
+- [x] Implement self-healing: auto-recovery from transient failures, provider fallback → `src/infra/retry.ts` (exponential backoff + jitter) + `src/embedding/fallback-chain.ts` (multi-provider fallback with circuit breaker per provider)
 - [x] Provide healthcheck endpoint → `healthCheck()` in `db/connection.ts`
 - [x] Create baseline README
 - [x] Stub CLI commands → 8 commands: ingest, retrieve, validate, invalidate, poison, verify, health, diagnose
@@ -648,7 +648,7 @@ Find relevant knowledge snippets for the current task.
   - [x] Layer 2: Timeline response (~200-300 tokens/result) — chronological context
   - [x] Layer 3: Full response (~500-1000 tokens/result) — complete entry with evidence
 - [x] Implement token budget (default: 2000, configurable) → `config.tokenBudget`
-- [ ] Implement embedding provider auto-detection + fallback chain (V2)
+- [x] Implement embedding provider auto-detection + fallback chain → `src/embedding/factory.ts` (detect from config + API key) + `src/embedding/fallback-chain.ts` (retry + circuit breaker per provider, bm25-only terminator)
 - [x] Enforce hard trust threshold → `config.trust.thresholdDefault` (0.6)
 - [x] Implement explicit low-trust mode (0.3 min) → `RetrievalOptions.lowTrustMode`
 - [x] Filter out quarantine/invalidated/rejected/poisoned/archived → `retrieval/engine.ts`
@@ -775,7 +775,7 @@ Generate memory candidates from code, docs, and git history.
 
 **Observation capture (Working Memory):**
 
-- [ ] Implement PostToolUse hook — capture raw observations automatically (Phase 7: MCP hooks)
+- [x] Implement PostToolUse hook — capture raw observations automatically → `memory_observe` MCP tool (registered in `tool-definitions.ts`; handler in `tool-handlers.ts`)
 - [x] Implement SHA-256 dedup with 5-minute time window → `observation.repository.ts` (Phase 2)
 - [x] Run pre-storage privacy filter on every observation → `ingestion/privacy-filter.ts`
 - [x] Store observations in `memory_observations` table with session ID + timestamp → `observation.repository.ts` (Phase 2)
@@ -785,7 +785,7 @@ Generate memory candidates from code, docs, and git history.
 - [x] Implement Working → Episodic consolidation → `consolidation/working-to-episodic.ts`
 - [x] Implement Episodic → Semantic extraction → `consolidation/episodic-to-semantic.ts`
 - [x] Implement Semantic → Procedural promotion → `consolidation/tier-promotion.ts` (Phase 2)
-- [ ] Implement session-end trigger for consolidation (Phase 7: MCP hooks)
+- [x] Implement session-end trigger for consolidation → `memory_session_end` MCP tool (runs `WorkingToEpisodicConsolidator.consolidate()` + revalidation job)
 
 **Source scanners:**
 
@@ -799,7 +799,7 @@ Generate memory candidates from code, docs, and git history.
 **Safety gates:**
 
 - [x] Implement contradiction check on ingestion → `trust/contradiction.service.ts` + `ingestion/pipeline.ts`
-- [ ] Integrate embedding creation (using fallback provider chain) — deferred to Phase 7
+- [x] Integrate embedding creation (using fallback provider chain) → `IngestionPipeline` takes optional `EmbeddingFallbackChain`; when present, each candidate's `embeddingText` is embedded before `entryRepo.create()`
 - [x] Implement post-task extraction guard → `ingestion/extraction-guard.ts`
   - [x] Check test results before allowing extraction
   - [x] Check quality tool results (if available)
@@ -846,7 +846,7 @@ Automatically react to code changes and update memory trust status.
 - [x] Implement rollback mechanism → `invalidation/rollback.ts`
   - [x] Track which entries influenced which tasks
   - [x] When entry is poisoned, list all tasks that used it
-  - [ ] Provide `memory rollback <entry-id>` CLI command (deferred to Phase 7: MCP)
+  - [x] Provide `memory rollback <entry-id>` CLI command → `src/cli/index.ts` `rollback` command (wraps `RollbackService.poisonAndReport` with report-focused output)
 - [x] Introduce revalidation jobs → `invalidation/revalidation-job.ts`
 - [x] Create audit log for all invalidation events → `memory_status_history` table (Phase 2)
 
@@ -884,8 +884,8 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 
 - [x] Implement SessionStart hook → `memory_session_start` tool
 - [x] Implement PostToolUse hook → `memory_observe` tool
-- [ ] Implement PostToolUseFailure hook — capture error context (V2)
-- [ ] Implement Stop hook — trigger post-task extraction (V2: auto-trigger)
+- [x] Implement PostToolUseFailure hook — capture error context → `memory_observe_failure` MCP tool (privacy-filtered, deduped, source=`failure:<toolName>`)
+- [x] Implement Stop hook — trigger post-task extraction → `memory_stop` MCP tool (runs `ExtractionGuard` → if clean, triggers `WorkingToEpisodicConsolidator.consolidate()`)
 - [x] Implement SessionEnd hook → `memory_session_end` tool
 - [x] `memory_run_invalidation` — run invalidation against recent code changes
 
@@ -894,10 +894,10 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - [x] Define standard task workflow (pre-task retrieval, post-task extraction) → session_start/session_end
 - [x] Integrate retrieval into pre-task flow (auto-inject on session start)
 - [x] Integrate validation before usage → quarantine system
-- [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard
-- [ ] Define memory update flow after merge (V2)
+- [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard + `memory_stop` MCP tool
+- [x] Define memory update flow after merge → agent invokes `memory_run_invalidation` (with `fromRef` = pre-merge commit) on post-merge; orchestrator stales entries whose watched files/symbols changed (see Phase 6 flow). Consumer wires this into their merge CI/hook per `examples/consumer-ci.yml`.
 - [x] Separate Working Memory (session) from persistent Semantic/Procedural Memory → consolidation
-- [ ] Test with at least 2 different agents (e.g., Claude Code + Augment)
+- [ ] Test with at least 2 different agents (e.g., Claude Code + Augment) — **Pilot-only: requires live sessions from Claude Code + Augment against a shared MCP instance. Blocked until pilot is scheduled.**
 
 **Consumer Integration (from `agent-config` spec: `road-to-consumer-integration-guide.md`):**
 
@@ -993,14 +993,19 @@ Prove the system on a real project.
 
 ### Checklist
 
-- [ ] Select pilot repository
-- [ ] Run initial ingestion
-- [ ] Execute 10 real tasks with memory support
-- [ ] Document false positives
-- [ ] Document stale memory occurrences
-- [ ] Collect developer feedback
-- [ ] Test with at least 2 different agents (Claude Code + Augment)
-- [ ] Create prioritized V2 backlog
+> **Pilot-only items.** Every task in this section requires a live repository, live agents, and human
+> judgment of real outputs. The code & infrastructure for V1 are complete; what remains is **execution**.
+> The items below cannot be closed autonomously by the agent that built this package — they need a
+> human operator with a pilot repo and access to at least two AI coding agents.
+
+- [ ] Select pilot repository — **Pilot-only: human operator selects a real in-house repo**
+- [ ] Run initial ingestion — **Pilot-only: `memory ingest` against the selected repo; verify quarantine lands cleanly**
+- [ ] Execute 10 real tasks with memory support — **Pilot-only: real tasks from the team's backlog**
+- [ ] Document false positives — **Pilot-only: empirical observation during the 10 tasks**
+- [ ] Document stale memory occurrences — **Pilot-only: empirical observation during the 10 tasks**
+- [ ] Collect developer feedback — **Pilot-only: interviews / survey after the 10 tasks**
+- [ ] Test with at least 2 different agents (Claude Code + Augment) — **Pilot-only: requires live sessions from both agents**
+- [ ] Create prioritized V2 backlog — **Pilot-only: output of the observations above, written back into this roadmap or a new `agents/roadmaps/v2-backlog.md`**
 
 ### Acceptance Criteria
 
