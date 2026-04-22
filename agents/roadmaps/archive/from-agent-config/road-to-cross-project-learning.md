@@ -1,7 +1,16 @@
 # Spec: Cross-project learning feed (Stage 3)
 
+> **⏸ ARCHIVED — Deferred, not shipped.**
+> This spec is authored by `agent-config` and was never implemented in
+> `agent-memory` V1. It is archived here for history and as a forward-looking
+> design document. Prerequisites (promotion flow operational in ≥2 production
+> consumers, decay calibration applied, curated self-improvement pipeline
+> running) are not yet met. If V2 work is scheduled, copy this spec into a
+> fresh V2 roadmap rather than reopening it in place.
+>
+> See [`../README.md`](../README.md) for the roadmap archive index.
+
 > **Spec for `agent-memory`, authored from `agent-config`.**
-> See [`README.md`](README.md) for the ownership split.
 
 ## Status
 
@@ -16,9 +25,9 @@ Introduced in GPT's review as "Stufe 3" after intra-project capture
 
 ## Prerequisites
 
-- [`road-to-promotion-flow.md`](../archive/from-agent-config/road-to-promotion-flow.md) operational
+- [`road-to-promotion-flow.md`](road-to-promotion-flow.md) operational
   in at least two production consumers
-- [`road-to-decay-calibration.md`](../archive/from-agent-config/road-to-decay-calibration.md)
+- [`road-to-decay-calibration.md`](road-to-decay-calibration.md)
   applied — decayed noise must not pollute the cross-project signal
 - [`../road-to-curated-self-improvement.md`](../road-to-curated-self-improvement.md)
   pipeline running — it is the *consumer* of this feed, the final
@@ -133,7 +142,7 @@ Hard rules — agent-memory must enforce these on the signal emit path:
 
 ## See also
 
-- [`road-to-promotion-flow.md`](../archive/from-agent-config/road-to-promotion-flow.md) —
+- [`road-to-promotion-flow.md`](road-to-promotion-flow.md) —
   intra-project loop that this one extends
 - [`../road-to-curated-self-improvement.md`](../road-to-curated-self-improvement.md) —
   downstream consumer of proposals

@@ -51,22 +51,22 @@ Three reasons:
 
 ### Active
 
-| Spec | Purpose |
+> **None.** All integration specs from agent-config have been processed in V1 —
+> shipped or explicitly deferred. All archived in [`../archive/from-agent-config/`](../archive/from-agent-config/).
+> See [`../archive/README.md`](../archive/README.md) for the full index with commit references.
+
+### Archived
+
+Every spec below is archived in [`../archive/from-agent-config/`](../archive/from-agent-config/).
+
+| Spec | Status |
 |---|---|
-| [`road-to-cross-project-learning.md`](road-to-cross-project-learning.md) | Stage-3 loop — how `agent-memory` aggregates recurring signals across consumers and feeds proposals back into `agent-config`. **Deferred beyond V1.** |
-
-### Shipped — archived
-
-Moved to [`../archive/from-agent-config/`](../archive/from-agent-config/).
-See [`../archive/README.md`](../archive/README.md) for shipped-commit references.
-
-| Spec | Shipped |
-|---|---|
-| `road-to-retrieval-contract.md` | Versioned contract for `retrieve()` / `health()` — envelope, partial-hit, JSON schema, golden fixtures |
-| `road-to-promotion-flow.md` | `propose()` / `promote()` / `deprecate()` / `prune()` APIs (minimum gate criteria) |
-| `road-to-decay-calibration.md` | Per-type decay overrides, retrieval-hit refresh, no-decay for ADRs |
-| `road-to-consumer-integration-guide.md` | `memory status` / `memory health`, docker-compose + CI templates, compatibility matrix |
-| `road-to-agents-md-fix.md` | `AGENTS.md` rewritten for TypeScript/Node stack |
+| `road-to-retrieval-contract.md` | ✅ Shipped — versioned contract for `retrieve()` / `health()` |
+| `road-to-promotion-flow.md` | ✅ Shipped — `propose()` / `promote()` / `deprecate()` / `prune()` APIs |
+| `road-to-decay-calibration.md` | ✅ Shipped — per-type decay overrides, retrieval-hit refresh |
+| `road-to-consumer-integration-guide.md` | ✅ Shipped — `memory status` / `memory health`, docker-compose + CI templates |
+| `road-to-agents-md-fix.md` | ✅ Shipped — `AGENTS.md` rewritten for TypeScript/Node stack |
+| `road-to-cross-project-learning.md` | ⏸ Deferred (not shipped) — Stage-3 cross-project signal feed; design preserved for V2 |
 
 ## Consumption path
 
