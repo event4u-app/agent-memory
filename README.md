@@ -38,11 +38,14 @@ agent:
 docker compose exec agent-memory memory retrieve "how are invoices calculated?"
 ```
 
-**Integrate it.** Pick your stack — each guide is a full setup, not a
-reference card:
+**Integrate it.** `agent-memory` is **stack-agnostic** — it runs as a
+Docker sidecar next to any application, as a Node library when you want
+direct calls, or as a standalone CLI from any language that can spawn a
+subprocess. Pick the guide that matches how you want to talk to it:
 
-- **PHP / Laravel** → [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md)
-- **Node / TypeScript** → [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md)
+- **Any language / shell** → [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md)
+- **Docker sidecar (recommended — works with any stack)** → [`docs/consumer-setup-docker-sidecar.md`](docs/consumer-setup-docker-sidecar.md)
+- **Node / TypeScript (programmatic API)** → [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md)
 - **Any MCP client** (Claude Desktop, Cursor, Cline, Augment…) → point it at
   `command: docker`, `args: ["compose", "exec", "-i", "agent-memory", "memory", "mcp"]`
 
@@ -65,16 +68,21 @@ promotion, and invalidation when code changes.
 
 ## Integrate with your project
 
-Pick the guide that matches your stack — each is a full-stack setup,
-not a reference card.
+`agent-memory` does not care what language your application is written
+in. Pick the transport that fits how your code already talks to external
+tools, then follow the matching guide.
 
-| Stack | Guide | Runnable example |
-|---|---|---|
-| PHP / Laravel (any language, really) | [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md) | [`examples/php-laravel-sidecar/`](examples/php-laravel-sidecar/) |
-| Node / TypeScript | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | [`examples/node-programmatic/`](examples/node-programmatic/) |
+| Transport | Guide | Works for | Runnable example |
+|---|---|---|---|
+| **Docker sidecar + CLI** | [`docs/consumer-setup-docker-sidecar.md`](docs/consumer-setup-docker-sidecar.md) | any language that can shell out | [`examples/laravel-sidecar/`](examples/laravel-sidecar/) |
+| **Node programmatic API** | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | Node / TypeScript apps | [`examples/node-programmatic/`](examples/node-programmatic/) |
+| **MCP stdio** | [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md) | any MCP-aware agent client | — |
 
-Both examples boot with a single `docker compose up -d` and end with
-a working `memory health → status: ok`.
+> Need a quick language-neutral overview first? Start at
+> [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md).
+>
+> Both runnable examples boot with a single `docker compose up -d` and
+> end with a working `memory health → status: ok`.
 
 ## Installation
 
@@ -138,9 +146,9 @@ Every MCP-aware agent works. Two options, pick by what you already have:
 
 ### Option A — Docker sidecar (recommended, no Node install)
 
-Works for any project regardless of language (PHP, Python, Go, …). Assumes
-you ran `docker compose up -d agent-memory` from the
-[One-command start](#one-command-start).
+Works for any project regardless of language. Assumes you ran
+`docker compose up -d agent-memory` from the
+[60-second quick-start](#60-second-quick-start).
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -232,10 +240,11 @@ Nine canonical types cover most project knowledge:
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (12)
+### CLI commands (14)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
-`poison` · `rollback` · `verify` · `health` · `status` · `diagnose`
+`poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
+`doctor` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 
@@ -290,7 +299,7 @@ src/
 ├── quality/             # metrics, dedup, contradictions, archival
 ├── embedding/           # provider abstraction + fallback chain
 ├── infra/               # circuit breaker, retry
-├── mcp/                 # MCP server (stdio), 17 tools
+├── mcp/                 # MCP server (stdio), 23 tools
 └── cli/                 # commander-based CLI
 
 docs/
@@ -314,17 +323,26 @@ npm run lint             # biome check
 
 ## Compatibility
 
-| `agent-memory` | `agent-config` | Node | Postgres |
+Runtime dependencies only:
+
+| `agent-memory` | Node | Postgres | Docker |
 |---|---|---|---|
-| 0.1.x | ≥ 0.1 (main) | ≥ 20 | 15+ with pgvector |
+| 0.1.x | ≥ 20 | 15+ with pgvector | 24+ with Compose v2 |
 
 Every `retrieve()` and `health()` response carries `contract_version: 1`.
 Callers pinned to v1 MAY continue on a v2 response if they ignore unknown
 fields; breaking renames bump the major. See the
 [retrieval contract spec](agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md).
 
+### Optional companion — `@event4u/agent-config`
+
+`agent-memory` stands on its own. It can be paired with
+[`@event4u/agent-config`](https://github.com/event4u-app/agent-config) —
+a separate package that ships agent behaviour (skills, rules, commands)
+— and both were designed to combine, but neither depends on the other.
+Use `agent-memory` with any agent that speaks MCP or any codebase that
+can shell out to the CLI.
+
 ## License
 
 MIT
-
-Full details: [`docs/data-model.md`](docs/data-model.md).

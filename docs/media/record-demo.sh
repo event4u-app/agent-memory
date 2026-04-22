@@ -70,7 +70,7 @@ cat <<'EOF'
 ║    command: docker                                         ║
 ║    args: [compose, exec, -i, agent-memory, memory, mcp]    ║
 ║                                                            ║
-║  Full guide → docs/consumer-setup-{node,php}.md            ║
+║  Full guide → docs/consumer-setup-generic.md               ║
 ╚════════════════════════════════════════════════════════════╝
 
 EOF
