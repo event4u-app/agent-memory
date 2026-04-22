@@ -42,7 +42,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 | Skills (on-demand) | `.augment/skills/` (symlinked from vendor) |
 | Commands | `.augment/commands/` (symlinked from vendor) |
 | Architecture ADR | `agents/adrs/0001-agent-memory-architecture.md` |
-| Main roadmap | `agents/roadmaps/agent-memory-hybrid.md` |
+| Archived V1 roadmap | `agents/roadmaps/archive/agent-memory-hybrid.md` (V1 complete; pilot items skipped) |
 
 ## Development Setup
 
@@ -138,6 +138,6 @@ All available via CLI, MCP tools, and programmatic import.
 | Document | Topic |
 |---|---|
 | `README.md` | User-facing overview, MCP tool list, configuration |
-| `agents/roadmaps/agent-memory-hybrid.md` | Full implementation roadmap (phases 0-10) |
+| `agents/roadmaps/archive/agent-memory-hybrid.md` | Archived V1 implementation roadmap (phases 0-10, V1 complete) |
 | `agents/roadmaps/from-agent-config/` | Integration contracts authored by agent-config |
 | `.augment/contexts/` | Shared agent infrastructure docs (symlinked from vendor) |

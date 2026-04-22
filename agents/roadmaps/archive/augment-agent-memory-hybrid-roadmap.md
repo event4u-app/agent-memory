@@ -1,7 +1,7 @@
 # Roadmap: Augment + Agent Memory Hybrid
 
-> **⚠️ SUPERSEDED** by `agents/roadmaps/agent-memory-hybrid.md`
-> This German version is kept for historical reference. The active roadmap is agent-agnostic and in English.
+> **⚠️ SUPERSEDED** by `agents/roadmaps/archive/agent-memory-hybrid.md` (also archived — V1 complete).
+> This German version is kept for historical reference. The English successor was the active roadmap until V1 completion.
 
 ## Zielbild
 

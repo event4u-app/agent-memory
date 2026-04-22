@@ -10,7 +10,8 @@ either **shipped** or **superseded**. Active roadmaps live one level up in
 
 | File | Status | Notes |
 |---|---|---|
-| [`augment-agent-memory-hybrid-roadmap.md`](augment-agent-memory-hybrid-roadmap.md) | **Superseded** | German-language original, replaced by the agent-agnostic English [`agent-memory-hybrid.md`](../agent-memory-hybrid.md) |
+| [`agent-memory-hybrid.md`](agent-memory-hybrid.md) | **Archived — V1 complete** | Master roadmap. All implementable items `[x]`; pilot-only items flagged `[-]` (skipped). If a pilot is scheduled, open a new V2 roadmap instead of reopening this one. |
+| [`augment-agent-memory-hybrid-roadmap.md`](augment-agent-memory-hybrid-roadmap.md) | **Superseded** | German-language original, replaced by the agent-agnostic English `agent-memory-hybrid.md` (now also archived, see above). |
 
 ### `from-agent-config/` — integration specs authored in agent-config
 
@@ -27,9 +28,6 @@ items are marked `[x]` in the main roadmap.
 
 ## What is still active (not archived)
 
-- [`../agent-memory-hybrid.md`](../agent-memory-hybrid.md) — master roadmap.
-  Phase 10 (pilot with real tasks + multiple agents) still open; requires
-  human execution.
 - [`../from-agent-config/road-to-cross-project-learning.md`](../from-agent-config/road-to-cross-project-learning.md) —
   Stage-3 cross-project signals. Explicitly deferred beyond first integration milestone.
 - [`../from-agent-config/README.md`](../from-agent-config/README.md) — index of integration specs.

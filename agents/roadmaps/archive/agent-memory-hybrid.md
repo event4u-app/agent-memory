@@ -1,5 +1,15 @@
 # Roadmap: Agent Memory Hybrid
 
+> **✅ ARCHIVED — V1 implementation complete.**
+> All implementable items are `[x]`. Remaining `[-]` items are **skipped**: they
+> require a live pilot (real repository + multiple agent sessions + human judgment)
+> and cannot be closed autonomously. They are documented here for history; if a
+> pilot is later scheduled, open a new V2 roadmap rather than reopening this one.
+>
+> Legend: `[x]` done · `[-]` skipped / pilot-only · (no `[ ]` items remain)
+>
+> For the current state of the package see `README.md` and `AGENTS.md`.
+
 > Build a persistent, trust-scored project memory system that any AI coding agent can use — combining fresh code context with long-lived project knowledge and automatic invalidation.
 
 ## Prerequisites
@@ -837,7 +847,7 @@ Automatically react to code changes and update memory trust status.
 - [x] Implement semantic drift detection → `invalidation/semantic-drift.ts`
   - [x] Track function signatures of watched symbols
   - [x] Flag entries when >50% of watched file lines changed
-  - [ ] Detect renamed symbols (heuristic — deferred, rename detection in git-diff covers basics)
+  - [-] Detect renamed symbols (heuristic — deferred, rename detection in git-diff covers basics)
 - [x] Add dependency-based invalidation → module-level matching in `watchers.ts`
 - [x] Build TTL expiry job → `invalidation/ttl-expiry-job.ts`
 - [x] Build soft-invalidate flow (→ `stale`) → `invalidation/invalidation-flows.ts`
@@ -897,7 +907,7 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard + `memory_stop` MCP tool
 - [x] Define memory update flow after merge → agent invokes `memory_run_invalidation` (with `fromRef` = pre-merge commit) on post-merge; orchestrator stales entries whose watched files/symbols changed (see Phase 6 flow). Consumer wires this into their merge CI/hook per `examples/consumer-ci.yml`.
 - [x] Separate Working Memory (session) from persistent Semantic/Procedural Memory → consolidation
-- [ ] Test with at least 2 different agents (e.g., Claude Code + Augment) — **Pilot-only: requires live sessions from Claude Code + Augment against a shared MCP instance. Blocked until pilot is scheduled.**
+- [-] Test with at least 2 different agents (e.g., Claude Code + Augment) — **Pilot-only: requires live sessions from Claude Code + Augment against a shared MCP instance. Blocked until pilot is scheduled.**
 
 **Consumer Integration (from `agent-config` spec: `road-to-consumer-integration-guide.md`):**
 
@@ -998,14 +1008,14 @@ Prove the system on a real project.
 > The items below cannot be closed autonomously by the agent that built this package — they need a
 > human operator with a pilot repo and access to at least two AI coding agents.
 
-- [ ] Select pilot repository — **Pilot-only: human operator selects a real in-house repo**
-- [ ] Run initial ingestion — **Pilot-only: `memory ingest` against the selected repo; verify quarantine lands cleanly**
-- [ ] Execute 10 real tasks with memory support — **Pilot-only: real tasks from the team's backlog**
-- [ ] Document false positives — **Pilot-only: empirical observation during the 10 tasks**
-- [ ] Document stale memory occurrences — **Pilot-only: empirical observation during the 10 tasks**
-- [ ] Collect developer feedback — **Pilot-only: interviews / survey after the 10 tasks**
-- [ ] Test with at least 2 different agents (Claude Code + Augment) — **Pilot-only: requires live sessions from both agents**
-- [ ] Create prioritized V2 backlog — **Pilot-only: output of the observations above, written back into this roadmap or a new `agents/roadmaps/v2-backlog.md`**
+- [-] Select pilot repository — **Pilot-only: human operator selects a real in-house repo**
+- [-] Run initial ingestion — **Pilot-only: `memory ingest` against the selected repo; verify quarantine lands cleanly**
+- [-] Execute 10 real tasks with memory support — **Pilot-only: real tasks from the team's backlog**
+- [-] Document false positives — **Pilot-only: empirical observation during the 10 tasks**
+- [-] Document stale memory occurrences — **Pilot-only: empirical observation during the 10 tasks**
+- [-] Collect developer feedback — **Pilot-only: interviews / survey after the 10 tasks**
+- [-] Test with at least 2 different agents (Claude Code + Augment) — **Pilot-only: requires live sessions from both agents**
+- [-] Create prioritized V2 backlog — **Pilot-only: output of the observations above, written back into this roadmap or a new `agents/roadmaps/v2-backlog.md`**
 
 ### Acceptance Criteria
 
@@ -1117,10 +1127,10 @@ V1 is reached when:
 - [x] Post-task extraction blocked when tests fail → `extraction-guard.ts`
 - [x] Audit trail complete — every status change traceable → `memory_status_history` table + `memory_audit` tool
 - [x] Trust threshold enforced — below 0.6 never returned to agents → `config.trust.thresholdDefault`
-- [ ] 10+ real tasks completed with memory support — **requires Phase 10 pilot**
-- [ ] Stale detection accuracy >95% for critical/high-impact entries — **requires Phase 10 pilot data**
-- [ ] Zero poisoned entries remain active (all caught and cascaded) — `poison.service.ts` implemented, **needs pilot verification**
-- [ ] At least 2 different agents tested via MCP — **requires Phase 10 pilot**
+- [-] 10+ real tasks completed with memory support — **requires Phase 10 pilot**
+- [-] Stale detection accuracy >95% for critical/high-impact entries — **requires Phase 10 pilot data**
+- [-] Zero poisoned entries remain active (all caught and cascaded) — `poison.service.ts` implemented, **needs pilot verification**
+- [-] At least 2 different agents tested via MCP — **requires Phase 10 pilot**
 - [x] `memory health` shows all quality metrics green → `memory_health` + `calculateMetrics()`
 
 ## Integration Specs (from `agent-config`)

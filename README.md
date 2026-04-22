@@ -43,7 +43,9 @@ Add to your agent's MCP config (e.g. `claude_desktop_config.json`):
 
 ## Architecture
 
-See [Roadmap](agents/roadmaps/agent-memory-hybrid.md) for the full implementation plan.
+See the archived implementation roadmap at
+[`agents/roadmaps/archive/agent-memory-hybrid.md`](agents/roadmaps/archive/agent-memory-hybrid.md)
+for the full V1 plan and completion status.
 
 ### Key Concepts
 
