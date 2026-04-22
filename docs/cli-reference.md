@@ -1,5 +1,12 @@
 # CLI Reference
 
+> **Source of truth:** [`src/cli/index.ts`](../src/cli/index.ts).
+> When the code and this page disagree, **the code wins**. A generator
+> (`npm run docs:cli`) will keep this page in sync — tracked in roadmap
+> task **P4-1** (`agents/roadmaps/improve-setup.md`). Until then, every
+> change to `src/cli/index.ts` must also update this file — see commits
+> `d7609a7`, `40309f1`, `99ae44f` for the reconciliation baseline.
+
 All commands emit **pure JSON on stdout**, logs on stderr — safe for piping,
 scripts, and MCP wrappers. Exit code is `0` on success, non-zero on error.
 
