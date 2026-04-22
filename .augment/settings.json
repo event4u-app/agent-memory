@@ -1,0 +1,5 @@
+{
+    "enabledPlugins": {
+        "agent-config@event4u": true
+    }
+}

@@ -7,19 +7,46 @@ source: package
 
 # Ask When Uncertain
 
-**When in doubt, ask.** Don't guess, assume, or improvise.
-One question too many > one wrong assumption.
+**When in doubt, ask the user.** Do not guess, assume, or improvise.
+Asking one question too many is always better than a wrong assumption.
 
 ## When to ask
 
-- Ambiguous requirement
-- Unsure which approach is correct
-- About to touch unfamiliar code
-- Multiple valid approaches
-- Fix "works" but can't explain why
+- Requirement is ambiguous or could be interpreted multiple ways
+- Not 100% sure which approach is correct
+- About to touch code you haven't fully understood
+- Choosing between multiple valid approaches
+- A fix "seems to work" but you can't explain why
+
+## Vague-request triggers — MUST ask
+
+The following patterns are almost always too vague to execute safely. When the user's
+request matches one of these without further context, ask **before** touching code:
+
+| Pattern | Missing info | Example question |
+|---|---|---|
+| "improve / optimize this" | What metric? Speed, readability, memory? | "Optimize for what — execution speed or readability?" |
+| "add caching" | Cache store? Scope? Invalidation rules? | "Which cache driver, and what invalidates it?" |
+| "make it better / cleaner" | By what standard? | "What specifically feels wrong in the current code?" |
+| "clean up this file" | Dead code? Formatting? Refactor? | "Remove unused code, reformat, or restructure?" |
+| "fix this" (without specifying) | What's the symptom? | "What output/behavior is wrong right now?" |
+| "refactor X" | Target pattern? Boundaries? | "Refactor toward what — smaller methods, extract class, or something else?" |
+| "use best practices" | Whose? For what? | "Best practices for what specifically — testing, naming, structure?" |
+| "handle errors properly" | Which errors? How? Log, retry, propagate? | "For which failure modes, and what should happen on error?" |
+
+**Escape hatch:** If surrounding context (ticket, open file, prior conversation)
+makes the answer unambiguous, proceed — but state the assumption explicitly.
 
 ## How to ask
 
-- Be specific about what's unclear
-- Present numbered options (per `user-interaction` rule)
-- Keep short
+Be specific. Present numbered options (per `user-interaction`). Keep it short.
+
+- Simple (binary, small): multiple at once, numbered
+- Complex (needs thinking): one at a time, wait for answer
+- Handoff (model switch): ask LAST
+
+## Creating new agent artifacts
+
+For skill/rule/command/guideline creation or major rewrite, follow
+[`artifact-drafting-protocol`](artifact-drafting-protocol.md) — structured
+Understand → Research → Draft. Don't improvise questions.
