@@ -1,0 +1,33 @@
+# Reference docker-compose snippet for consumers of @event4u/agent-memory.
+#
+# Drop this into an existing docker-compose.yml (or copy verbatim) and set
+# DATABASE_URL to `postgresql://memory:memory_dev@localhost:5433/agent_memory`.
+#
+# Use a dedicated database per consumer. If you run multiple projects on the
+# same host, change the host port (5433) and POSTGRES_DB name.
+#
+# This is a *reference* — not a hard dependency. Consumers can run Postgres
+# any way they like as long as it is 15+ with the pgvector extension.
+
+services:
+  agent-memory-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: agent-memory-postgres
+    environment:
+      POSTGRES_DB: agent_memory
+      POSTGRES_USER: memory
+      # Change for shared environments; local dev can use a throwaway.
+      POSTGRES_PASSWORD: memory_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - agent-memory-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory -d agent_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  agent-memory-pgdata:

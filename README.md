@@ -173,7 +173,22 @@ All settings have sensible defaults. Override via environment variables:
 ## Testing
 
 ```bash
-npm test                # Run all 176 tests
+npm test                # Run all tests (210 passing as of 2026-04-22)
 npm run test:watch      # Watch mode
 npm run typecheck       # TypeScript strict check
 ```
+
+## Compatibility
+
+Consumers (e.g. `@event4u/agent-config`) should pin compatible versions.
+
+| `agent-memory` | `agent-config` | Node | Postgres + pgvector | Retrieval contract |
+|---|---|---|---|---|
+| 0.1.x | ≥ 0.1 (main) | ≥ 20 | 15+ | v1 |
+
+Contract envelope: every `retrieve()` and `health()` response carries
+`contract_version: 1`. Callers pinned to v1 MAY continue on a v2 response
+if they ignore unknown fields; breaking renames always bump the major.
+
+See [`examples/`](examples/) for reference `docker-compose.yml` and
+CI workflow snippets.
