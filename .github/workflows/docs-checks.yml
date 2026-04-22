@@ -1,0 +1,51 @@
+# Documentation / portability drift guards.
+#
+# Each job verifies that a piece of committed prose still matches its
+# source of truth. If the source changes, the matching doc has to be
+# regenerated (or the prose fixed) in the same PR.
+#
+# Jobs:
+#   cli-doc-drift   (P4-2)  docs/cli-reference.md vs src/cli/index.ts
+#   portability     (P4-3)  README/docs/examples vs foreign-project blocklist
+#   link-check      (P4-4)  every *.md link resolves
+#
+# Runs on every pull request + on push to main. Fast (~2 min total) —
+# these are static checks, no Docker, no Postgres.
+
+name: Docs checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-doc-drift:
+    name: CLI doc drift (P4-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Regenerate CLI reference
+        run: npm run docs:cli
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/cli-reference.md; then
+            echo ""
+            echo "::error::docs/cli-reference.md is out of sync with src/cli/index.ts."
+            echo "::error::Run \`npm run docs:cli\` locally and commit the diff."
+            echo "::error::See roadmap task P4-1 for the generator contract."
+            exit 1
+          fi
