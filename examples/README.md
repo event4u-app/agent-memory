@@ -2,7 +2,7 @@
 
 Reference snippets for consumers (e.g. `@event4u/agent-config`) integrating
 `@event4u/agent-memory`. See
-[`agents/roadmaps/from-agent-config/road-to-consumer-integration-guide.md`](../agents/roadmaps/from-agent-config/road-to-consumer-integration-guide.md)
+[`agents/roadmaps/archive/from-agent-config/road-to-consumer-integration-guide.md`](../agents/roadmaps/archive/from-agent-config/road-to-consumer-integration-guide.md)
 for the full contract.
 
 ## Files

@@ -1,7 +1,7 @@
 # Retrieval Contract v1 — Golden Fixtures
 
 Canonical fixtures for the cross-repo retrieval contract defined in
-[`agents/roadmaps/from-agent-config/road-to-retrieval-contract.md`](../../../agents/roadmaps/from-agent-config/road-to-retrieval-contract.md).
+[`agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md`](../../../agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md).
 
 Both `agent-memory` (backend) and `agent-config` (consumer) test against
 these. Drift = bug.

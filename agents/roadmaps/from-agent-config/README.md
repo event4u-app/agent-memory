@@ -49,14 +49,24 @@ Three reasons:
 
 ## Index
 
+### Active
+
 | Spec | Purpose |
 |---|---|
-| [`road-to-retrieval-contract.md`](road-to-retrieval-contract.md) | Versioned cross-repo contract for `retrieve()` and `health()` — request/response shape, partial-hit semantics, evolution rules. Blocks every other integration step |
-| [`road-to-promotion-flow.md`](road-to-promotion-flow.md) | When and how observations become quarantined → episodic → semantic entries; intra-project vs. cross-project promotion |
-| [`road-to-decay-calibration.md`](road-to-decay-calibration.md) | Default decay rates per memory type; mapping of the 6 content types onto the 4 cognitive tiers; override surface for teams |
-| [`road-to-cross-project-learning.md`](road-to-cross-project-learning.md) | Stage-3 loop — how `agent-memory` aggregates recurring signals across consumers and feeds proposals back into `agent-config` |
-| [`road-to-consumer-integration-guide.md`](road-to-consumer-integration-guide.md) | How a consumer project installs both packages, wires MCP/CLI access, and meets the prerequisites (PostgreSQL + pgvector) |
-| [`road-to-agents-md-fix.md`](road-to-agents-md-fix.md) | Fix the stale Laravel-flavoured `AGENTS.md` in the `agent-memory` repo — a small but visible quality issue spotted in review |
+| [`road-to-cross-project-learning.md`](road-to-cross-project-learning.md) | Stage-3 loop — how `agent-memory` aggregates recurring signals across consumers and feeds proposals back into `agent-config`. **Deferred beyond V1.** |
+
+### Shipped — archived
+
+Moved to [`../archive/from-agent-config/`](../archive/from-agent-config/).
+See [`../archive/README.md`](../archive/README.md) for shipped-commit references.
+
+| Spec | Shipped |
+|---|---|
+| `road-to-retrieval-contract.md` | Versioned contract for `retrieve()` / `health()` — envelope, partial-hit, JSON schema, golden fixtures |
+| `road-to-promotion-flow.md` | `propose()` / `promote()` / `deprecate()` / `prune()` APIs (minimum gate criteria) |
+| `road-to-decay-calibration.md` | Per-type decay overrides, retrieval-hit refresh, no-decay for ADRs |
+| `road-to-consumer-integration-guide.md` | `memory status` / `memory health`, docker-compose + CI templates, compatibility matrix |
+| `road-to-agents-md-fix.md` | `AGENTS.md` rewritten for TypeScript/Node stack |
 
 ## Consumption path
 

@@ -16,9 +16,9 @@ Introduced in GPT's review as "Stufe 3" after intra-project capture
 
 ## Prerequisites
 
-- [`road-to-promotion-flow.md`](road-to-promotion-flow.md) operational
+- [`road-to-promotion-flow.md`](../archive/from-agent-config/road-to-promotion-flow.md) operational
   in at least two production consumers
-- [`road-to-decay-calibration.md`](road-to-decay-calibration.md)
+- [`road-to-decay-calibration.md`](../archive/from-agent-config/road-to-decay-calibration.md)
   applied — decayed noise must not pollute the cross-project signal
 - [`../road-to-curated-self-improvement.md`](../road-to-curated-self-improvement.md)
   pipeline running — it is the *consumer* of this feed, the final
@@ -133,7 +133,7 @@ Hard rules — agent-memory must enforce these on the signal emit path:
 
 ## See also
 
-- [`road-to-promotion-flow.md`](road-to-promotion-flow.md) —
+- [`road-to-promotion-flow.md`](../archive/from-agent-config/road-to-promotion-flow.md) —
   intra-project loop that this one extends
 - [`../road-to-curated-self-improvement.md`](../road-to-curated-self-improvement.md) —
   downstream consumer of proposals

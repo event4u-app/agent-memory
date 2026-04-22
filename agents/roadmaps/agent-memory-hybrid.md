@@ -1121,21 +1121,23 @@ V1 is reached when:
 ## Integration Specs (from `agent-config`)
 
 The following specs were authored in `agent-config` and define the **contract** between the two packages.
-They have been integrated into the phases above. The original specs are preserved in `agents/roadmaps/from-agent-config/` for reference.
+They have been integrated into the phases above. Shipped specs are archived in
+[`agents/roadmaps/archive/from-agent-config/`](archive/from-agent-config/);
+the one deferred spec remains in [`agents/roadmaps/from-agent-config/`](from-agent-config/).
 
 | Spec | Integrated Into | Status |
 |---|---|---|
-| `road-to-retrieval-contract.md` | Phase 3 (Retrieval Contract) | ✅ Implemented — `src/retrieval/contract.ts`, schemas + 20 conformance tests |
-| `road-to-promotion-flow.md` | Phase 4 (Promotion Flow) | ✅ Implemented — `src/trust/promotion.service.ts` + 4 MCP tools |
-| `road-to-decay-calibration.md` | Phase 4 (Decay Calibration) | ✅ Implemented — `src/trust/decay.ts` + per-type overrides + 14 tests |
-| `road-to-consumer-integration-guide.md` | Phase 7 (Consumer Integration) | ✅ Implemented — `memory status` + `memory health` CLI with contract envelopes |
-| `road-to-agents-md-fix.md` | Phase 10 (Prerequisites) | ✅ Done — AGENTS.md rewritten for TS/Node/pgvector stack |
-| `road-to-cross-project-learning.md` | V2 Possibilities | Deferred — requires 2+ production consumers |
+| [`road-to-retrieval-contract.md`](archive/from-agent-config/road-to-retrieval-contract.md) | Phase 3 (Retrieval Contract) | ✅ Shipped — `src/retrieval/contract.ts`, schemas + 20 conformance tests |
+| [`road-to-promotion-flow.md`](archive/from-agent-config/road-to-promotion-flow.md) | Phase 4 (Promotion Flow) | ✅ Shipped — `src/trust/promotion.service.ts` + 4 MCP tools |
+| [`road-to-decay-calibration.md`](archive/from-agent-config/road-to-decay-calibration.md) | Phase 4 (Decay Calibration) | ✅ Shipped — `src/trust/decay.ts` + per-type overrides + 14 tests |
+| [`road-to-consumer-integration-guide.md`](archive/from-agent-config/road-to-consumer-integration-guide.md) | Phase 7 (Consumer Integration) | ✅ Shipped — `memory status` + `memory health` CLI with contract envelopes |
+| [`road-to-agents-md-fix.md`](archive/from-agent-config/road-to-agents-md-fix.md) | Phase 10 (Prerequisites) | ✅ Shipped — AGENTS.md rewritten for TS/Node/pgvector stack |
+| [`road-to-cross-project-learning.md`](from-agent-config/road-to-cross-project-learning.md) | V2 Possibilities | Deferred — requires 2+ production consumers |
 
 ## Notes
 
 - The system is agent-agnostic by design: any model (GPT, Claude, Gemini, etc.) and any agent (Augment, Cursor, Cline, etc.) can use it
 - MCP (Model Context Protocol) is the primary integration mechanism — supported by most modern agents
 - CLI is the primary V1 contract; MCP wraps the CLI (from consumer integration spec)
-- The original German roadmap is archived in `agents/roadmaps/augment-agent-memory-hybrid-roadmap.md`
-- Integration specs from `agent-config` are preserved in `agents/roadmaps/from-agent-config/`
+- The original German roadmap is archived in [`agents/roadmaps/archive/augment-agent-memory-hybrid-roadmap.md`](archive/augment-agent-memory-hybrid-roadmap.md)
+- Shipped integration specs are archived in [`agents/roadmaps/archive/from-agent-config/`](archive/from-agent-config/); the single deferred spec remains in [`agents/roadmaps/from-agent-config/`](from-agent-config/)

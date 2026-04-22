@@ -101,7 +101,7 @@ src/
 
 ## Public API surface (consumed by agent-config)
 
-See `agents/roadmaps/from-agent-config/road-to-retrieval-contract.md` for the full v1 contract.
+See `agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md` for the full v1 contract.
 
 | API | Purpose |
 |---|---|
