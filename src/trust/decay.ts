@@ -60,9 +60,7 @@ export function resolveDecayRule(
 	if (!override) return tierRule;
 	return {
 		halfLifeDays:
-			override.halfLifeDays !== undefined
-				? override.halfLifeDays
-				: tierRule.halfLifeDays,
+			override.halfLifeDays !== undefined ? override.halfLifeDays : tierRule.halfLifeDays,
 		floor: override.floor ?? tierRule.floor,
 	};
 }
@@ -92,12 +90,8 @@ export function applyDecay(
  */
 export const REFRESH_COOLDOWN_DAYS = 7;
 
-export function shouldRefreshOnHit(
-	lastValidated: Date,
-	now: Date = new Date(),
-): boolean {
-	const days =
-		(now.getTime() - lastValidated.getTime()) / (1000 * 60 * 60 * 24);
+export function shouldRefreshOnHit(lastValidated: Date, now: Date = new Date()): boolean {
+	const days = (now.getTime() - lastValidated.getTime()) / (1000 * 60 * 60 * 24);
 	return days >= REFRESH_COOLDOWN_DAYS;
 }
 

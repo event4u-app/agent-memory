@@ -5,6 +5,47 @@ backed by PostgreSQL + pgvector.
 
 > **Status:** V1 complete · 240 tests passing · Node ≥ 20 · Postgres 15+ with pgvector
 
+## 60-second quick-start
+
+<!-- Regenerate with docs/media/record-demo.sh · instructions in docs/media/README.md -->
+<!-- demo.gif is intentionally NOT committed by default; uncomment the line
+     below once docs/media/demo.gif has been recorded. -->
+<!-- ![60-second setup demo](docs/media/demo.gif) -->
+
+**What it is.** A durable, trust-scored memory store your coding agent can
+write to and query over MCP or HTTP-style CLI — so the LLM stops forgetting
+your architecture decisions between sessions.
+
+**Run it** (no Node install on the host required):
+
+```bash
+curl -o docker-compose.yml \
+  https://raw.githubusercontent.com/event4u-app/agent-memory/main/docker-compose.yml
+docker compose up -d agent-memory
+```
+
+**Check it.** One command verifies the DB, pgvector, and migrations:
+
+```bash
+docker compose exec agent-memory memory doctor
+# → 4 ok · 1 warn · 0 fail · 0 skipped   (exit 0)
+```
+
+**Query it.** Every command emits JSON. Pipe it into `jq`, or into your
+agent:
+
+```bash
+docker compose exec agent-memory memory retrieve "how are invoices calculated?"
+```
+
+**Integrate it.** Pick your stack — each guide is a full setup, not a
+reference card:
+
+- **PHP / Laravel** → [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md)
+- **Node / TypeScript** → [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md)
+- **Any MCP client** (Claude Desktop, Cursor, Cline, Augment…) → point it at
+  `command: docker`, `args: ["compose", "exec", "-i", "agent-memory", "memory", "mcp"]`
+
 ## Why
 
 LLMs forget. They hallucinate project facts. They restate preferences you
@@ -15,12 +56,25 @@ promotion, and invalidation when code changes.
 
 ## What you get
 
-- **17 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, and invalidate memory.
-- **12 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **23 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
+- **14 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
 - **Privacy filter** — strips secrets, API keys, PII before anything hits the DB.
+
+## Integrate with your project
+
+Pick the guide that matches your stack — each is a full-stack setup,
+not a reference card.
+
+| Stack | Guide | Runnable example |
+|---|---|---|
+| PHP / Laravel (any language, really) | [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md) | [`examples/php-laravel-sidecar/`](examples/php-laravel-sidecar/) |
+| Node / TypeScript | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | [`examples/node-programmatic/`](examples/node-programmatic/) |
+
+Both examples boot with a single `docker compose up -d` and end with
+a working `memory health → status: ok`.
 
 ## Installation
 
@@ -80,10 +134,13 @@ After `npm run build` + `npm install -g .` the `memory` binary is on your PATH.
 
 ## Connect to your AI agent
 
-Every MCP-aware agent works. Point the MCP server at your project and set
-`REPO_ROOT` — required by file / symbol validators.
+Every MCP-aware agent works. Two options, pick by what you already have:
 
-### Claude Desktop
+### Option A — Docker sidecar (recommended, no Node install)
+
+Works for any project regardless of language (PHP, Python, Go, …). Assumes
+you ran `docker compose up -d agent-memory` from the
+[One-command start](#one-command-start).
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -91,8 +148,26 @@ Every MCP-aware agent works. Point the MCP server at your project and set
 {
   "mcpServers": {
     "agent-memory": {
-      "command": "npx",
-      "args": ["tsx", "/abs/path/to/agent-memory/src/mcp/server.ts"],
+      "command": "docker",
+      "args": ["compose", "-f", "/abs/path/to/your/project/docker-compose.yml",
+               "exec", "-i", "agent-memory", "memory", "mcp"],
+      "env": { "REPO_ROOT": "/abs/path/to/your/project" }
+    }
+  }
+}
+```
+
+### Option B — Installed npm binary
+
+After `npm install -g @event4u/agent-memory` (or `npm install` in a
+Node-based project), run the MCP server directly:
+
+```json
+{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "memory",
+      "args": ["mcp"],
       "env": {
         "DATABASE_URL": "postgresql://memory:memory_dev@localhost:5433/agent_memory",
         "REPO_ROOT": "/abs/path/to/your/project"
@@ -105,8 +180,8 @@ Every MCP-aware agent works. Point the MCP server at your project and set
 ### Cursor / Cline / Augment
 
 Each agent has its own MCP config file, but the shape is identical to the
-Claude example. Check your agent's docs for the file path; keep `command`,
-`args`, and `env` as shown.
+Claude examples above. Check your agent's docs for the file path; keep
+`command`, `args`, and `env` as shown.
 
 ## How it works
 
@@ -147,13 +222,15 @@ Nine canonical types cover most project knowledge:
 
 ## Tools & commands
 
-### MCP tools (17)
+### MCP tools (23)
 
 | Category | Tools |
 |---|---|
-| **Core** | `memory_retrieve`, `memory_retrieve_details`, `memory_ingest`, `memory_validate`, `memory_invalidate`, `memory_poison`, `memory_verify` |
-| **Lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
-| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates` |
+| **Retrieval** | `memory_retrieve`, `memory_retrieve_details` |
+| **Ingestion** | `memory_ingest`, `memory_propose`, `memory_promote` |
+| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate` |
+| **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
+| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
 ### CLI commands (12)
 
@@ -171,16 +248,16 @@ memory propose --type bug_pattern \
   --summary "Iterating order.items without with('items') triggers N+1." \
   --repository my-app \
   --source "PR#234" --confidence 0.7 \
-  --future-scenario "invoice-export"
+  --scenario "invoice-export"
 
 # After 3+ future decisions reference it and tests pass → promote
-memory promote --entry <uuid>
+memory promote <proposal-id>
 
-# Later: code change may invalidate it
-memory invalidate --from-git-diff --from-ref main --to-ref HEAD
+# Later: code change may invalidate it (diff target is always HEAD)
+memory invalidate --from-git-diff --from-ref main
 
 # A week later: entry turns out to be wrong — poison + rollback cascade
-memory poison <uuid>
+memory poison <uuid> "reason the entry is wrong"
 memory rollback <uuid>
 ```
 

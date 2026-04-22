@@ -21,21 +21,12 @@ export type ImpactLevel = (typeof IMPACT_LEVELS)[number];
 
 // === Knowledge Classes ===
 
-export const KNOWLEDGE_CLASSES = [
-	"evergreen",
-	"semi_stable",
-	"volatile",
-] as const;
+export const KNOWLEDGE_CLASSES = ["evergreen", "semi_stable", "volatile"] as const;
 export type KnowledgeClass = (typeof KNOWLEDGE_CLASSES)[number];
 
 // === Consolidation Tiers ===
 
-export const CONSOLIDATION_TIERS = [
-	"working",
-	"episodic",
-	"semantic",
-	"procedural",
-] as const;
+export const CONSOLIDATION_TIERS = ["working", "episodic", "semantic", "procedural"] as const;
 export type ConsolidationTier = (typeof CONSOLIDATION_TIERS)[number];
 
 // === Trust Statuses ===
@@ -66,14 +57,7 @@ export const VALID_TRANSITIONS: Record<TrustStatus, readonly TrustStatus[]> = {
 
 // === Evidence Types ===
 
-export const EVIDENCE_KINDS = [
-	"file",
-	"commit",
-	"test",
-	"adr",
-	"documentation",
-	"symbol",
-] as const;
+export const EVIDENCE_KINDS = ["file", "commit", "test", "adr", "documentation", "symbol"] as const;
 export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
 
 // === Core Interfaces ===

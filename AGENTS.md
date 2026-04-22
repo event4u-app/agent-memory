@@ -6,7 +6,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 
 - A **TypeScript / Node ≥ 20** library that implements a memory store for AI coding agents
 - A **CLI** (`memory`) for scripts, CI, and IDE agents without MCP support
-- An **MCP server** (stdio transport) exposing 17 tools for memory retrieval, ingestion, and management
+- An **MCP server** (stdio transport) exposing 23 tools for memory retrieval, ingestion, and management
 - A **companion** to [`@event4u/agent-config`](https://github.com/event4u-app/agent-config) — optional dependency, governance and behavior
 
 ## What this repo is NOT
@@ -22,7 +22,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 - **Runtime:** Node ≥ 20
 - **Package manager:** npm (lockfile: `package-lock.json`)
 - **Database:** PostgreSQL 15+ with the `pgvector` extension
-- **Testing:** Vitest (unit + integration), 176 tests passing
+- **Testing:** Vitest (unit + integration), 240 tests passing
 - **Lint:** Biome
 - **Protocol:** Model Context Protocol (MCP) v1 via `@modelcontextprotocol/sdk`
 
@@ -32,7 +32,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 |---|---|---|
 | **Shared package** | `.augment/` | Skills, rules, commands, guidelines from `@event4u/agent-config` (mostly symlinked) |
 | **Project docs** | `agents/` | Architecture docs, ADRs, roadmaps specific to this package |
-| **Integration specs** | `agents/roadmaps/from-agent-config/` | Contracts between this repo and agent-config |
+| **Integration specs** | `agents/roadmaps/archive/from-agent-config/` | Contracts between this repo and agent-config |
 
 ### Key References
 
@@ -95,7 +95,7 @@ src/
 ├── invalidation/        # Git diff, semantic drift, TTL expiry
 ├── quality/             # Metrics, dedup, contradiction resolution, archival
 ├── security/            # Access scopes
-├── mcp/                 # MCP server (stdio), 17 tools
+├── mcp/                 # MCP server (stdio), 23 tools
 └── cli/                 # Commander-based CLI
 ```
 

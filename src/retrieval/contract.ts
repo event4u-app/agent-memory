@@ -10,21 +10,12 @@
  * - This file is the canonical contract — drift = bug
  */
 
-import type {
-	L1IndexEntry,
-	L2TimelineEntry,
-	L3FullEntry,
-} from "./progressive-disclosure.js";
+import type { L1IndexEntry, L2TimelineEntry, L3FullEntry } from "./progressive-disclosure.js";
 
 export const CONTRACT_VERSION = 1 as const;
 
 /** Per-slice status code. */
-export type SliceStatus =
-	| "ok"
-	| "timeout"
-	| "unknown_type"
-	| "misconfigured"
-	| "internal";
+export type SliceStatus = "ok" | "timeout" | "unknown_type" | "misconfigured" | "internal";
 
 /** Envelope-level status. */
 export type EnvelopeStatus = "ok" | "partial" | "error";
@@ -114,13 +105,10 @@ export function toContractEntry(
 	if ("summary" in entry) body.summary = entry.summary;
 	if ("scope" in entry) body.scope = entry.scope;
 	if ("details" in entry) body.details = (entry as L3FullEntry).details;
-	if ("embeddingText" in entry)
-		body.embedding_text = (entry as L3FullEntry).embeddingText;
+	if ("embeddingText" in entry) body.embedding_text = (entry as L3FullEntry).embeddingText;
 
 	const lastValidated =
-		"updatedAt" in entry && entry.updatedAt
-			? entry.updatedAt.toISOString()
-			: undefined;
+		"updatedAt" in entry && entry.updatedAt ? entry.updatedAt.toISOString() : undefined;
 
 	return {
 		id: entry.id,

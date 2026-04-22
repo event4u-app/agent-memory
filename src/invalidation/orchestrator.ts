@@ -6,11 +6,7 @@ import { logger } from "../utils/logger.js";
 import { type DiffResult, readGitDiff, readGitDiffSince } from "./git-diff.js";
 import { hardInvalidate, softInvalidate } from "./invalidation-flows.js";
 import { detectDrift } from "./semantic-drift.js";
-import {
-	matchFileWatches,
-	matchSymbolWatches,
-	type WatchMatch,
-} from "./watchers.js";
+import { matchFileWatches, matchSymbolWatches } from "./watchers.js";
 
 export interface InvalidationRunResult {
 	/** Git diff summary */
@@ -131,18 +127,10 @@ export class InvalidationOrchestrator {
 				);
 				hardCount++;
 			} else if (hasHighSeverity) {
-				await softInvalidate(
-					entryId,
-					`Major changes in watched files`,
-					this.entryRepo,
-				);
+				await softInvalidate(entryId, `Major changes in watched files`, this.entryRepo);
 				softCount++;
 			} else {
-				await softInvalidate(
-					entryId,
-					`Minor changes in watched files`,
-					this.entryRepo,
-				);
+				await softInvalidate(entryId, `Minor changes in watched files`, this.entryRepo);
 				softCount++;
 			}
 		}
@@ -192,9 +180,7 @@ export class InvalidationOrchestrator {
 			embeddingText: row.embedding_text,
 			embedding: row.embedding,
 			accessCount: row.access_count,
-			lastAccessedAt: row.last_accessed_at
-				? new Date(row.last_accessed_at)
-				: null,
+			lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : null,
 			createdBy: row.created_by,
 			createdInTask: row.created_in_task,
 			createdAt: new Date(row.created_at),

@@ -1,0 +1,32 @@
+# Devcontainer-only overlay: adds a `devcontainer` service with Node 20
+# bind-mounted to the repo. The root docker-compose.yml still owns
+# postgres / postgres-test / agent-memory so local and Codespaces
+# environments share the exact same database configuration.
+#
+# Do NOT copy runtime services here — this file is consumed ONLY by the
+# VS Code Dev Containers extension, never by `docker compose up`.
+
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://memory:memory_dev@postgres:5432/agent_memory
+      DATABASE_URL_TEST: postgresql://memory:memory_dev@postgres-test:5432/agent_memory_test
+      REPO_ROOT: /workspace
+      LOG_LEVEL: info
+    volumes:
+      - ..:/workspace:cached
+      # Keep node_modules inside the container for native-binary
+      # compatibility (better-sqlite3, pg-native, etc.) even when the
+      # host is macOS/Windows.
+      - devcontainer-node-modules:/workspace/node_modules
+    working_dir: /workspace
+    command: sleep infinity
+    networks:
+      - agent-memory
+
+volumes:
+  devcontainer-node-modules:

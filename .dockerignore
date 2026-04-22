@@ -1,0 +1,63 @@
+# Keep the build context small. Only src/, tsconfig.json,
+# package*.json are needed by the Dockerfile.
+
+# Node
+node_modules/
+npm-debug.log*
+.npm/
+*.tsbuildinfo
+
+# Build output — rebuilt inside the image
+dist/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Agent infra (development-only; not shipped to consumers)
+.augment/
+agents/
+AGENTS.md
+CLAUDE.md
+.agent-settings.yml
+.agentignore
+.augmentignore
+
+# Tests & fixtures
+tests/
+coverage/
+*.test.ts
+*.spec.ts
+vitest.config.*
+
+# Tooling configs that don't belong in the image
+.vscode/
+.idea/
+.editorconfig
+biome.json
+biome.jsonc
+
+# Docs — README gets added by the Dockerfile explicitly if needed
+docs/
+examples/
+*.md
+!README.md
+
+# CI / GitHub
+.github/
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+
+# Build artefacts
+*.log
+*.tgz
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# macOS / misc
+.DS_Store

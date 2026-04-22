@@ -1,16 +1,16 @@
 {
-  "contract_version": 1,
-  "status": "error",
-  "backend_version": "0.1.0",
-  "features": [
-    "trust-scoring",
-    "decay",
-    "quarantine",
-    "contradiction-detection",
-    "semantic-drift",
-    "progressive-disclosure",
-    "privacy-filter"
-  ],
-  "latency_ms": 2000,
-  "counts": { "error": 1 }
+	"contract_version": 1,
+	"status": "error",
+	"backend_version": "0.1.0",
+	"features": [
+		"trust-scoring",
+		"decay",
+		"quarantine",
+		"contradiction-detection",
+		"semantic-drift",
+		"progressive-disclosure",
+		"privacy-filter"
+	],
+	"latency_ms": 2000,
+	"counts": { "error": 1 }
 }

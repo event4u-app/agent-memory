@@ -1,0 +1,95 @@
+# Documentation / portability drift guards.
+#
+# Each job verifies that a piece of committed prose still matches its
+# source of truth. If the source changes, the matching doc has to be
+# regenerated (or the prose fixed) in the same PR.
+#
+# Jobs:
+#   cli-doc-drift   (P4-2)  docs/cli-reference.md vs src/cli/index.ts
+#   portability     (P4-3)  README/docs/examples vs foreign-project blocklist
+#   link-check      (P4-4)  every *.md link resolves
+#
+# Runs on every pull request + on push to main. Fast (~2 min total) —
+# these are static checks, no Docker, no Postgres.
+
+name: Docs checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-doc-drift:
+    name: CLI doc drift (P4-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Regenerate CLI reference
+        run: npm run docs:cli
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/cli-reference.md; then
+            echo ""
+            echo "::error::docs/cli-reference.md is out of sync with src/cli/index.ts."
+            echo "::error::Run \`npm run docs:cli\` locally and commit the diff."
+            echo "::error::See roadmap task P4-1 for the generator contract."
+            exit 1
+          fi
+
+  portability:
+    name: Portability guard (P4-3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install npm deps (for the bundled check_portability.py)
+        run: npm ci --ignore-scripts
+
+      - name: Scan AGENTS.md + copilot-instructions.md for foreign-project leakage
+        run: npm run check:portability
+
+  link-check:
+    name: Link checker (P4-4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lychee — fail on any broken relative or external link
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config lychee.toml
+            README.md
+            AGENTS.md
+            docs
+            examples
+            agents/roadmaps/archive/improve-setup.md
+            .github/copilot-instructions.md
+          fail: true
+        env:
+          # Raise the rate limit for GitHub anchor checks; lychee falls
+          # back to anonymous requests otherwise and hits 60-req/h.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

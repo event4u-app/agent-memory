@@ -1,0 +1,84 @@
+# Code-quality gates for TypeScript sources and tests.
+#
+# Runs three static checks in parallel — each one is cheap (~30s),
+# fails closed, and blocks merge if the corresponding `npm` script
+# exits non-zero locally. This workflow exists specifically to
+# prevent the lint-drift we cleaned up in a6b733f from creeping
+# back in silently.
+#
+# Jobs:
+#   lint       — biome check src/ tests/       (no warnings, no errors)
+#   typecheck  — tsc --noEmit                   (strict mode)
+#   tests      — vitest run                     (unit + contract, 240 tests)
+#
+# Runs on every pull request + on push to main. No Postgres, no
+# Docker — tests/unit/* are pure in-memory Vitest runs.
+
+name: Code checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (biome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: biome check
+        run: |
+          if ! npm run lint; then
+            echo ""
+            echo "::error::Lint failed. Run \`npm run lint:fix\` locally,"
+            echo "::error::then \`npx biome format --write src/ tests/\`,"
+            echo "::error::then commit the diff. Project biome config: biome.json."
+            exit 1
+          fi
+
+  typecheck:
+    name: Typecheck (tsc --noEmit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: tsc --noEmit
+        run: npm run typecheck
+
+  tests:
+    name: Unit + contract tests (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: vitest run
+        run: npm test

@@ -1,0 +1,54 @@
+# Example: Laravel app + agent-memory sidecar
+#
+# From this folder, `docker compose up -d` brings up:
+#   - postgres          (pgvector:pg17)    internal only
+#   - agent-memory      (GHCR image)       internal + healthchecked
+#
+# The `.:/workspace:ro` mount on agent-memory lets its file/symbol
+# validators verify memory entries against your actual PHP codebase.
+# Consumers add their own php-fpm / octane / workbench service on top
+# with `depends_on: agent-memory: service_healthy`.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: agent_memory
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: memory_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory -d agent_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  agent-memory:
+    # Pulls the published image on release. For contributors running
+    # from a local checkout of the monorepo, uncomment the build: block
+    # below to use the in-tree Dockerfile instead.
+    image: ghcr.io/event4u-app/agent-memory:latest
+    # build:
+    #   context: ../..
+    #   dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://memory:memory_dev@postgres:5432/agent_memory
+      LOG_LEVEL: info
+      REPO_ROOT: /workspace
+    volumes:
+      - .:/workspace:ro
+    entrypoint: ["/sbin/tini", "--"]
+    command: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD", "memory", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  pgdata:

@@ -59,10 +59,7 @@ export class MemoryEntryRepository {
       RETURNING *
     `;
 
-		logger.debug(
-			{ id: row!.id, type: input.type },
-			"Memory entry created in quarantine",
-		);
+		logger.debug({ id: row?.id, type: input.type }, "Memory entry created in quarantine");
 		return this.mapRow(row!);
 	}
 
@@ -117,10 +114,7 @@ export class MemoryEntryRepository {
       VALUES (${id}, ${entry.trust.status}, ${toStatus}, ${reason}, ${triggeredBy})
     `;
 
-		logger.info(
-			{ id, from: entry.trust.status, to: toStatus, reason },
-			"Status transitioned",
-		);
+		logger.info({ id, from: entry.trust.status, to: toStatus, reason }, "Status transitioned");
 		return this.mapRow(row!);
 	}
 
@@ -152,10 +146,7 @@ export class MemoryEntryRepository {
     `;
 	}
 
-	async updatePromotionMetadata(
-		id: string,
-		metadata: PromotionMetadata,
-	): Promise<void> {
+	async updatePromotionMetadata(id: string, metadata: PromotionMetadata): Promise<void> {
 		await this.sql`
       UPDATE memory_entries
       SET promotion_metadata = ${JSON.stringify(metadata)}::jsonb,
@@ -170,9 +161,7 @@ export class MemoryEntryRepository {
 	 * with trust_status = 'validated' and tier in ('semantic', 'procedural').
 	 * Returns the first such entry (by trust_score desc), or null.
 	 */
-	async findSemanticDuplicate(
-		candidate: MemoryEntry,
-	): Promise<MemoryEntry | null> {
+	async findSemanticDuplicate(candidate: MemoryEntry): Promise<MemoryEntry | null> {
 		const files = candidate.scope.files ?? [];
 		const symbols = candidate.scope.symbols ?? [];
 		if (files.length === 0 && symbols.length === 0) return null;
@@ -209,12 +198,12 @@ export class MemoryEntryRepository {
 			const [row] = await this.sql`
         SELECT COUNT(*)::int as count FROM memory_entries WHERE trust_status = ${status}
       `;
-			return row!.count;
+			return row?.count;
 		}
 		const [row] = await this.sql`
       SELECT COUNT(*)::int as count FROM memory_entries
     `;
-		return row!.count;
+		return row?.count;
 	}
 
 	private mapRow(row: postgres.Row): MemoryEntry {
@@ -224,9 +213,7 @@ export class MemoryEntryRepository {
 			title: row.title,
 			summary: row.summary,
 			details: row.details,
-			scope: (typeof row.scope === "string"
-				? JSON.parse(row.scope)
-				: row.scope) as MemoryScope,
+			scope: (typeof row.scope === "string" ? JSON.parse(row.scope) : row.scope) as MemoryScope,
 			impactLevel: row.impact_level as ImpactLevel,
 			knowledgeClass: row.knowledge_class as KnowledgeClass,
 			consolidationTier: row.consolidation_tier as ConsolidationTier,
@@ -239,9 +226,7 @@ export class MemoryEntryRepository {
 			embeddingText: row.embedding_text,
 			embedding: row.embedding,
 			accessCount: row.access_count,
-			lastAccessedAt: row.last_accessed_at
-				? new Date(row.last_accessed_at)
-				: null,
+			lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : null,
 			createdBy: row.created_by,
 			createdInTask: row.created_in_task,
 			createdAt: new Date(row.created_at),

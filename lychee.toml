@@ -1,0 +1,51 @@
+# Link-checker configuration for agent-memory.
+#
+# Run locally:
+#   npm run check:links
+#
+# CI enforcement: .github/workflows/docs-checks.yml → link-check (P4-4)
+#
+# Philosophy:
+#   - Scope to docs this repo actually owns. Vendored markdown under
+#     .augment/, .claude/, .cursor/, and node_modules/ ships from
+#     agent-config upstream; their link-health is that repo's problem.
+#   - Be strict on relative links (broken anchors in our own docs hurt
+#     users). Be lenient on external URLs that 403 on bots but resolve
+#     fine in a browser.
+
+# Outputs
+
+verbose = "warn"
+no_progress = true
+format = "detailed"
+
+# What to check — overridden by CLI args in CI, this is the local default.
+
+include_verbatim = false
+
+# Skip links that match these patterns. External URLs that intermittently
+# rate-limit us or return 403 to headless clients go here.
+
+exclude = [
+	# GitHub releases / tags pages occasionally 403 from CI IPs
+	"https://github\\.com/.*/releases$",
+	# Anchors inside the same file — lychee can't always resolve them
+	# through multi-level markdown tables of contents.
+	"^#",
+]
+
+# Known bot-hostile domains that we still want to link to.
+
+exclude_all_private = true
+
+# Extensions / behavior
+
+accept = ["200", "203", "204", "206", "301", "302", "303", "307", "308"]
+max_redirects = 5
+max_retries = 2
+timeout = 20
+
+# Cache to avoid re-hitting the same external URLs during a single run.
+
+cache = true
+max_cache_age = "1d"

@@ -5,6 +5,7 @@ dist/
 *.tsbuildinfo
 coverage/
 .vitest/
+.lycheecache
 
 # galawork/agent-config
 # Agent config — symlinked from vendor (auto-managed)

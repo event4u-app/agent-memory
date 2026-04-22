@@ -3,16 +3,14 @@
 // Must happen before any import that touches the logger (config/db).
 process.env.LOG_LEVEL ??= "silent";
 
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
 import { buildEmbeddingChain } from "../embedding/index.js";
-import {
-	hardInvalidate,
-	softInvalidate,
-} from "../invalidation/invalidation-flows.js";
+import { hardInvalidate, softInvalidate } from "../invalidation/invalidation-flows.js";
 import { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
 import { RollbackService } from "../invalidation/rollback.js";
 import {
@@ -38,10 +36,7 @@ import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 const BACKEND_VERSION = "0.1.0";
 const HEALTH_TIMEOUT_MS = 2000;
 
-const collect = (value: string, previous: string[]): string[] => [
-	...previous,
-	value,
-];
+const collect = (value: string, previous: string[]): string[] => [...previous, value];
 
 const program = new Command();
 
@@ -52,9 +47,7 @@ program
 
 program
 	.command("ingest")
-	.description(
-		"Create a memory entry in quarantine (one-shot; parity with mcp.memory_ingest)",
-	)
+	.description("Create a memory entry in quarantine (one-shot; parity with mcp.memory_ingest)")
 	.requiredOption("--type <type>", "Memory type (e.g., architecture_decision)")
 	.requiredOption("--title <title>", "Short title")
 	.requiredOption("--summary <summary>", "One-paragraph summary")
@@ -63,11 +56,7 @@ program
 	.option("--file <path>", "File in scope (repeatable)", collect, [])
 	.option("--symbol <symbol>", "Symbol in scope (repeatable)", collect, [])
 	.option("--module <module>", "Module in scope (repeatable)", collect, [])
-	.option(
-		"--impact <level>",
-		"Impact level (critical|high|normal|low)",
-		"normal",
-	)
+	.option("--impact <level>", "Impact level (critical|high|normal|low)", "normal")
 	.option(
 		"--knowledge-class <class>",
 		"Knowledge class (evergreen|semi_stable|volatile)",
@@ -168,9 +157,7 @@ program
 				slices,
 				errors: [],
 			};
-			console.log(
-				JSON.stringify({ ...envelope, metadata: result.metadata }, null, 2),
-			);
+			console.log(JSON.stringify({ ...envelope, metadata: result.metadata }, null, 2));
 			await closeDb();
 			process.exit(0);
 		} catch (error) {
@@ -203,21 +190,13 @@ program
 
 program
 	.command("invalidate")
-	.description(
-		"Mark entries as stale or rejected (soft/hard or git-diff sweep)",
-	)
+	.description("Mark entries as stale or rejected (soft/hard or git-diff sweep)")
 	.option("--entry <id>", "Invalidate a specific entry")
 	.option("--hard", "Hard invalidation (entry is completely wrong)")
 	.option("--reason <text>", "Reason for invalidation", "cli:invalidate")
-	.option(
-		"--from-git-diff",
-		"Run git-diff invalidation orchestrator (sweeps all affected entries)",
-	)
+	.option("--from-git-diff", "Run git-diff invalidation orchestrator (sweeps all affected entries)")
 	.option("--from-ref <ref>", "Git ref to compare from (with --from-git-diff)")
-	.option(
-		"--since <date>",
-		"Alternative to --from-ref — ISO date (with --from-git-diff)",
-	)
+	.option("--since <date>", "Alternative to --from-ref — ISO date (with --from-git-diff)")
 	.option("--triggered-by <actor>", "Caller identifier", "cli:invalidate")
 	.action(async (options) => {
 		try {
@@ -226,11 +205,7 @@ program
 			if (options.fromGitDiff) {
 				const evidenceRepo = new EvidenceRepository(sql);
 				const repoRoot = process.env.REPO_ROOT ?? process.cwd();
-				const orchestrator = new InvalidationOrchestrator(
-					sql,
-					entryRepo,
-					evidenceRepo,
-				);
+				const orchestrator = new InvalidationOrchestrator(sql, entryRepo, evidenceRepo);
 				const result = await orchestrator.run({
 					root: repoRoot,
 					fromRef: options.fromRef,
@@ -239,18 +214,8 @@ program
 				console.log(JSON.stringify(result, null, 2));
 			} else if (options.entry) {
 				const result = options.hard
-					? await hardInvalidate(
-							options.entry,
-							options.reason,
-							entryRepo,
-							options.triggeredBy,
-						)
-					: await softInvalidate(
-							options.entry,
-							options.reason,
-							entryRepo,
-							options.triggeredBy,
-						);
+					? await hardInvalidate(options.entry, options.reason, entryRepo, options.triggeredBy)
+					: await softInvalidate(options.entry, options.reason, entryRepo, options.triggeredBy);
 				console.log(JSON.stringify(result, null, 2));
 			} else {
 				throw new Error("Provide either --entry <id> or --from-git-diff");
@@ -277,11 +242,7 @@ program
 			const entryRepo = new MemoryEntryRepository(sql);
 			const poisonService = new PoisonService(sql, entryRepo);
 			const rollback = new RollbackService(sql, poisonService);
-			const report = await rollback.poisonAndReport(
-				id,
-				reason,
-				options.triggeredBy,
-			);
+			const report = await rollback.poisonAndReport(id, reason, options.triggeredBy);
 			console.log(JSON.stringify(report, null, 2));
 			await closeDb();
 			process.exit(0);
@@ -295,15 +256,9 @@ program
 
 program
 	.command("rollback")
-	.description(
-		"Roll back a poisoned entry — report affected tasks + cascaded entries",
-	)
+	.description("Roll back a poisoned entry — report affected tasks + cascaded entries")
 	.argument("<id>", "Memory entry ID to roll back")
-	.option(
-		"--reason <text>",
-		"Why this entry is being rolled back",
-		"Rolled back via CLI",
-	)
+	.option("--reason <text>", "Why this entry is being rolled back", "Rolled back via CLI")
 	.option("--triggered-by <actor>", "Caller identifier", "cli:rollback")
 	.action(async (id, options) => {
 		try {
@@ -311,11 +266,7 @@ program
 			const entryRepo = new MemoryEntryRepository(sql);
 			const poisonService = new PoisonService(sql, entryRepo);
 			const rollback = new RollbackService(sql, poisonService);
-			const report = await rollback.poisonAndReport(
-				id,
-				options.reason,
-				options.triggeredBy,
-			);
+			const report = await rollback.poisonAndReport(id, options.reason, options.triggeredBy);
 			const output = {
 				rolledBackEntryId: report.poisonedEntryId,
 				cascadedEntryIds: report.cascadedEntryIds,
@@ -338,9 +289,7 @@ program
 
 program
 	.command("verify")
-	.description(
-		"Trace a memory entry to its evidence, contradictions, and audit trail",
-	)
+	.description("Trace a memory entry to its evidence, contradictions, and audit trail")
 	.argument("<id>", "Memory entry ID")
 	.action(async (id) => {
 		try {
@@ -401,9 +350,7 @@ program
 
 program
 	.command("propose")
-	.description(
-		"Propose a new memory entry (lands in quarantine; not served until promoted)",
-	)
+	.description("Propose a new memory entry (lands in quarantine; not served until promoted)")
 	.requiredOption("--type <type>", "Memory type (e.g., architecture_decision)")
 	.requiredOption("--title <title>", "Short title")
 	.requiredOption("--summary <summary>", "One-paragraph summary")
@@ -412,11 +359,7 @@ program
 	.option("--file <path>", "File in scope (repeatable)", collect, [])
 	.option("--symbol <symbol>", "Symbol in scope (repeatable)", collect, [])
 	.option("--module <module>", "Module in scope (repeatable)", collect, [])
-	.option(
-		"--impact <level>",
-		"Impact level (critical|high|normal|low)",
-		"normal",
-	)
+	.option("--impact <level>", "Impact level (critical|high|normal|low)", "normal")
 	.option(
 		"--knowledge-class <class>",
 		"Knowledge class (evergreen|semi_stable|volatile)",
@@ -424,17 +367,8 @@ program
 	)
 	.requiredOption("--source <source>", "Source ref (incident id, PR, ADR)")
 	.requiredOption("--confidence <n>", "Initial confidence 0.0–1.0", "0.6")
-	.option(
-		"--scenario <text>",
-		"Future scenario (repeat 3+ times for non-low impact)",
-		collect,
-		[],
-	)
-	.option(
-		"--gate-clean",
-		"Assert extraction-guard was clean at proposal time",
-		false,
-	)
+	.option("--scenario <text>", "Future scenario (repeat 3+ times for non-low impact)", collect, [])
+	.option("--gate-clean", "Assert extraction-guard was clean at proposal time", false)
 	.option(
 		"--gate-not-clean",
 		"Mark extraction-guard as failing (will cause rejection on promote)",
@@ -466,8 +400,7 @@ program
 				createdBy: options.createdBy,
 				source: options.source,
 				confidence: Number.parseFloat(options.confidence),
-				futureScenarios:
-					options.scenario.length > 0 ? options.scenario : undefined,
+				futureScenarios: options.scenario.length > 0 ? options.scenario : undefined,
 				gateCleanAtProposal,
 			});
 			console.log(JSON.stringify(result, null, 2));
@@ -485,17 +418,8 @@ program
 	.command("promote")
 	.description("Promote a quarantined proposal through gate criteria")
 	.argument("<proposal-id>", "Proposal ID returned by `propose`")
-	.option(
-		"--allowed-type <type>",
-		"Allowed target type (repeatable; consumer policy)",
-		collect,
-		[],
-	)
-	.option(
-		"--skip-duplicate-check",
-		"Skip non-duplication gate (caller accepts the sibling)",
-		false,
-	)
+	.option("--allowed-type <type>", "Allowed target type (repeatable; consumer policy)", collect, [])
+	.option("--skip-duplicate-check", "Skip non-duplication gate (caller accepts the sibling)", false)
 	.option("--triggered-by <actor>", "Caller identifier", "cli:promote")
 	.action(async (proposalId, options) => {
 		try {
@@ -503,9 +427,7 @@ program
 			const result = await service.promote(proposalId, {
 				triggeredBy: options.triggeredBy,
 				allowedTargetTypes:
-					options.allowedType.length > 0
-						? (options.allowedType as MemoryType[])
-						: undefined,
+					options.allowedType.length > 0 ? (options.allowedType as MemoryType[]) : undefined,
 				skipDuplicateCheck: options.skipDuplicateCheck,
 			});
 			console.log(JSON.stringify(result, null, 2));
@@ -533,9 +455,7 @@ program
 
 program
 	.command("status")
-	.description(
-		"Feature detection for consumers — prints present | absent | misconfigured",
-	)
+	.description("Feature detection for consumers — prints present | absent | misconfigured")
 	.option("--timeout <ms>", "Timeout in ms", String(HEALTH_TIMEOUT_MS))
 	.option("--json", "Emit full JSON envelope (always exits 0)")
 	.action(async (options) => {
@@ -544,9 +464,7 @@ program
 		const memoryStatus: "present" | "absent" | "misconfigured" =
 			envelope.status === "ok" ? "present" : "misconfigured";
 		if (options.json) {
-			console.log(
-				JSON.stringify({ memory_status: memoryStatus, ...envelope }, null, 2),
-			);
+			console.log(JSON.stringify({ memory_status: memoryStatus, ...envelope }, null, 2));
 		} else {
 			console.log(memoryStatus);
 		}
@@ -593,12 +511,7 @@ function buildQuarantineService(): QuarantineService {
 		new DiffImpactValidator(repoRoot),
 		new TestLinkedValidator(repoRoot),
 	];
-	return new QuarantineService(
-		entryRepo,
-		evidenceRepo,
-		contradictionRepo,
-		validators,
-	);
+	return new QuarantineService(entryRepo, evidenceRepo, contradictionRepo, validators);
 }
 
 function buildPromotionService(): PromotionService {
@@ -610,15 +523,10 @@ function buildPromotionService(): PromotionService {
 
 function parseLevel(input: string): DisclosureLevel {
 	const normalized = input.toLowerCase();
-	if (normalized === "l1" || normalized === "1" || normalized === "index")
-		return "index";
-	if (normalized === "l2" || normalized === "2" || normalized === "timeline")
-		return "timeline";
-	if (normalized === "l3" || normalized === "3" || normalized === "full")
-		return "full";
-	throw new Error(
-		`Invalid layer: ${input}. Expected 1|2|3 or L1|L2|L3 or index|timeline|full.`,
-	);
+	if (normalized === "l1" || normalized === "1" || normalized === "index") return "index";
+	if (normalized === "l2" || normalized === "2" || normalized === "timeline") return "timeline";
+	if (normalized === "l3" || normalized === "3" || normalized === "full") return "full";
+	throw new Error(`Invalid layer: ${input}. Expected 1|2|3 or L1|L2|L3 or index|timeline|full.`);
 }
 
 async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
@@ -628,10 +536,7 @@ async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
 		const result = await Promise.race([
 			healthCheck(),
 			new Promise<{ ok: false; latencyMs: number }>((resolve) =>
-				setTimeout(
-					() => resolve({ ok: false, latencyMs: timeoutMs }),
-					timeoutMs,
-				),
+				setTimeout(() => resolve({ ok: false, latencyMs: timeoutMs }), timeoutMs),
 			),
 		]);
 		return {
@@ -653,4 +558,46 @@ async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
 	}
 }
 
-program.parse();
+program
+	.command("doctor")
+	.description("Diagnose environment: DATABASE_URL, pgvector, migrations, agent-config")
+	.option("--json", "Emit JSON only (no human summary on stderr)", false)
+	.action(async (options) => {
+		const { runDoctor, renderHuman } = await import("./doctor.js");
+		try {
+			const report = await runDoctor();
+			// Human summary → stderr (always, unless --json); JSON → stdout.
+			if (!options.json) {
+				process.stderr.write(`${renderHuman(report)}\n`);
+			}
+			console.log(JSON.stringify(report, null, 2));
+			process.exit(report.status === "unhealthy" ? 1 : 0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			process.exit(1);
+		}
+	});
+
+program
+	.command("mcp")
+	.description("Start the MCP stdio server (for agent clients)")
+	.action(async () => {
+		// Logs go to stderr; the MCP handshake owns stdout.
+		process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
+		const { startMcpServer } = await import("../mcp/server.js");
+		try {
+			await startMcpServer();
+		} catch (err) {
+			console.error("Fatal error:", err);
+			process.exit(1);
+		}
+	});
+
+// Only parse argv when invoked as a script. The generator in
+// scripts/generate-cli-docs.ts imports `program` to introspect commands.
+if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+	program.parse();
+}
+
+export { program };

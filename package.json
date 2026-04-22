@@ -5,9 +5,25 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "memory": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/cli/index.ts",
@@ -21,7 +37,12 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:rollback": "tsx src/db/rollback.ts",
     "mcp:start": "tsx src/mcp/server.ts",
-    "postinstall": "bash node_modules/@event4u/agent-config/scripts/install.sh --quiet"
+    "docs:cli": "tsx scripts/generate-cli-docs.ts",
+    "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
+    "check:portability": "AGENT_CONFIG_BLOCKLIST=\"FormRequest,Eloquent,artisan,Blade,Livewire\" python3 node_modules/@event4u/agent-config/scripts/check_portability.py --root .",
+    "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
+    "prepare": "npm run build",
+    "postinstall": "bash scripts/postinstall.sh"
   },
   "keywords": [
     "agent-memory",
@@ -32,8 +53,19 @@
   ],
   "author": "event4u",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/event4u-app/agent-memory.git"
+  },
+  "homepage": "https://github.com/event4u-app/agent-memory#readme",
+  "bugs": {
+    "url": "https://github.com/event4u-app/agent-memory/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

@@ -6,11 +6,7 @@
 
 import { CircuitBreaker, CircuitOpenError, withRetry } from "../infra/index.js";
 import { logger } from "../utils/logger.js";
-import type {
-	EmbeddingProvider,
-	EmbeddingProviderName,
-	EmbeddingResult,
-} from "./types.js";
+import type { EmbeddingProvider, EmbeddingProviderName, EmbeddingResult } from "./types.js";
 
 export interface FallbackChainOptions {
 	retryAttempts?: number;
@@ -64,10 +60,7 @@ export class EmbeddingFallbackChain {
 				return { vector, provider: provider.name };
 			} catch (err) {
 				if (err instanceof CircuitOpenError) {
-					logger.debug(
-						{ provider: provider.name },
-						"Circuit open — skipping provider",
-					);
+					logger.debug({ provider: provider.name }, "Circuit open — skipping provider");
 				} else {
 					logger.warn(
 						{ provider: provider.name, err: (err as Error)?.message },
@@ -76,10 +69,7 @@ export class EmbeddingFallbackChain {
 				}
 			}
 		}
-		logger.warn(
-			{},
-			"All embedding providers failed — vector search will be skipped",
-		);
+		logger.warn({}, "All embedding providers failed — vector search will be skipped");
 		return { vector: [], provider: "bm25-only" };
 	}
 

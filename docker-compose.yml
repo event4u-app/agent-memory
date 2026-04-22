@@ -14,6 +14,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - agent-memory
 
   postgres-test:
     image: pgvector/pgvector:pg17
@@ -25,6 +27,44 @@ services:
       - "5434:5432"
     tmpfs:
       - /var/lib/postgresql/data
+    networks:
+      - agent-memory
+
+  agent-memory:
+    # Published image; use `docker compose build agent-memory` to pull
+    # the local Dockerfile instead. CI publishes the `:latest` and
+    # `:vX.Y.Z` tags on release (see .github/workflows/docker-image.yml).
+    image: ghcr.io/event4u-app/agent-memory:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://memory:memory_dev@postgres:5432/agent_memory
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REPO_ROOT: ${REPO_ROOT:-/workspace}
+    # Keep the container alive so consumers spawn `memory mcp` (or any
+    # CLI command) via `docker compose exec -i agent-memory memory …`.
+    # Running the stdio MCP server as the long-lived process would idle
+    # on stdin without a client and complicate signal forwarding.
+    command: ["tail", "-f", "/dev/null"]
+    entrypoint: ["/sbin/tini", "--"]
+    healthcheck:
+      test: ["CMD", "memory", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - agent-memory
+
+networks:
+  # Named network so consumer compose files can join via
+  # `networks: { agent-memory: { external: true, name: agent-memory } }`.
+  agent-memory:
+    name: agent-memory
 
 volumes:
   pgdata:

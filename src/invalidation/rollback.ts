@@ -3,19 +3,19 @@ import type { PoisonService } from "../trust/poison.service.js";
 import { logger } from "../utils/logger.js";
 
 export interface AffectedTask {
-  taskId: string;
-  entryId: string;
-  entryTitle: string;
-  impactLevel: string;
+	taskId: string;
+	entryId: string;
+	entryTitle: string;
+	impactLevel: string;
 }
 
 export interface RollbackReport {
-  /** The poisoned entry that triggered the rollback */
-  poisonedEntryId: string;
-  /** Tasks that were influenced by the poisoned entry */
-  affectedTasks: AffectedTask[];
-  /** Entries affected by the poison cascade */
-  cascadedEntryIds: string[];
+	/** The poisoned entry that triggered the rollback */
+	poisonedEntryId: string;
+	/** Tasks that were influenced by the poisoned entry */
+	affectedTasks: AffectedTask[];
+	/** Entries affected by the poison cascade */
+	cascadedEntryIds: string[];
 }
 
 /**
@@ -30,56 +30,58 @@ export interface RollbackReport {
  * The agent or human decides what action to take.
  */
 export class RollbackService {
-  constructor(
-    private readonly sql: postgres.Sql,
-    private readonly poisonService: PoisonService,
-  ) {}
+	constructor(
+		private readonly sql: postgres.Sql,
+		private readonly poisonService: PoisonService,
+	) {}
 
-  /**
-   * Execute poison + generate rollback report.
-   */
-  async poisonAndReport(
-    entryId: string,
-    reason: string,
-    triggeredBy = "human",
-  ): Promise<RollbackReport> {
-    // Execute poison cascade
-    const poisonResult = await this.poisonService.poison(entryId, reason, triggeredBy);
+	/**
+	 * Execute poison + generate rollback report.
+	 */
+	async poisonAndReport(
+		entryId: string,
+		reason: string,
+		triggeredBy = "human",
+	): Promise<RollbackReport> {
+		// Execute poison cascade
+		const poisonResult = await this.poisonService.poison(entryId, reason, triggeredBy);
 
-    // Find tasks that accessed the poisoned entry
-    const affectedTasks = await this.findAffectedTasks(entryId);
+		// Find tasks that accessed the poisoned entry
+		const affectedTasks = await this.findAffectedTasks(entryId);
 
-    // Also find tasks affected by cascaded entries
-    for (const cascadedId of poisonResult.cascadedEntryIds) {
-      const cascadedTasks = await this.findAffectedTasks(cascadedId);
-      affectedTasks.push(...cascadedTasks);
-    }
+		// Also find tasks affected by cascaded entries
+		for (const cascadedId of poisonResult.cascadedEntryIds) {
+			const cascadedTasks = await this.findAffectedTasks(cascadedId);
+			affectedTasks.push(...cascadedTasks);
+		}
 
-    // Deduplicate by taskId
-    const uniqueTasks = Array.from(
-      new Map(affectedTasks.map((t) => [t.taskId, t])).values(),
-    );
+		// Deduplicate by taskId
+		const uniqueTasks = Array.from(new Map(affectedTasks.map((t) => [t.taskId, t])).values());
 
-    logger.warn(
-      { entryId, affectedTasks: uniqueTasks.length, cascaded: poisonResult.cascadedEntryIds.length },
-      "Rollback report generated",
-    );
+		logger.warn(
+			{
+				entryId,
+				affectedTasks: uniqueTasks.length,
+				cascaded: poisonResult.cascadedEntryIds.length,
+			},
+			"Rollback report generated",
+		);
 
-    return {
-      poisonedEntryId: entryId,
-      affectedTasks: uniqueTasks,
-      cascadedEntryIds: poisonResult.cascadedEntryIds,
-    };
-  }
+		return {
+			poisonedEntryId: entryId,
+			affectedTasks: uniqueTasks,
+			cascadedEntryIds: poisonResult.cascadedEntryIds,
+		};
+	}
 
-  /**
-   * Find tasks that accessed (were influenced by) a specific entry.
-   * Uses the access log stored in memory_status_history + created_in_task.
-   */
-  private async findAffectedTasks(entryId: string): Promise<AffectedTask[]> {
-    // Find tasks via created_in_task of entries that reference this entry
-    // and via retrieval access patterns
-    const rows = await this.sql`
+	/**
+	 * Find tasks that accessed (were influenced by) a specific entry.
+	 * Uses the access log stored in memory_status_history + created_in_task.
+	 */
+	private async findAffectedTasks(entryId: string): Promise<AffectedTask[]> {
+		// Find tasks via created_in_task of entries that reference this entry
+		// and via retrieval access patterns
+		const rows = await this.sql`
       SELECT DISTINCT
         me.created_in_task AS task_id,
         me.id AS entry_id,
@@ -101,13 +103,13 @@ export class RollbackService {
       LIMIT 50
     `;
 
-    return rows
-      .filter((r) => r.task_id)
-      .map((r) => ({
-        taskId: r.task_id as string,
-        entryId: r.entry_id as string,
-        entryTitle: r.entry_title as string,
-        impactLevel: r.impact_level as string,
-      }));
-  }
+		return rows
+			.filter((r) => r.task_id)
+			.map((r) => ({
+				taskId: r.task_id as string,
+				entryId: r.entry_id as string,
+				entryTitle: r.entry_title as string,
+				impactLevel: r.impact_level as string,
+			}));
+	}
 }

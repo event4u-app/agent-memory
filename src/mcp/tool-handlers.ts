@@ -4,10 +4,7 @@ import { WorkingToEpisodicConsolidator } from "../consolidation/working-to-episo
 import { healthCheck } from "../db/connection.js";
 import { ExtractionGuard } from "../ingestion/extraction-guard.js";
 import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
-import {
-	hardInvalidate,
-	softInvalidate,
-} from "../invalidation/invalidation-flows.js";
+import { hardInvalidate, softInvalidate } from "../invalidation/invalidation-flows.js";
 import { RollbackService } from "../invalidation/rollback.js";
 import {
 	listUnresolved,
@@ -105,10 +102,7 @@ export async function handleToolCall(
 	}
 }
 
-async function handlePropose(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handlePropose(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await ctx.promotionService.propose({
 		type: args.type as MemoryType,
 		title: args.title as string,
@@ -127,10 +121,7 @@ async function handlePropose(
 	return ok(result);
 }
 
-async function handlePromote(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handlePromote(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await ctx.promotionService.promote(args.proposalId as string, {
 		triggeredBy: (args.triggeredBy as string | undefined) ?? "mcp:promote",
 		allowedTargetTypes: args.allowedTargetTypes as MemoryType[] | undefined,
@@ -139,10 +130,7 @@ async function handlePromote(
 	return ok(result);
 }
 
-async function handleDeprecate(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleDeprecate(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await ctx.promotionService.deprecate(
 		args.id as string,
 		args.reason as string,
@@ -152,10 +140,7 @@ async function handleDeprecate(
 	return ok(result);
 }
 
-async function handlePrune(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handlePrune(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await ctx.promotionService.prune({
 		archivalAgeDays: args.archivalAgeDays as number | undefined,
 		purgeAgeDays: args.purgeAgeDays as number | undefined,
@@ -164,10 +149,7 @@ async function handlePrune(
 	return ok(result);
 }
 
-async function handleRetrieve(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const level = LEVEL_MAP[(args.level as string) ?? "L1"] ?? "index";
 	const types = (args.types as string[] | undefined) ?? [];
 	const allEntries = await loadActiveEntries(ctx);
@@ -208,18 +190,13 @@ async function handleRetrieve(
 	return ok({ ...envelope, metadata: result.metadata });
 }
 
-async function loadActiveEntries(
-	ctx: McpContext,
-): Promise<import("../types.js").MemoryEntry[]> {
+async function loadActiveEntries(ctx: McpContext): Promise<import("../types.js").MemoryEntry[]> {
 	const validated = await ctx.entryRepo.findByStatus("validated");
 	const stale = await ctx.entryRepo.findByStatus("stale");
 	return [...validated, ...stale];
 }
 
-async function handleRetrieveDetails(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleRetrieveDetails(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const ids = args.ids as string[];
 	const entries = [];
 	for (const id of ids) {
@@ -233,10 +210,7 @@ async function handleRetrieveDetails(
 	return ok(entries);
 }
 
-async function handleIngest(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleIngest(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const entry = await ctx.entryRepo.create({
 		type: args.type as MemoryType,
 		title: args.title as string,
@@ -260,62 +234,31 @@ async function handleIngest(
 	});
 }
 
-async function handleValidate(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
-	const result = await ctx.quarantineService.validateEntry(
-		args.id as string,
-		"agent:mcp",
-	);
+async function handleValidate(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const result = await ctx.quarantineService.validateEntry(args.id as string, "agent:mcp");
 	return ok(result);
 }
 
-async function handleInvalidate(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleInvalidate(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const mode = (args.mode as string) ?? "soft";
 	const result =
 		mode === "soft"
-			? await softInvalidate(
-					args.id as string,
-					args.reason as string,
-					ctx.entryRepo,
-					"agent:mcp",
-				)
-			: await hardInvalidate(
-					args.id as string,
-					args.reason as string,
-					ctx.entryRepo,
-					"agent:mcp",
-				);
+			? await softInvalidate(args.id as string, args.reason as string, ctx.entryRepo, "agent:mcp")
+			: await hardInvalidate(args.id as string, args.reason as string, ctx.entryRepo, "agent:mcp");
 	return ok(result);
 }
 
-async function handlePoison(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handlePoison(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const svc = new RollbackService(ctx.sql, ctx.poisonService);
-	const report = await svc.poisonAndReport(
-		args.id as string,
-		args.reason as string,
-		"agent:mcp",
-	);
+	const report = await svc.poisonAndReport(args.id as string, args.reason as string, "agent:mcp");
 	return ok(report);
 }
 
-async function handleVerify(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleVerify(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const entry = await ctx.entryRepo.findById(args.id as string);
 	if (!entry) return err("Entry not found");
 	const evidence = await ctx.evidenceRepo.findByEntryId(args.id as string);
-	const contradictions = await ctx.contradictionRepo.findByEntryId(
-		args.id as string,
-	);
+	const contradictions = await ctx.contradictionRepo.findByEntryId(args.id as string);
 	const history = await ctx.sql`
     SELECT from_status, to_status, reason, triggered_by, created_at
     FROM memory_status_history WHERE memory_entry_id = ${args.id as string}
@@ -371,10 +314,7 @@ async function handleHealth(ctx: McpContext): Promise<CallToolResult> {
 	});
 }
 
-async function handleDiagnose(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleDiagnose(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const max = (args.maxResults as number) ?? 10;
 	const stale =
 		await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' LIMIT ${max}`;
@@ -383,10 +323,7 @@ async function handleDiagnose(
 	return ok({ staleEntries: stale, lowTrustEntries: lowTrust });
 }
 
-async function handleSessionStart(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const expiryResult = await ctx.ttlExpiryJob.run();
 	const query = args.query as string;
 	let context: unknown[] = [];
@@ -398,9 +335,7 @@ async function handleSessionStart(
 			queryEmbedding,
 			level: "index",
 			tokenBudget: (args.tokenBudget as number) ?? config.tokenBudget,
-			filters: args.repository
-				? { repository: args.repository as string }
-				: undefined,
+			filters: args.repository ? { repository: args.repository as string } : undefined,
 		});
 		context = retrieval.entries;
 	}
@@ -411,10 +346,7 @@ async function handleSessionStart(
 	});
 }
 
-async function handleObserve(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleObserve(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const filtered = applyPrivacyFilter(args.content as string);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
@@ -425,10 +357,7 @@ async function handleObserve(
 	return ok({ stored: true, id: obs.id });
 }
 
-async function handleObserveFailure(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleObserveFailure(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const parts: string[] = [
 		`tool=${args.toolName as string}`,
 		`error=${args.errorMessage as string}`,
@@ -445,14 +374,8 @@ async function handleObserveFailure(
 	return ok({ stored: true, id: obs.id, kind: "failure" });
 }
 
-async function handleSessionEnd(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
-	const consolidator = new WorkingToEpisodicConsolidator(
-		ctx.observationRepo,
-		ctx.entryRepo,
-	);
+async function handleSessionEnd(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const consolidator = new WorkingToEpisodicConsolidator(ctx.observationRepo, ctx.entryRepo);
 	const consolidation = await consolidator.consolidate(
 		args.sessionId as string,
 		args.repository as string,
@@ -473,10 +396,7 @@ async function handleSessionEnd(
 	});
 }
 
-async function handleStop(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleStop(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const guard = new ExtractionGuard({
 		root: ctx.repoRoot,
 		testCommand: args.testCommand as string | undefined,
@@ -491,10 +411,7 @@ async function handleStop(
 			extraction: "blocked",
 		});
 	}
-	const consolidator = new WorkingToEpisodicConsolidator(
-		ctx.observationRepo,
-		ctx.entryRepo,
-	);
+	const consolidator = new WorkingToEpisodicConsolidator(ctx.observationRepo, ctx.entryRepo);
 	const consolidation = await consolidator.consolidate(
 		args.sessionId as string,
 		args.repository as string,
@@ -511,10 +428,7 @@ async function handleStop(
 	});
 }
 
-async function handleRunInvalidation(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleRunInvalidation(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await ctx.invalidationOrchestrator.run({
 		root: ctx.repoRoot,
 		fromRef: args.fromRef as string | undefined,
@@ -523,10 +437,7 @@ async function handleRunInvalidation(
 	return ok(result);
 }
 
-async function handleAudit(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleAudit(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const id = args.id as string;
 	const entry = await ctx.entryRepo.findById(id);
 	if (!entry) return err("Entry not found");
@@ -549,10 +460,7 @@ async function handleAudit(
 	});
 }
 
-async function handleReview(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleReview(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const max = (args.maxResults as number) ?? 10;
 	const metrics = await calculateMetrics(ctx.sql);
 	const unresolved = await listUnresolved(ctx.sql);
@@ -570,10 +478,7 @@ async function handleReview(
 	});
 }
 
-async function handleResolveContradiction(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleResolveContradiction(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const result = await resolveContradiction(
 		args.contradictionId as string,
 		args.strategy as ResolutionStrategy,
@@ -584,10 +489,7 @@ async function handleResolveContradiction(
 	return ok(result);
 }
 
-async function handleMergeDuplicates(
-	args: Args,
-	ctx: McpContext,
-): Promise<CallToolResult> {
+async function handleMergeDuplicates(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const ids = args.entryIds as string[];
 	if (ids.length < 2) return err("Need at least 2 entry IDs to merge");
 	const entries = [];

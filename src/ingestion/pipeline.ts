@@ -4,10 +4,7 @@ import type { EmbeddingFallbackChain } from "../embedding/index.js";
 import type { ContradictionService } from "../trust/contradiction.service.js";
 import { logger } from "../utils/logger.js";
 import { classifyCandidate, type IngestionCandidate } from "./candidate.js";
-import {
-	ExtractionGuard,
-	type ExtractionGuardOptions,
-} from "./extraction-guard.js";
+import { ExtractionGuard, type ExtractionGuardOptions } from "./extraction-guard.js";
 import { applyPrivacyFilter } from "./privacy-filter.js";
 import { readDocs } from "./scanners/doc-reader.js";
 import { scanFiles } from "./scanners/file-scanner.js";
@@ -68,10 +65,7 @@ export class IngestionPipeline {
 			const guard = new ExtractionGuard(options.guardOptions);
 			const guardResult = await guard.check();
 			if (!guardResult.allowed) {
-				logger.warn(
-					{ reason: guardResult.reason },
-					"Ingestion blocked by extraction guard",
-				);
+				logger.warn({ reason: guardResult.reason }, "Ingestion blocked by extraction guard");
 				return {
 					totalCandidates: 0,
 					createdEntries: 0,
@@ -91,9 +85,7 @@ export class IngestionPipeline {
 						maxFiles: options.maxFiles,
 					})
 				: [],
-			!skip.has("docs")
-				? readDocs({ root: options.root, repository: options.repository })
-				: [],
+			!skip.has("docs") ? readDocs({ root: options.root, repository: options.repository }) : [],
 			!skip.has("git")
 				? readGitCommits({
 						root: options.root,
@@ -105,10 +97,7 @@ export class IngestionPipeline {
 		]);
 		const allCandidates = scannerResults.flat();
 
-		logger.info(
-			{ totalCandidates: allCandidates.length },
-			"Scanners complete, starting ingestion",
-		);
+		logger.info({ totalCandidates: allCandidates.length }, "Scanners complete, starting ingestion");
 
 		// 3–7. Process each candidate
 		const entryIds: string[] = [];
@@ -124,9 +113,7 @@ export class IngestionPipeline {
 			// 5. Create entry (in quarantine). Embedding computed lazily via fallback chain.
 			let embedding: number[] | undefined;
 			if (this.embeddingChain) {
-				const { vector } = await this.embeddingChain.embed(
-					filtered.embeddingText,
-				);
+				const { vector } = await this.embeddingChain.embed(filtered.embeddingText);
 				if (vector.length > 0) embedding = vector;
 			}
 			const entry = await this.entryRepo.create({
@@ -154,17 +141,13 @@ export class IngestionPipeline {
 			}
 
 			// 7. Contradiction detection
-			const detected =
-				await this.contradictionService.detectContradictions(entry);
+			const detected = await this.contradictionService.detectContradictions(entry);
 			contradictions += detected.length;
 
 			entryIds.push(entry.id);
 		}
 
-		logger.info(
-			{ created: entryIds.length, contradictions },
-			"Ingestion pipeline complete",
-		);
+		logger.info({ created: entryIds.length, contradictions }, "Ingestion pipeline complete");
 
 		return {
 			totalCandidates: allCandidates.length,
@@ -176,16 +159,12 @@ export class IngestionPipeline {
 	}
 }
 
-function applyCandidatePrivacyFilter(
-	candidate: IngestionCandidate,
-): IngestionCandidate {
+function applyCandidatePrivacyFilter(candidate: IngestionCandidate): IngestionCandidate {
 	return {
 		...candidate,
 		title: applyPrivacyFilter(candidate.title),
 		summary: applyPrivacyFilter(candidate.summary),
-		details: candidate.details
-			? applyPrivacyFilter(candidate.details)
-			: undefined,
+		details: candidate.details ? applyPrivacyFilter(candidate.details) : undefined,
 		embeddingText: applyPrivacyFilter(candidate.embeddingText),
 	};
 }

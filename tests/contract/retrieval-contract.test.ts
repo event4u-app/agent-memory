@@ -85,20 +85,14 @@ describe("retrieval contract v1 — semantic invariants", () => {
 			}
 			for (const [type, slice] of Object.entries(envelope.slices)) {
 				if (slice.status === "ok") {
-					expect(slice.count, `${file}: slice count for ${type}`).toBe(
-						entryCounts.get(type) ?? 0,
-					);
+					expect(slice.count, `${file}: slice count for ${type}`).toBe(entryCounts.get(type) ?? 0);
 				}
 			}
 		}
 	});
 
 	it("contract_version is always 1", () => {
-		for (const file of [
-			"golden-ok.json",
-			"golden-partial.json",
-			"golden-error.json",
-		]) {
+		for (const file of ["golden-ok.json", "golden-partial.json", "golden-error.json"]) {
 			expect(load<Envelope>(file).contract_version).toBe(1);
 		}
 	});
