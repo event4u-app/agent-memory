@@ -86,7 +86,7 @@ jobs:
             AGENTS.md
             docs
             examples
-            agents/roadmaps/improve-setup.md
+            agents/roadmaps/archive/improve-setup.md
             .github/copilot-instructions.md
           fail: true
         env:
