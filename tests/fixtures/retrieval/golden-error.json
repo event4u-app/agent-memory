@@ -1,0 +1,21 @@
+{
+  "contract_version": 1,
+  "status": "error",
+  "entries": [],
+  "slices": {
+    "historical-pattern": { "status": "misconfigured", "count": 0, "message": "memory_entries table missing" },
+    "ownership": { "status": "internal", "count": 0, "message": "unexpected backend error" }
+  },
+  "errors": [
+    {
+      "type": "historical-pattern",
+      "code": "misconfigured",
+      "message": "memory_entries table missing"
+    },
+    {
+      "type": "ownership",
+      "code": "internal",
+      "message": "unexpected backend error"
+    }
+  ]
+}

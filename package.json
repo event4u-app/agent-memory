@@ -46,6 +46,8 @@
     "@biomejs/biome": "^2.4.11",
     "@event4u/agent-config": "github:event4u-app/agent-config#main",
     "@types/node": "^25.6.0",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
