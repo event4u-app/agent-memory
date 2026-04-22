@@ -46,7 +46,7 @@ memory ingest \
   --file src/order/aggregate.ts --symbol Order
 ```
 
-Required: `--type --title --summary --repository`. Optional: `--details --file --symbol --module --impact --knowledge-class`.
+Required: `--type --title --summary --repository`. Optional: `--details --file --symbol --module --impact --knowledge-class --created-by`.
 
 ### `propose` — create with gate inputs
 
@@ -59,7 +59,15 @@ memory propose --type bug_pattern --title "N+1 on invoice list" \
   --scenario "paginated-list" --scenario "export"
 ```
 
-Required: `--source --confidence`. Accepts repeatable `--scenario`.
+Required: `--type --title --summary --repository --source --confidence`. Inherits `--details --file --symbol --module --impact --knowledge-class --created-by` from `ingest`.
+
+Extra flags:
+
+| Option | Default | Notes |
+|---|---|---|
+| `--scenario <text>` | — | future-scenario citation (repeatable; ≥ 3 required for non-low impact) |
+| `--gate-clean` | off | assert extraction-guard was clean at proposal time |
+| `--gate-not-clean` | off | mark extraction-guard as failing — proposal will be rejected on `promote` |
 
 ### `promote <proposal-id>`
 
@@ -91,6 +99,8 @@ change status unless all validators agree.
 ### `invalidate`
 
 Mark an entry or a set of entries as stale (soft) or invalidated (hard).
+The git-diff sweep always compares the given ref (or date) **against
+current `HEAD`** — there is no `--to-ref` flag.
 
 ```bash
 # Single entry, soft
@@ -99,20 +109,47 @@ memory invalidate --entry <uuid> --reason "superseded by ADR-019"
 # Hard invalidation (fully wrong)
 memory invalidate --entry <uuid> --hard --reason "function deleted"
 
-# Bulk from git diff
-memory invalidate --from-git-diff --from-ref main --to-ref HEAD
+# Bulk from git diff (ref-based: main..HEAD)
+memory invalidate --from-git-diff --from-ref main
+
+# Bulk from git diff (date-based: since date..HEAD)
+memory invalidate --from-git-diff --since 2025-04-01
 ```
 
-### `poison <entry-id>`
+| Option | Default | Notes |
+|---|---|---|
+| `--entry <id>` | — | invalidate a single entry |
+| `--hard` | soft | entry is completely wrong (not just stale) |
+| `--reason <text>` | `cli:invalidate` | human-readable reason for the audit log |
+| `--from-git-diff` | off | sweep all entries affected by a git diff |
+| `--from-ref <ref>` | — | git ref to compare from (with `--from-git-diff`) |
+| `--since <date>` | — | ISO date alternative to `--from-ref` |
+| `--triggered-by <actor>` | `cli:invalidate` | caller identifier |
+
+### `poison <entry-id> <reason>`
 
 Confirm entry is wrong. Triggers cascade review of every entry derived from
 it via evidence links. Writes a rollback report.
+
+```bash
+memory poison <uuid> "root-cause turned out to be a misread stack trace"
+```
+
+Both the entry ID and a reason are **required** positional arguments.
+Optional: `--triggered-by <actor>` (default `cli:poison`).
 
 ### `rollback <entry-id>`
 
 Report + invalidate every task influenced by a poisoned entry.
 See [`src/invalidation/rollback.ts`](../src/invalidation/rollback.ts) for
 the report shape.
+
+```bash
+memory rollback <uuid> --reason "cascading from poison(<uuid>)"
+```
+
+Optional: `--reason <text>` (default `cli:rollback`),
+`--triggered-by <actor>` (default `cli:rollback`).
 
 ### `verify <entry-id>`
 
