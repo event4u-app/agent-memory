@@ -5,6 +5,42 @@ backed by PostgreSQL + pgvector.
 
 > **Status:** V1 complete · 240 tests passing · Node ≥ 20 · Postgres 15+ with pgvector
 
+## 60-second quick-start
+
+**What it is.** A durable, trust-scored memory store your coding agent can
+write to and query over MCP or HTTP-style CLI — so the LLM stops forgetting
+your architecture decisions between sessions.
+
+**Run it** (no Node install on the host required):
+
+```bash
+curl -o docker-compose.yml \
+  https://raw.githubusercontent.com/event4u-app/agent-memory/main/docker-compose.yml
+docker compose up -d agent-memory
+```
+
+**Check it.** One command verifies the DB, pgvector, and migrations:
+
+```bash
+docker compose exec agent-memory memory doctor
+# → 4 ok · 1 warn · 0 fail · 0 skipped   (exit 0)
+```
+
+**Query it.** Every command emits JSON. Pipe it into `jq`, or into your
+agent:
+
+```bash
+docker compose exec agent-memory memory retrieve "how are invoices calculated?"
+```
+
+**Integrate it.** Pick your stack — each guide is a full setup, not a
+reference card:
+
+- **PHP / Laravel** → [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md)
+- **Node / TypeScript** → [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md)
+- **Any MCP client** (Claude Desktop, Cursor, Cline, Augment…) → point it at
+  `command: docker`, `args: ["compose", "exec", "-i", "agent-memory", "memory", "mcp"]`
+
 ## Why
 
 LLMs forget. They hallucinate project facts. They restate preferences you
@@ -13,26 +49,10 @@ corrected last week. `agent-memory` gives your agent a durable,
 patterns, coding conventions — with automatic decay, evidence-gated
 promotion, and invalidation when code changes.
 
-## One-command start
-
-Runs a stdio-speaking MCP sidecar + pgvector-enabled Postgres, ready for any
-MCP client. No Node install on the host required.
-
-```bash
-curl -o docker-compose.yml \
-  https://raw.githubusercontent.com/event4u-app/agent-memory/main/docker-compose.yml
-docker compose up -d agent-memory
-docker compose exec agent-memory memory health    # → status: ok
-```
-
-Point your MCP client at the sidecar with `command: docker`,
-`args: ["compose", "exec", "-i", "agent-memory", "memory", "mcp"]` — see
-[Connect to your AI agent](#connect-to-your-ai-agent) for full configs.
-
 ## What you get
 
 - **23 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
-- **13 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **14 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
