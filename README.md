@@ -1,0 +1,253 @@
+# @event4u/agent-memory
+
+Persistent, trust-scored project memory for AI coding agents — MCP server + CLI,
+backed by PostgreSQL + pgvector.
+
+> **Status:** V1 complete · 240 tests passing · Node ≥ 20 · Postgres 15+ with pgvector
+
+## Why
+
+LLMs forget. They hallucinate project facts. They restate preferences you
+corrected last week. `agent-memory` gives your agent a durable,
+**trust-scored** memory of your project — architecture decisions, bug
+patterns, coding conventions — with automatic decay, evidence-gated
+promotion, and invalidation when code changes.
+
+## What you get
+
+- **17 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, and invalidate memory.
+- **12 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
+- **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
+- **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
+- **Privacy filter** — strips secrets, API keys, PII before anything hits the DB.
+
+## Installation
+
+### As a dependency
+
+```bash
+npm install @event4u/agent-memory
+```
+
+You must also provide Postgres with pgvector. Easiest path — copy the bundled
+docker-compose:
+
+```bash
+curl -o docker-compose.yml \
+  https://raw.githubusercontent.com/event4u-app/agent-memory/main/examples/consumer-docker-compose.yml
+docker compose up -d postgres
+```
+
+See [`examples/`](examples/) for ready-to-copy `docker-compose.yml` and
+GitHub Actions snippets.
+
+### From source (development)
+
+```bash
+git clone https://github.com/event4u-app/agent-memory.git
+cd agent-memory
+npm install
+docker compose up -d postgres
+npm run db:migrate
+npm test
+```
+
+## Quick start
+
+```bash
+# 1. Start Postgres (local dev)
+docker compose up -d postgres
+
+# 2. Run migrations
+npm run db:migrate
+
+# 3. Smoke test — returns JSON { status: "ok", features: [...] }
+npx tsx src/cli/index.ts health
+
+# 4. Ingest a memory
+npx tsx src/cli/index.ts ingest \
+  --type architecture_decision \
+  --title "Use event sourcing for orders" \
+  --summary "All order state changes go through domain events." \
+  --repository my-app
+
+# 5. Retrieve
+npx tsx src/cli/index.ts retrieve "how do orders work?"
+```
+
+After `npm run build` + `npm install -g .` the `memory` binary is on your PATH.
+
+## Connect to your AI agent
+
+Every MCP-aware agent works. Point the MCP server at your project and set
+`REPO_ROOT` — required by file / symbol validators.
+
+### Claude Desktop
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "npx",
+      "args": ["tsx", "/abs/path/to/agent-memory/src/mcp/server.ts"],
+      "env": {
+        "DATABASE_URL": "postgresql://memory:memory_dev@localhost:5433/agent_memory",
+        "REPO_ROOT": "/abs/path/to/your/project"
+      }
+    }
+  }
+}
+```
+
+### Cursor / Cline / Augment
+
+Each agent has its own MCP config file, but the shape is identical to the
+Claude example. Check your agent's docs for the file path; keep `command`,
+`args`, and `env` as shown.
+
+## How it works
+
+```
+┌──────────────┐   propose    ┌────────────┐   gate    ┌──────────────┐
+│ tool / agent │─────────────▶│ quarantine │──criteria─▶│  validated  │
+└──────────────┘              └────────────┘            └──────┬───────┘
+                                                               │
+                                               decay / TTL     │  evidence
+                                                               ▼
+                              ┌──────────┐   cascade   ┌──────────────┐
+                              │ archived │◀────────────│ stale / inv. │
+                              └──────────┘             └──────────────┘
+```
+
+- **Trust-scored, not boolean** — every entry has a `trust_score` (0–1). Retrieval filters by threshold (default `0.6`).
+- **Progressive disclosure** — L1 (index) / L2 (summary) / L3 (full) fits retrieval to your token budget.
+- **Auto-invalidation** — `git diff` between two refs marks linked memories stale; signature drift triggers hard invalidation.
+- **Rollback** — when a memory is confirmed wrong (`poison`), the cascade marks every derived task for review.
+
+Full details: [`docs/data-model.md`](docs/data-model.md).
+
+## Memory types
+
+Nine canonical types cover most project knowledge:
+
+| Type | Example |
+|---|---|
+| `architecture_decision` | "Use event sourcing for orders" |
+| `domain_rule` | "An invoice cannot be modified after issuance" |
+| `coding_convention` | "All services live in `src/services/*`, one per file" |
+| `bug_pattern` | "N+1 query when iterating `order.items` without `with()`" |
+| `refactoring_note` | "Migration from v1 API to v2 in progress — avoid v1 in new code" |
+| `integration_constraint` | "Stripe webhook timeout is 10s, not 30s" |
+| `deployment_warning` | "Run migration X before deploying service Y" |
+| `test_strategy` | "Auth module uses contract tests, not unit tests" |
+| `glossary_entry` | "'Dispatch' = external partner handoff, not internal queue" |
+
+## Tools & commands
+
+### MCP tools (17)
+
+| Category | Tools |
+|---|---|
+| **Core** | `memory_retrieve`, `memory_retrieve_details`, `memory_ingest`, `memory_validate`, `memory_invalidate`, `memory_poison`, `memory_verify` |
+| **Lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
+| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates` |
+
+### CLI commands (12)
+
+`retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
+`poison` · `rollback` · `verify` · `health` · `status` · `diagnose`
+
+Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
+
+## Typical workflow
+
+```bash
+# Agent observes a bug fix — create a proposal with evidence
+memory propose --type bug_pattern \
+  --title "N+1 on invoice list" \
+  --summary "Iterating order.items without with('items') triggers N+1." \
+  --repository my-app \
+  --source "PR#234" --confidence 0.7 \
+  --future-scenario "invoice-export"
+
+# After 3+ future decisions reference it and tests pass → promote
+memory promote --entry <uuid>
+
+# Later: code change may invalidate it
+memory invalidate --from-git-diff --from-ref main --to-ref HEAD
+
+# A week later: entry turns out to be wrong — poison + rollback cascade
+memory poison <uuid>
+memory rollback <uuid>
+```
+
+## Configuration
+
+All settings have sensible defaults. Essentials:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://memory:memory_dev@localhost:5433/agent_memory` | Postgres |
+| `REPO_ROOT` | `cwd` | for file / symbol validators |
+| `EMBEDDING_PROVIDER` | `bm25-only` | fallback chain to BM25 if no API key |
+| `MEMORY_TRUST_THRESHOLD_DEFAULT` | `0.6` | minimum score to be served |
+
+Full reference (all env vars, decay overrides, CI examples):
+[`docs/configuration.md`](docs/configuration.md).
+
+## Project structure
+
+```
+src/
+├── config.ts            # env → config
+├── types.ts             # types, enums, trust lifecycle
+├── db/                  # Postgres connection, migrations, repositories
+├── retrieval/           # BM25 + vector + RRF + progressive disclosure
+├── trust/               # scoring, transitions, validators, promotion, poison
+├── ingestion/           # privacy filter, candidate, pipeline, scanners
+├── consolidation/       # working → episodic → semantic promotion
+├── invalidation/        # git diff, drift, TTL, rollback
+├── quality/             # metrics, dedup, contradictions, archival
+├── embedding/           # provider abstraction + fallback chain
+├── infra/               # circuit breaker, retry
+├── mcp/                 # MCP server (stdio), 17 tools
+└── cli/                 # commander-based CLI
+
+docs/
+├── data-model.md        # Postgres schema, trust lifecycle, tiers, decay
+├── cli-reference.md     # all CLI commands with examples
+└── configuration.md     # every env var
+
+examples/
+├── consumer-docker-compose.yml
+└── consumer-ci.yml
+```
+
+## Testing
+
+```bash
+npm test                 # 240 tests, vitest
+npm run test:watch       # watch mode
+npm run typecheck        # tsc --noEmit (strict)
+npm run lint             # biome check
+```
+
+## Compatibility
+
+| `agent-memory` | `agent-config` | Node | Postgres |
+|---|---|---|---|
+| 0.1.x | ≥ 0.1 (main) | ≥ 20 | 15+ with pgvector |
+
+Every `retrieve()` and `health()` response carries `contract_version: 1`.
+Callers pinned to v1 MAY continue on a v2 response if they ignore unknown
+fields; breaking renames bump the major. See the
+[retrieval contract spec](agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md).
+
+## License
+
+MIT
+
+Full details: [`docs/data-model.md`](docs/data-model.md).
