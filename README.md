@@ -7,6 +7,11 @@ backed by PostgreSQL + pgvector.
 
 ## 60-second quick-start
 
+<!-- Regenerate with docs/media/record-demo.sh · instructions in docs/media/README.md -->
+<!-- demo.gif is intentionally NOT committed by default; uncomment the line
+     below once docs/media/demo.gif has been recorded. -->
+<!-- ![60-second setup demo](docs/media/demo.gif) -->
+
 **What it is.** A durable, trust-scored memory store your coding agent can
 write to and query over MCP or HTTP-style CLI — so the LLM stops forgetting
 your architecture decisions between sessions.
