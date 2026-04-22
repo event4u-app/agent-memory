@@ -4,7 +4,12 @@
 **Goal:** Lift `@event4u/agent-memory` from "works on the author's box" to a
 wow-level install experience for external consumers — especially non-Node
 projects (PHP / Laravel) using `@event4u/agent-config`.
-**Status:** Planning. V1 shipped via PR #1 (merged main). 240 tests green.
+**Status:** ✅ **Complete.** All 32 tasks across 6 phases shipped on
+`feat/improve-setup` (PR #2). 240/240 tests green, 6/6 CI gates green
+(lint, typecheck, tests, docs drift, portability, link-check). Two
+post-scope commits (`a6b733f`, `03e76f3`) brought `npm run lint` to
+zero and added the `code-checks.yml` CI gate that enforces it. See
+the completion checklist at the bottom of this file.
 
 ## Guiding principles
 
