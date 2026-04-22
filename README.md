@@ -13,10 +13,26 @@ corrected last week. `agent-memory` gives your agent a durable,
 patterns, coding conventions — with automatic decay, evidence-gated
 promotion, and invalidation when code changes.
 
+## One-command start
+
+Runs a stdio-speaking MCP sidecar + pgvector-enabled Postgres, ready for any
+MCP client. No Node install on the host required.
+
+```bash
+curl -o docker-compose.yml \
+  https://raw.githubusercontent.com/event4u-app/agent-memory/main/docker-compose.yml
+docker compose up -d agent-memory
+docker compose exec agent-memory memory health    # → status: ok
+```
+
+Point your MCP client at the sidecar with `command: docker`,
+`args: ["compose", "exec", "-i", "agent-memory", "memory", "mcp"]` — see
+[Connect to your AI agent](#connect-to-your-ai-agent) for full configs.
+
 ## What you get
 
-- **17 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, and invalidate memory.
-- **12 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **23 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
+- **13 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
@@ -80,10 +96,13 @@ After `npm run build` + `npm install -g .` the `memory` binary is on your PATH.
 
 ## Connect to your AI agent
 
-Every MCP-aware agent works. Point the MCP server at your project and set
-`REPO_ROOT` — required by file / symbol validators.
+Every MCP-aware agent works. Two options, pick by what you already have:
 
-### Claude Desktop
+### Option A — Docker sidecar (recommended, no Node install)
+
+Works for any project regardless of language (PHP, Python, Go, …). Assumes
+you ran `docker compose up -d agent-memory` from the
+[One-command start](#one-command-start).
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -91,8 +110,26 @@ Every MCP-aware agent works. Point the MCP server at your project and set
 {
   "mcpServers": {
     "agent-memory": {
-      "command": "npx",
-      "args": ["tsx", "/abs/path/to/agent-memory/src/mcp/server.ts"],
+      "command": "docker",
+      "args": ["compose", "-f", "/abs/path/to/your/project/docker-compose.yml",
+               "exec", "-i", "agent-memory", "memory", "mcp"],
+      "env": { "REPO_ROOT": "/abs/path/to/your/project" }
+    }
+  }
+}
+```
+
+### Option B — Installed npm binary
+
+After `npm install -g @event4u/agent-memory` (or `npm install` in a
+Node-based project), run the MCP server directly:
+
+```json
+{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "memory",
+      "args": ["mcp"],
       "env": {
         "DATABASE_URL": "postgresql://memory:memory_dev@localhost:5433/agent_memory",
         "REPO_ROOT": "/abs/path/to/your/project"
@@ -105,8 +142,8 @@ Every MCP-aware agent works. Point the MCP server at your project and set
 ### Cursor / Cline / Augment
 
 Each agent has its own MCP config file, but the shape is identical to the
-Claude example. Check your agent's docs for the file path; keep `command`,
-`args`, and `env` as shown.
+Claude examples above. Check your agent's docs for the file path; keep
+`command`, `args`, and `env` as shown.
 
 ## How it works
 
