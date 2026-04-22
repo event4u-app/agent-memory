@@ -40,3 +40,4 @@ GEMINI.md
 
 # Agent config — NOT ignored (real copies, may contain project overrides)
 # .augment/rules/
+/.agent-settings.yml
