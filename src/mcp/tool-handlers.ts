@@ -11,6 +11,15 @@ import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
 import { calculateMetrics } from "../quality/metrics.js";
 import { findDuplicates, mergeDuplicates } from "../quality/dedup.js";
 import { listUnresolved, resolveContradiction, type ResolutionStrategy } from "../quality/contradiction-resolution.js";
+import {
+  BACKEND_FEATURES,
+  CONTRACT_VERSION,
+  computeEnvelopeStatus,
+  toContractEntry,
+  type HealthResponseV1,
+  type RetrieveResponseV1,
+  type SliceSummary,
+} from "../retrieval/contract.js";
 
 function ok(data: unknown): CallToolResult {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -49,15 +58,40 @@ export async function handleToolCall(name: string, args: Args, ctx: McpContext):
 
 async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResult> {
   const level = LEVEL_MAP[(args.level as string) ?? "L1"] ?? "index";
+  const types = (args.types as string[] | undefined) ?? [];
   const allEntries = await loadActiveEntries(ctx);
+  const filters: { repository?: string; types?: MemoryType[] } = {};
+  if (args.repository) filters.repository = args.repository as string;
+  if (types.length > 0) filters.types = types as MemoryType[];
+
   const result = await ctx.retrievalEngine.retrieve(allEntries, {
-    query: args.query as string,
+    query: (args.query as string) ?? "",
     level,
     tokenBudget: (args.tokenBudget as number) ?? config.tokenBudget,
-    filters: args.repository ? { repository: args.repository as string } : undefined,
+    limit: args.limit as number | undefined,
+    filters: Object.keys(filters).length > 0 ? filters : undefined,
     lowTrustMode: (args.lowTrustMode as boolean) ?? false,
   });
-  return ok({ entries: result.entries, metadata: result.metadata });
+
+  const contractEntries = result.entries.map((e) => toContractEntry(e));
+  const slices: Record<string, SliceSummary> = {};
+  if (types.length > 0) {
+    for (const t of types) {
+      const count = contractEntries.filter((e) => e.type === t).length;
+      slices[t] = { status: "ok", count };
+    }
+  } else {
+    slices["*"] = { status: "ok", count: contractEntries.length };
+  }
+
+  const envelope: RetrieveResponseV1 = {
+    contract_version: CONTRACT_VERSION,
+    status: computeEnvelopeStatus(slices, contractEntries.length),
+    entries: contractEntries,
+    slices,
+    errors: [],
+  };
+  return ok({ ...envelope, metadata: result.metadata });
 }
 
 async function loadActiveEntries(ctx: McpContext): Promise<import("../types.js").MemoryEntry[]> {
@@ -141,7 +175,20 @@ async function handleHealth(ctx: McpContext): Promise<CallToolResult> {
   const db = await healthCheck();
   const counts = await ctx.sql`SELECT trust_status, COUNT(*)::int AS count FROM memory_entries GROUP BY trust_status`;
   const avgTrust = await ctx.sql`SELECT COALESCE(AVG(trust_score), 0)::float AS avg FROM memory_entries WHERE trust_status = 'validated'`;
-  return ok({ database: db, entries: Object.fromEntries(counts.map((r) => [r.trust_status, r.count])), avgTrustScore: avgTrust[0]?.avg ?? 0 });
+  const envelope: HealthResponseV1 = {
+    contract_version: CONTRACT_VERSION,
+    status: db.ok ? "ok" : "error",
+    backend_version: ctx.backendVersion,
+    features: [...BACKEND_FEATURES],
+    latency_ms: db.latencyMs,
+    counts: Object.fromEntries(counts.map((r) => [r.trust_status, r.count])),
+  };
+  return ok({
+    ...envelope,
+    database: db,
+    entries: envelope.counts,
+    avgTrustScore: avgTrust[0]?.avg ?? 0,
+  });
 }
 
 async function handleDiagnose(args: Args, ctx: McpContext): Promise<CallToolResult> {

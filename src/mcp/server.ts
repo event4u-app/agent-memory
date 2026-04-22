@@ -20,6 +20,8 @@ import { config } from "../config.js";
 import { registerToolHandlers } from "./tools.js";
 import { registerLifecycleHandlers } from "./lifecycle.js";
 
+const BACKEND_VERSION = "0.1.0";
+
 export async function startMcpServer(): Promise<void> {
   const sql = getDb();
 
@@ -46,7 +48,7 @@ export async function startMcpServer(): Promise<void> {
   const invalidationOrchestrator = new InvalidationOrchestrator(sql, entryRepo, evidenceRepo);
 
   const server = new Server(
-    { name: "agent-memory", version: "0.1.0" },
+    { name: "agent-memory", version: BACKEND_VERSION },
     { capabilities: { tools: {}, logging: {} } },
   );
 
@@ -54,6 +56,7 @@ export async function startMcpServer(): Promise<void> {
     sql, repoRoot, entryRepo, evidenceRepo, contradictionRepo, observationRepo,
     retrievalEngine, quarantineService, contradictionService, poisonService,
     ttlExpiryJob, revalidationJob, invalidationOrchestrator,
+    backendVersion: BACKEND_VERSION,
   };
 
   registerToolHandlers(server, ctx);

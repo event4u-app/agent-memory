@@ -25,4 +25,6 @@ export interface McpContext {
   ttlExpiryJob: TtlExpiryJob;
   revalidationJob: RevalidationJob;
   invalidationOrchestrator: InvalidationOrchestrator;
+  /** Package version advertised via health contract */
+  backendVersion: string;
 }
