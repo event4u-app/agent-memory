@@ -49,3 +49,24 @@ jobs:
             echo "::error::See roadmap task P4-1 for the generator contract."
             exit 1
           fi
+
+  portability:
+    name: Portability guard (P4-3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install npm deps (for the bundled check_portability.py)
+        run: npm ci --ignore-scripts
+
+      - name: Scan AGENTS.md + copilot-instructions.md for foreign-project leakage
+        run: npm run check:portability
