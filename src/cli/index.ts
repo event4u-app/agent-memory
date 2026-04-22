@@ -5,14 +5,29 @@ process.env.LOG_LEVEL ??= "silent";
 
 import { Command } from "commander";
 import { closeDb, getDb, healthCheck } from "../db/connection.js";
+import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
+import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
+import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
 import {
 	BACKEND_FEATURES,
 	CONTRACT_VERSION,
 	type HealthResponseV1,
 } from "../retrieval/contract.js";
+import { PromotionService } from "../trust/promotion.service.js";
+import { QuarantineService } from "../trust/quarantine.service.js";
+import { DiffImpactValidator } from "../trust/validators/diff-impact.validator.js";
+import { FileExistsValidator } from "../trust/validators/file-exists.validator.js";
+import { SymbolExistsValidator } from "../trust/validators/symbol-exists.validator.js";
+import { TestLinkedValidator } from "../trust/validators/test-linked.validator.js";
+import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 
 const BACKEND_VERSION = "0.1.0";
 const HEALTH_TIMEOUT_MS = 2000;
+
+const collect = (value: string, previous: string[]): string[] => [
+	...previous,
+	value,
+];
 
 const program = new Command();
 
@@ -89,6 +104,126 @@ program
 	});
 
 program
+	.command("propose")
+	.description(
+		"Propose a new memory entry (lands in quarantine; not served until promoted)",
+	)
+	.requiredOption("--type <type>", "Memory type (e.g., architecture_decision)")
+	.requiredOption("--title <title>", "Short title")
+	.requiredOption("--summary <summary>", "One-paragraph summary")
+	.option("--details <details>", "Optional long-form details")
+	.requiredOption("--repository <repository>", "Repository identifier")
+	.option("--file <path>", "File in scope (repeatable)", collect, [])
+	.option("--symbol <symbol>", "Symbol in scope (repeatable)", collect, [])
+	.option("--module <module>", "Module in scope (repeatable)", collect, [])
+	.option(
+		"--impact <level>",
+		"Impact level (critical|high|normal|low)",
+		"normal",
+	)
+	.option(
+		"--knowledge-class <class>",
+		"Knowledge class (evergreen|semi_stable|volatile)",
+		"semi_stable",
+	)
+	.requiredOption("--source <source>", "Source ref (incident id, PR, ADR)")
+	.requiredOption("--confidence <n>", "Initial confidence 0.0–1.0", "0.6")
+	.option(
+		"--scenario <text>",
+		"Future scenario (repeat 3+ times for non-low impact)",
+		collect,
+		[],
+	)
+	.option(
+		"--gate-clean",
+		"Assert extraction-guard was clean at proposal time",
+		false,
+	)
+	.option(
+		"--gate-not-clean",
+		"Mark extraction-guard as failing (will cause rejection on promote)",
+		false,
+	)
+	.option("--created-by <actor>", "Caller identifier", "cli:propose")
+	.action(async (options) => {
+		try {
+			const service = buildPromotionService();
+			const gateCleanAtProposal = options.gateNotClean
+				? false
+				: options.gateClean
+					? true
+					: undefined;
+			const result = await service.propose({
+				type: options.type as MemoryType,
+				title: options.title,
+				summary: options.summary,
+				details: options.details,
+				scope: {
+					repository: options.repository,
+					files: options.file,
+					symbols: options.symbol,
+					modules: options.module,
+				},
+				impactLevel: options.impact as ImpactLevel,
+				knowledgeClass: options.knowledgeClass as KnowledgeClass,
+				embeddingText: `${options.title}\n${options.summary}`,
+				createdBy: options.createdBy,
+				source: options.source,
+				confidence: Number.parseFloat(options.confidence),
+				futureScenarios:
+					options.scenario.length > 0 ? options.scenario : undefined,
+				gateCleanAtProposal,
+			});
+			console.log(JSON.stringify(result, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
+	});
+
+program
+	.command("promote")
+	.description("Promote a quarantined proposal through gate criteria")
+	.argument("<proposal-id>", "Proposal ID returned by `propose`")
+	.option(
+		"--allowed-type <type>",
+		"Allowed target type (repeatable; consumer policy)",
+		collect,
+		[],
+	)
+	.option(
+		"--skip-duplicate-check",
+		"Skip non-duplication gate (caller accepts the sibling)",
+		false,
+	)
+	.option("--triggered-by <actor>", "Caller identifier", "cli:promote")
+	.action(async (proposalId, options) => {
+		try {
+			const service = buildPromotionService();
+			const result = await service.promote(proposalId, {
+				triggeredBy: options.triggeredBy,
+				allowedTargetTypes:
+					options.allowedType.length > 0
+						? (options.allowedType as MemoryType[])
+						: undefined,
+				skipDuplicateCheck: options.skipDuplicateCheck,
+			});
+			console.log(JSON.stringify(result, null, 2));
+			await closeDb();
+			process.exit(result.status === "validated" ? 0 : 1);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
+	});
+
+program
 	.command("health")
 	.description("Probe backend health — returns contract v1 envelope as JSON")
 	.option("--timeout <ms>", "Timeout in ms", String(HEALTH_TIMEOUT_MS))
@@ -129,6 +264,27 @@ program
 	.action(async () => {
 		console.log("🩺 memory diagnose — not yet implemented");
 	});
+
+function buildPromotionService(): PromotionService {
+	const sql = getDb();
+	const entryRepo = new MemoryEntryRepository(sql);
+	const evidenceRepo = new EvidenceRepository(sql);
+	const contradictionRepo = new ContradictionRepository(sql);
+	const repoRoot = process.env.REPO_ROOT ?? process.cwd();
+	const validators = [
+		new FileExistsValidator(repoRoot),
+		new SymbolExistsValidator(repoRoot),
+		new DiffImpactValidator(repoRoot),
+		new TestLinkedValidator(repoRoot),
+	];
+	const quarantine = new QuarantineService(
+		entryRepo,
+		evidenceRepo,
+		contradictionRepo,
+		validators,
+	);
+	return new PromotionService(sql, entryRepo, quarantine);
+}
 
 async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
 	const start = Date.now();
