@@ -61,16 +61,25 @@ memory propose --type bug_pattern --title "N+1 on invoice list" \
 
 Required: `--source --confidence`. Accepts repeatable `--scenario`.
 
-### `promote`
+### `promote <proposal-id>`
 
-Move a quarantined proposal through gate criteria.
+Move a quarantined proposal through gate criteria. The proposal ID is
+the `id` field returned by `propose`.
 
 ```bash
-memory promote --entry <uuid> --evidence-ref adr-017.md
+memory promote <proposal-id>
+memory promote <proposal-id> --allowed-type architecture_decision --allowed-type coding_convention
+memory promote <proposal-id> --skip-duplicate-check
 ```
 
+| Option | Default | Notes |
+|---|---|---|
+| `--allowed-type <type>` | — | consumer-policy allow-list (repeatable) |
+| `--skip-duplicate-check` | off | caller accepts an existing sibling entry |
+| `--triggered-by <actor>` | `cli:promote` | caller identifier for audit |
+
 Fails with a structured error if any gate is not satisfied (missing evidence,
-<3 future decisions, disallowed target type, duplicate).
+<3 future decisions, disallowed target type, duplicate without `--skip-duplicate-check`).
 
 ### `validate <entry-id>`
 
