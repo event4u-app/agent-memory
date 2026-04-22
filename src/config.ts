@@ -59,9 +59,6 @@ export const config = {
 	},
 	/** Max tokens for progressive disclosure (100–50000) */
 	tokenBudget: parseIntSafe(env.MEMORY_TOKEN_BUDGET, 2000, 100, 50000),
-	mcp: {
-		port: parseIntSafe(env.MCP_PORT, 3100, 1024, 65535),
-	},
 	/** Archival: days before auto-archiving invalidated entries */
 	archivalAgeDays: parseIntSafe(env.MEMORY_ARCHIVAL_AGE_DAYS, 30, 1, 365),
 	/** Purge: days before hard-deleting archived entries */

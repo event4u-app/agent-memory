@@ -559,6 +559,24 @@ async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
 }
 
 program
+	.command("migrate")
+	.description("Apply pending database migrations (safe to run repeatedly; idempotent)")
+	.action(async () => {
+		try {
+			const { runMigrations } = await import("../db/migrate.js");
+			const result = await runMigrations();
+			console.log(JSON.stringify({ status: "ok", ...result }, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ status: "error", error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
+	});
+
+program
 	.command("doctor")
 	.description("Diagnose environment: DATABASE_URL, pgvector, migrations, agent-config")
 	.option("--json", "Emit JSON only (no human summary on stderr)", false)

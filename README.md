@@ -60,11 +60,27 @@ promotion, and invalidation when code changes.
 ## What you get
 
 - **23 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
-- **14 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **15 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
 - **Privacy filter** — strips secrets, API keys, PII before anything hits the DB.
+
+## Non-goals
+
+To keep expectations honest:
+
+- **Not a general-purpose vector database.** It is scoped specifically to
+  agent-facing project knowledge with trust scoring, decay, and
+  invalidation. If you need raw similarity search over arbitrary data,
+  use a dedicated vector DB.
+- **Not a pretrained model or dataset.** Memories are authored by your
+  agents and humans — nothing ships preloaded.
+- **Not a SaaS.** The whole thing runs in your infrastructure (Docker
+  sidecar, or embedded as a Node library). No hosted tier.
+- **Not a replacement for project documentation.** README, ADRs, and
+  architecture docs still belong in your repo. Memory complements them,
+  it does not replace them.
 
 ## Integrate with your project
 
@@ -140,6 +156,44 @@ npx tsx src/cli/index.ts retrieve "how do orders work?"
 
 After `npm run build` + `npm install -g .` the `memory` binary is on your PATH.
 
+## Environment
+
+The five variables most consumers touch in week one. Everything else has
+sane defaults — see [`docs/configuration.md`](docs/configuration.md) for
+the full matrix.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://memory:memory_dev@localhost:5433/agent_memory` | Postgres connection string. |
+| `REPO_ROOT` | `process.cwd()` | Repo root the file/symbol validators resolve against. Inside the sidecar container this must match the volume mount (typically `/workspace`). |
+| `EMBEDDING_PROVIDER` | `bm25-only` | `openai`, `gemini`, `voyage`, `local`, or `bm25-only` — see [Embeddings](#embeddings) below. |
+| `MEMORY_TRUST_THRESHOLD_DEFAULT` | `0.6` | Minimum `trust_score` surfaced by retrieval. Lower to see low-trust entries during debugging. |
+| `MEMORY_TOKEN_BUDGET` | `2000` | Default progressive-disclosure budget per retrieval call. |
+| `MEMORY_AUTO_MIGRATE` | `true` (Docker image) | Container entrypoint runs `memory migrate` on startup. Set to `false` for ephemeral CLI containers or externally managed schemas. Host installs run `memory migrate` manually. |
+
+A ready-to-copy template lives in [`.env.example`](.env.example).
+
+## Embeddings
+
+Retrieval ranks results by fusing lexical (BM25) and semantic (vector)
+scores via RRF. The semantic half plugs in via `EMBEDDING_PROVIDER`:
+
+| Provider | Status | Leaves your network? | When to pick it |
+|---|---|---|---|
+| `bm25-only` (default) | implemented | no | Zero-config onboarding, air-gapped installs, or when lexical recall is enough. |
+| `openai` | implemented | **yes** — ingested text is sent to OpenAI | Best general-purpose quality; requires `OPENAI_API_KEY`. |
+| `gemini` | scaffolded, falls back to `bm25-only` | **yes** (when implemented) | Tracked for a future release. Set `GEMINI_API_KEY`; runtime currently logs a warning and uses `bm25-only`. |
+| `voyage` | scaffolded, falls back to `bm25-only` | **yes** (when implemented) | Same as `gemini`. Set `VOYAGE_API_KEY`. |
+| `local` | reserved for on-device model, not yet implemented | no | Placeholder today; currently resolves to `bm25-only`. |
+
+See the [provider chain source](src/embedding/factory.ts) for the exact
+fallback rules. The privacy filter
+([`src/ingestion/privacy-filter.ts`](src/ingestion/privacy-filter.ts))
+strips secrets, API keys, and detected PII **before** text is sent to
+any provider — but operators picking `openai` (or a future network-bound
+provider) should treat memory content as "leaves the network". Full
+env matrix in [`docs/configuration.md`](docs/configuration.md).
+
 ## Connect to your AI agent
 
 Every MCP-aware agent works. Two options, pick by what you already have:
@@ -158,12 +212,18 @@ Works for any project regardless of language. Assumes you ran
     "agent-memory": {
       "command": "docker",
       "args": ["compose", "-f", "/abs/path/to/your/project/docker-compose.yml",
-               "exec", "-i", "agent-memory", "memory", "mcp"],
-      "env": { "REPO_ROOT": "/abs/path/to/your/project" }
+               "exec", "-i", "agent-memory", "memory", "mcp"]
     }
   }
 }
 ```
+
+> **`REPO_ROOT` with the sidecar.** `docker-compose.yml` already sets
+> `REPO_ROOT=/workspace` inside the container (matching the `.:/workspace`
+> bind mount) — do **not** pass a host path here. If you want to override
+> the host mount source, export `REPO_ROOT=/host/path/to/repo` on the
+> host *before* `docker compose up -d`; compose substitutes it into the
+> volume definition without ever reaching the container environment.
 
 ### Option B — Installed npm binary
 
@@ -193,16 +253,59 @@ Claude examples above. Check your agent's docs for the file path; keep
 
 ## How it works
 
+### Trust lifecycle
+
+```mermaid
+flowchart LR
+    A[tool / agent] -- propose --> Q[quarantine]
+    Q -- gate criteria --> V[validated]
+    V -- decay / TTL --> S[stale]
+    V -- signature drift --> I[invalidated]
+    V -- confirmed wrong --> P[poisoned]
+    S -.->|refresh on hit| V
+    S --> I
+    I --> AR[archived]
+    P -- cascade --> AR
+    Q -- reject --> R[rejected] --> AR
 ```
-┌──────────────┐   propose    ┌────────────┐   gate    ┌──────────────┐
-│ tool / agent │─────────────▶│ quarantine │──criteria─▶│  validated  │
-└──────────────┘              └────────────┘            └──────┬───────┘
-                                                               │
-                                               decay / TTL     │  evidence
-                                                               ▼
-                              ┌──────────┐   cascade   ┌──────────────┐
-                              │ archived │◀────────────│ stale / inv. │
-                              └──────────┘             └──────────────┘
+
+Every entry enters `quarantine`. Gate criteria (≥1 evidence ref, all
+validators green) promote it to `validated`. From there it decays on
+TTL, can be invalidated on code drift, or poisoned if confirmed wrong
+— with a cascade through entries derived from it.
+
+### 4-tier memory
+
+```mermaid
+flowchart TB
+    subgraph Working[Working · session]
+        O[observations]
+    end
+    subgraph Episodic[Episodic · ~30d]
+        E[session summaries]
+    end
+    subgraph Semantic[Semantic · 90d–∞]
+        M[validated entries]
+    end
+    subgraph Procedural[Procedural · ∞]
+        R[repeated workflows]
+    end
+    O -- session end --> E
+    E -- consolidation --> M
+    M -- recurrence --> R
+```
+
+Consolidation from Working to Episodic happens at session end; promotion
+to Semantic is evidence-gated. Procedural entries are never decayed.
+
+### ASCII fallback (environments without Mermaid)
+
+```
+propose → quarantine ──gate criteria──▶ validated ──decay/TTL──▶ stale
+                                            │                      │
+                                         evidence               cascade
+                                            ▼                      ▼
+                                      invalidated ─────────▶ archived
 ```
 
 - **Trust-scored, not boolean** — every entry has a `trust_score` (0–1). Retrieval filters by threshold (default `0.6`).
@@ -210,7 +313,8 @@ Claude examples above. Check your agent's docs for the file path; keep
 - **Auto-invalidation** — `git diff` between two refs marks linked memories stale; signature drift triggers hard invalidation.
 - **Rollback** — when a memory is confirmed wrong (`poison`), the cascade marks every derived task for review.
 
-Full details: [`docs/data-model.md`](docs/data-model.md).
+Full details: [`docs/data-model.md`](docs/data-model.md). Unfamiliar
+term? See the [glossary](docs/glossary.md).
 
 ## Memory types
 
@@ -240,11 +344,11 @@ Nine canonical types cover most project knowledge:
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (14)
+### CLI commands (15)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
-`doctor` · `mcp`
+`migrate` · `doctor` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 
@@ -304,6 +408,7 @@ src/
 
 docs/
 ├── data-model.md        # Postgres schema, trust lifecycle, tiers, decay
+├── glossary.md          # every term with source-of-truth pointer
 ├── cli-reference.md     # all CLI commands with examples
 └── configuration.md     # every env var
 

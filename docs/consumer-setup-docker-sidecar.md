@@ -176,6 +176,7 @@ a health check. For a full Laravel runnable example, see
 | `executable file not found in $PATH` on `docker compose exec agent-memory memory …` | Image predates 0.1.0 | `docker compose pull agent-memory` |
 | `healthcheck … status: error` | Postgres not yet migrated | Wait 15s (start_period); check `docker compose logs agent-memory-postgres` |
 | `status: misconfigured` | `DATABASE_URL` env mismatch | Verify the URL hostname matches the Postgres service name inside the compose network |
+| `file-exists` / `symbol-exists` validators fail on paths that exist on the host | `REPO_ROOT` inside the container points at a host path, not the mount target | Leave `REPO_ROOT=/workspace` (the default in `docker-compose.yml`). Set the **host** path on a bind mount, not in the container env. |
 | MCP client can't see tools | Stale client cache | Restart the client; for Claude, quit fully (`⌘Q`) |
 
 Still stuck? Open an issue at

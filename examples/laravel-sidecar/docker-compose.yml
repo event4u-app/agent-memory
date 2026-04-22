@@ -41,7 +41,8 @@ services:
       REPO_ROOT: /workspace
     volumes:
       - .:/workspace:ro
-    entrypoint: ["/sbin/tini", "--"]
+    # Image default entrypoint runs `memory migrate` on startup
+    # (idempotent; opt out via MEMORY_AUTO_MIGRATE=false).
     command: ["tail", "-f", "/dev/null"]
     healthcheck:
       test: ["CMD", "memory", "health"]

@@ -1,18 +1,23 @@
 # Roadmap — improve-system
 
 **Branch:** `feat/improve-system`
-**Release target:** `1.0.1` (patch) — docs, fixes, universality only.
-Feature-scale tasks (new CLI subcommands, programmatic exports, runtime
-behaviour) are tracked here but scheduled for a follow-up `1.1.0` minor.
+**Release target:** `1.1.0` (minor) — universality refactor, concept
+clarity, governance hygiene, **plus** first-run DX features (new CLI
+subcommands, auto-migrate, programmatic exports) and the retrieval
+contract-test harness. Promoted from `1.0.1` after external review:
+the Must-list includes new public API surface, which requires a minor
+bump per semver.
 **Rename policy:** hard renames, no redirect stubs — tag `1.0.0` is
-two days old and no external links to the renamed paths are in the wild.
+days old and no external links to the renamed paths are in the wild.
+The rename mapping is documented in the `1.1.0` release notes (P7-2).
 
 ## Goal
 
 Lift `@event4u/agent-memory` from "V1 complete, Node+PHP/Laravel-biased"
 to **universal, polished, production-grade** — stack-agnostic
-positioning, concept clarity, governance hygiene, and drift-prevention
-extended to the new surface area.
+positioning, concept clarity, first-run DX without manual migration
+steps, a locked retrieval contract, governance hygiene, and
+drift-prevention extended to the new surface area.
 
 ## Guiding principles
 
@@ -28,34 +33,46 @@ extended to the new surface area.
 4. **Drift prevention scales with scope.** Every new claim in a doc
    (tool count, command count, compatibility, test count) gets a
    CI guard — or it's a future drift incident waiting to happen.
+5. **Contract stability over feature growth.** The retrieval contract
+   (`contract_version: 1`) is the only formal API into this package.
+   It gets schema-fixture tests before any 1.1.x adds to it.
 
 ## Priority legend
 
-- **[Must]** — blocks the `1.0.1` release. Without these, no tag.
-- **[Should]** — in the `1.0.1` cycle if time allows, otherwise the
-  first thing to pull into `1.1.x` or `1.1.0`.
-- **[Could]** — deferred to `1.1.0` or later by design. Feature-scale
-  work that does not fit a patch release, or polish that adds value
-  but isn't gating.
+- **[Must]** — blocks the `1.1.0` release. Without these, no tag.
+- **[Should]** — in the `1.1.0` cycle if time allows, otherwise the
+  first thing to pull into `1.1.x`.
+- **[Could]** — deferred to `1.1.x` or `1.2` by design. Polish that
+  adds value but isn't gating.
 
 Nothing gets dropped. Priority controls **sequence and release
 pinning**, not scope.
 
 ## Phase overview
 
-| Phase | Theme                                  | Tasks | Cycle    |
-|-------|----------------------------------------|-------|----------|
-| P0    | Audit & baseline                       |   4   | 1.0.1    |
-| P1    | Universality refactor (core directive) |   8   | 1.0.1    |
-| P2    | Reviewer gaps & concept clarity        |   5   | 1.0.1    |
-| P3    | Technical smoothing (first-run & DX)   |   7   | mixed    |
-| P4    | Governance & release hygiene           |   5   | 1.0.1    |
-| P5    | `agent-config` integration story       |   4   | 1.0.1+   |
-| P6    | Drift-prevention extension             |   6   | 1.0.1+   |
-| P7    | Release                                |   3   | 1.0.1    |
+| Phase | Theme                                  | Tasks | Cycle   |
+|-------|----------------------------------------|-------|---------|
+| P0    | Audit & baseline                       |   4   | 1.1.0   |
+| P1    | Universality refactor (core directive) |   8   | 1.1.0   |
+| P2    | Reviewer gaps & concept clarity        |   8   | 1.1.0   |
+| P3    | Technical smoothing (first-run & DX)   |   9   | 1.1.0   |
+| P4    | Governance & release hygiene           |   5   | 1.1.0   |
+| P5    | `agent-config` integration story       |   4   | 1.1.0   |
+| P6    | Drift-prevention extension             |   6   | 1.1.0   |
+| P7    | Release                                |   3   | 1.1.0   |
 
-Total: **42 tasks** (revised from 38 after mapping — see notes per task).
-Of these, **22 are [Must]**, blocking the 1.0.1 tag.
+Total: **47 tasks**. Of these, **34 are [Must]**, blocking the 1.1.0
+tag; **9 [Should]** pulled in as capacity allows; **4 [Could]** deferred
+to 1.1.x or 1.2 without penalty.
+
+### Redundancy & deduplication notes
+
+- **P0-3 (concept inventory) feeds P2-2 (glossary) directly.** No
+  separate `docs/concept-inventory.md` artifact ships — the inventory
+  lives inline in `agents/analysis/improve-system-phase0.md` and all
+  definitions land in `docs/glossary.md`. Flagged as a dedup win during
+  review; recorded here so future contributors don't recreate the
+  redundant file.
 
 ---
 
@@ -277,54 +294,111 @@ real ones plus two cross-cutting clarity tasks.
 - **Done:** Tutorial runs end-to-end from a fresh clone in < 5 min;
   linked from README quick-start as "Want the guided tour?".
 
+### P2-6 · README embeddings section [Must]
+
+- **Why:** First reviewer cycle flagged "embeddings unexplained" as a
+  false positive because the info is in `docs/configuration.md`. But
+  the README never surfaces **which** providers are supported or how
+  to pick one. Visibility, not new docs.
+- **Scope:** 15-20 line section under "How it works": supported
+  providers (`openai`, `cohere`, `local`, `bm25-only` fallback),
+  default behaviour (bm25-only when no provider configured), link to
+  `docs/configuration.md` for the full env matrix.
+- **Done:** README reader can answer "does this need OpenAI?" without
+  leaving the README. No new doc files created.
+
+### P2-7 · README environment section [Must]
+
+- **Why:** Same pattern as P2-6 — `.env.example` exists, but the README
+  quick-start assumes it without naming the variables that matter most
+  (`DATABASE_URL`, `REPO_ROOT`, `MEMORY_TRUST_THRESHOLD_DEFAULT`,
+  `EMBEDDING_PROVIDER`).
+- **Scope:** Compact "Environment" subsection under Quick Start —
+  the 4-5 variables a user touches in week one, with defaults and
+  one-line purpose. Link to full `docs/configuration.md` for the rest.
+- **Done:** README has an Environment block; AGENTS.md's env table
+  already in place stays as the agent-facing mirror.
+
+### P2-8 · Embedding cost / privacy disclosure [Could]
+
+- **Why:** Consumers picking `openai` as embedding provider need to
+  know that snippets of ingested code are sent to the provider. The
+  privacy filter reduces but does not eliminate this.
+- **Scope:** One short subsection in `docs/configuration.md` under
+  `EMBEDDING_PROVIDER` covering: what leaves the network, approximate
+  cost per 1000 entries for each provider, how to stay local with
+  `bm25-only` or `local`.
+- **Done:** Any operator can, in 30 s, understand the privacy
+  implications of picking a cloud embedding provider.
+
 ---
 
 ## Phase 3 — Technical Smoothing (First-Run & DX)
 
-Mixed cycle. **Fix-scale tasks stay in 1.0.1** (patch). **Feature-scale
-tasks (new CLI subcommands, programmatic exports, runtime behaviour
-changes) move to 1.1.0** — semver correctness.
+Full 1.1.0 cycle. The semver bump to minor unlocks the migrate /
+auto-migrate / serve tasks that were parked as `1.1.0`-pending in
+the prior draft.
 
-### P3-1 · New `memory migrate` CLI subcommand [Could → 1.1.0]
+### P3-1 · New `memory migrate` CLI subcommand [Must]
 
 - **Why:** `docs/consumer-setup-node.md` currently tells consumers to
   run `node node_modules/@event4u/agent-memory/dist/db/migrate.js` —
   an internal path. Breaks on package reorganisation.
 - **Scope:** New Commander subcommand `memory migrate` that invokes
   the existing migration runner. JSON on stdout, exit code 0/1.
-  Idempotent. Update Node guide `§5` to use it.
+  Idempotent. Update Node guide `§5` and `consumer-setup-docker-sidecar.md`
+  to use it.
 - **Done:** `memory migrate` works from Docker sidecar and npm
-  install; Node guide no longer references internal `dist/` paths.
+  install; no guide references internal `dist/` paths any more;
+  P6-3 CLI-count guard updated.
 
-### P3-2 · Programmatic `runMigrations()` export [Could → 1.1.0]
+### P3-2 · Programmatic `runMigrations()` export [Must]
 
 - **Why:** Node-guide §5 states "A stable `runMigrations`
-  programmatic export is tracked for v0.2." — make good on that.
+  programmatic export is tracked for v0.2." — 1.1.0 makes good on that.
 - **Scope:** Export `runMigrations(opts?: { databaseUrl?: string })`
   from package root. Idempotent, returns applied migration list.
-- **Done:** Import works from a fresh consumer install;
-  tests cover idempotence and custom `databaseUrl`.
+  Thin wrapper calling the same code as P3-1's CLI.
+- **Done:** Import works from a fresh consumer install; tests cover
+  idempotence, custom `databaseUrl`, and error paths.
 
-### P3-3 · Container auto-migrate on first start [Could → 1.1.0]
+### P3-3 · Container auto-migrate on first start [Must]
 
 - **Why:** Current container runs `tail -f /dev/null` and ships an
   empty DB until someone `docker compose exec`s migrate manually.
   First-run UX: user runs `memory health`, gets "migrations pending".
-- **Scope:** Entrypoint script: wait for Postgres, run migrations
-  (idempotent — P3-1), then start the long-running daemon (P3-4).
+- **Scope:** Entrypoint script: wait for Postgres (bounded timeout),
+  run migrations (idempotent — via P3-1/P3-2), then start the
+  long-running process (P3-4a target). Opt-out via
+  `MEMORY_AUTO_MIGRATE=false` for operators who want to gate
+  migrations themselves.
 - **Done:** `docker compose up -d` followed by `memory health`
-  returns `status: ok` without manual intervention.
+  returns `status: ok` without manual intervention; opt-out
+  documented in `docs/configuration.md`.
 
-### P3-4 · Proper `memory serve` daemon (replace `tail -f`) [Could → 1.1.0]
+### P3-4a · `memory serve` ADR [Must]
 
-- **Why:** Reviewer called the current `tail -f /dev/null` pattern
-  "clever workaround, not final runtime story". A purpose-built
-  daemon surface is cleaner and lets health checks probe real liveness.
-- **Scope:** New `memory serve` subcommand that starts a no-op
-  supervisor loop (or optional HTTP health endpoint — scope TBD in
-  P3-4-spike). Update `docker-compose.yml` and `Dockerfile` to use it.
-- **Done:** Container's `CMD` is `memory serve`; healthcheck hits
-  a real liveness probe; no more `tail -f /dev/null`.
+- **Why:** Before implementing a daemon, decide the shape:
+  supervisor loop only, or supervisor + liveness/readiness HTTP
+  endpoint? Different implications for container orchestration,
+  healthchecks, and future HTTP-transport ambitions.
+- **Scope:** New ADR `agents/adrs/0002-memory-serve-surface.md`
+  covering options, trade-offs, decision, and migration path from
+  `tail -f /dev/null`. Referenced by P3-4b.
+- **Done:** ADR merged; P3-4b can be scheduled with a clear
+  implementation target.
+
+### P3-4b · Implement `memory serve` (replace `tail -f`) [Should]
+
+- **Why:** Execute the P3-4a decision. Reviewer called the current
+  `tail -f /dev/null` pattern "clever workaround, not final runtime
+  story".
+- **Scope:** Per P3-4a: new `memory serve` subcommand, updated
+  `docker-compose.yml` + `Dockerfile` so container `CMD` is
+  `memory serve`, healthcheck hits the real probe. If P3-4a decides
+  on HTTP surface, add `MEMORY_SERVE_PORT` env + document.
+- **Done:** Container `CMD` is `memory serve`; healthcheck uses the
+  real probe; no more `tail -f /dev/null` anywhere in repo.
 
 ### P3-5 · README inconsistency fixes [Must]
 
@@ -361,23 +435,41 @@ changes) move to 1.1.0** — semver correctness.
 - **Done:** No example has `REPO_ROOT=/host/...` inside a compose
   `environment:` block; troubleshooting covers the confusion.
 
+### P3-8 · Third-party cold-start verification [Must]
+
+- **Why:** Before tagging 1.1.0, verify a consumer who never worked on
+  this repo can go from "empty directory" to "first retrieve call"
+  using **only** the public guides. Gate before P7-1 — catches every
+  assumption baked into the docs that works only because the maintainer
+  has the repo cloned.
+- **Scope:** Run the generic and Docker-sidecar guides from a fresh
+  directory with **no access to the repo**: pull the (unreleased)
+  image, follow `docs/consumer-setup-generic.md` step by step, record
+  every friction point. Fix each; re-run until clean. Capture the
+  transcript under `agents/analysis/cold-start-transcript.md`.
+- **Done:** A second, independent cold-start run (by user or
+  reviewer) completes without referring to the repo source; transcript
+  archived.
+
 ---
 
 ## Phase 4 — Governance & Release Hygiene
 
 Baseline for an open-source package tagged `1.0.0`. Everything docs-only,
-fits patch release.
+fits the 1.1.0 cycle.
 
 ### P4-1 · `CHANGELOG.md` [Must]
 
 - **Why:** Tag `1.0.0` exists without a changelog. Every downstream
   tool (Dependabot, Renovate, npm) expects one by convention.
 - **Scope:** Keep-a-Changelog format. Retroactive `1.0.0` entry
-  summarising PR #2 phases. `1.0.1 [Unreleased]` section populated
-  as this roadmap progresses.
-- **Done:** File present; linked from README; CI check verifies
-  the version in `package.json` has a corresponding `CHANGELOG.md`
-  section (added in P6-6).
+  summarising PR #2 phases. `1.1.0 [Unreleased]` section populated
+  as this roadmap progresses; **must explicitly list the rename
+  mapping** (P1-2, P1-4) under a "Renamed" subsection so external
+  consumers can find the new paths.
+- **Done:** File present; linked from README; rename mapping listed;
+  CI check verifies the version in `package.json` has a corresponding
+  `CHANGELOG.md` section (added in P6-6).
 
 ### P4-2 · `CONTRIBUTING.md` [Should]
 
@@ -452,17 +544,24 @@ first so the integration reads as "these two can combine", not
 - **Done:** `docker compose up -d` followed by a scripted smoke
   test proves both pieces work together.
 
-### P5-3 · Contract tests against `agent-config` [Could → 1.1.0]
+### P5-3 · Retrieval contract schema fixtures [Must]
 
-- **Why:** The retrieval contract (`contract_version: 1`) is the
-  only formal API between the packages. Today nothing prevents an
-  accidental breaking change here.
-- **Scope:** A CI job (triggered on push to `main` and weekly)
-  that installs a pinned `agent-config` version in a fixture dir
-  and asserts `health()`, `retrieve()`, `propose()`, `promote()`
-  schemas match the v1 spec. Fails fast on breakage.
-- **Done:** CI job green on `main`; intentional breakage fails
-  visibly and can be unblocked only by a contract-version bump.
+- **Why:** The retrieval contract (`contract_version: 1`) is the only
+  formal API into this package. Without a fixture-based test, any
+  structural change (field rename, type narrowing, nullability flip)
+  can ship accidentally. Blocks 1.1.0 because 1.1.0 adds new CLI
+  surface — we lock the existing shape before expanding it.
+- **Scope (kept minimal):** Commit golden JSON fixtures for `health()`,
+  `retrieve()`, `propose()`, `promote()`, `deprecate()` v1 responses
+  into `tests/contract/fixtures/`. One Vitest suite compares live
+  output shape (keys + types, not values) against each fixture. No
+  pinned `agent-config` install — that broader consumer-side job can
+  come in 1.1.x as P5-3-extension. This task only protects our own
+  output shape.
+- **Done:** `npm run test:contract` exists; CI runs it on every push;
+  intentional shape change requires either a fixture update (additive)
+  or a `contract_version` bump (breaking). Documented in
+  `agents/adrs/0003-contract-version-bumps.md` (new).
 
 ### P5-4 · `docs/compatibility-matrix.md` [Should]
 
@@ -492,7 +591,7 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Adding a test updates the badge via `npm run docs:stats`;
   stale counts fail CI.
 
-### P6-2 · MCP tool-count guard [Should]
+### P6-2 · MCP tool-count guard [Must]
 
 - **Why:** README's "23 MCP tools" has no mechanical source of truth.
 - **Scope:** Script walks `src/mcp/server.ts` registration table,
@@ -501,7 +600,7 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Adding a new MCP tool bumps the README automatically
   or fails CI with a clear message.
 
-### P6-3 · CLI command-count guard [Should]
+### P6-3 · CLI command-count guard [Must]
 
 - **Why:** Same as P6-2 for CLI.
 - **Scope:** Script walks Commander `program.commands`, outputs
@@ -510,7 +609,7 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Adding a new CLI subcommand updates the README list
   automatically or fails CI.
 
-### P6-4 · Universality guard extension [Should]
+### P6-4 · Universality guard extension [Must]
 
 - **Why:** Existing `check:portability` catches Laravel terms in
   `AGENTS.md` and `copilot-instructions.md`. It does not cover the
@@ -533,7 +632,7 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Adding an enum value to `src/types.ts` without a
   glossary entry fails CI with a pointer to the missing term.
 
-### P6-6 · CHANGELOG freshness guard [Should]
+### P6-6 · CHANGELOG freshness guard [Must]
 
 - **Why:** `CHANGELOG.md` (P4-1) needs a guard or it will lag
   behind `package.json` version.
@@ -546,31 +645,42 @@ by Phases 0-5. All guards non-breaking for existing CI.
 
 ## Phase 7 — Release
 
-### P7-1 · Tag `1.0.1` [Must]
+### P7-1 · Tag `1.1.0` [Must]
 
-- **Why:** Closes the 1.0.1 cycle.
+- **Why:** Closes the 1.1.0 cycle.
 - **Scope:** After all `[Must]` tasks are green and any `[Should]`
   tasks pulled into cycle are green. Full verification gate (lint,
-  typecheck, tests, docs:cli:check, check:portability, check:links,
-  P6-2..P6-6 if shipped) exits 0 on a fresh clone.
-- **Done:** Tag on `main`; GitHub release notes drafted (P7-2).
+  typecheck, tests, `test:contract`, docs:cli:check, check:portability,
+  check:links, P6-2..P6-6) exits 0 on a fresh clone. P3-8 cold-start
+  transcript attached.
+- **Done:** Tag on `main`; GitHub release notes drafted (P7-2);
+  `package.json` version bumped to `1.1.0`.
 
-### P7-2 · Release notes (`1.0.1`) [Must]
+### P7-2 · Release notes (`1.1.0`) [Must]
 
-- **Why:** Every tag deserves notes, especially one correcting
-  positioning on the heels of `1.0.0`.
-- **Scope:** `CHANGELOG.md` entry + matching GitHub release text
-  highlighting universality refactor, glossary, non-goals, governance
-  docs. Explicitly flag breaking renames (P1-2, P1-4) even though
-  they're docs.
+- **Why:** Every minor bump deserves notes, especially one correcting
+  positioning and adding new public API surface.
+- **Scope:** `CHANGELOG.md` entry + matching GitHub release text in
+  three sections:
+  - **Added** — `memory migrate`, `memory serve`, `runMigrations()`
+    export, auto-migrate on container start, retrieval contract
+    fixtures, README embeddings/environment sections, glossary,
+    comparisons, non-goals.
+  - **Changed** — universality refactor (README/AGENTS.md), compat
+    matrix shape, `REPO_ROOT` container semantics.
+  - **Renamed** — explicit mapping: `docs/consumer-setup-php.md` →
+    `docs/consumer-setup-docker-sidecar.md`, `examples/php-laravel-sidecar/`
+    → `examples/laravel-sidecar/`. No redirects.
 - **Done:** Release text points readers at the new entry points;
-  CHANGELOG in sync.
+  CHANGELOG in sync; rename mapping visible to anyone hitting a
+  stale external link.
 
 ### P7-3 · Draft announcement [Could]
 
-- **Why:** Optional public surface for the shift in positioning.
+- **Why:** Optional public surface for the shift in positioning +
+  feature expansion.
 - **Scope:** Short GitHub Discussions post or similar channel.
-  Link the new universal entry points.
+  Link the new universal entry points and the new CLI surface.
 - **Done:** Draft exists in `agents/drafts/` (not auto-published).
 
 ---
@@ -580,19 +690,23 @@ by Phases 0-5. All guards non-breaking for existing CI.
 ```
 P0  blocks  P1, P2, P3, P6
 P1  blocks  P5 (universal positioning before companion story)
-P3-1 blocks P3-3 (auto-migrate needs migrate subcommand)
-P3-4 blocks P3-3 (auto-migrate needs daemon target)
+P3-1 blocks P3-2, P3-3 (programmatic + auto-migrate reuse the runner)
+P3-4a blocks P3-4b (ADR decides implementation shape)
+P3-3 blocks P3-8 (cold-start needs auto-migrate working)
 P2-2 blocks P6-5 (guard needs glossary to guard against)
 P4-1 blocks P6-6 (guard needs CHANGELOG to guard)
+P5-3 blocks P7-1 (no 1.1.0 tag without locked contract fixtures)
+P3-8 blocks P7-1 (no tag until cold-start verifies from zero)
 P2-* parallel to P4-*
 P6-2..P6-6 parallel to P3-5..P3-7
-P7-1 blocked by all Must tasks of P1, P2, P3 (fix-scale), P4
+P7-1 blocked by all Must tasks of P1-P6
 ```
 
 ## Out of scope (for this roadmap)
 
 - HTTP transport for the MCP server (covered superficially in P3-6;
-  real implementation is a separate roadmap).
+  P3-4a ADR may explicitly defer or scope-cap it; real implementation
+  is a separate roadmap).
 - Embedding-provider improvements beyond the existing factory chain.
 - New memory types or trust-score algorithm changes.
 - `npm publish` governance — tracked separately as a release-process
@@ -600,23 +714,58 @@ P7-1 blocked by all Must tasks of P1, P2, P3 (fix-scale), P4
 - Anything under `.augment/` (vendored from `agent-config`) — those
   changes go through the `agent-config` repo and propagate here via
   postinstall.
+- Pinned `agent-config` consumer-side contract job (deferred to
+  1.1.x as P5-3-extension; 1.1.0 only locks our output shape).
 
 ## Cycle summary
 
-- **1.0.1** (this cycle):
-  All 22 `[Must]` tasks (P0-1..4, P1-1..4, P1-6..8, P2-1, P2-2, P2-4,
-  P3-5, P3-6, P3-7, P4-1, P4-3, P4-5, P7-1, P7-2).
-  Plus `[Should]` tasks pulled into cycle as capacity allows:
-  P1-5, P2-3, P2-5, P4-2, P4-4, P5-1, P5-2, P5-4, P6-2..P6-4, P6-6.
-- **1.1.0** (follow-up):
-  P3-1, P3-2, P3-3, P3-4 (feature-scale tasks), P5-3, P6-1, P6-5, P7-3.
+- **1.1.0** (this cycle) — **34 `[Must]` tasks**, all blocking the tag:
+  - **P0:** 0-1, 0-2, 0-3, 0-4
+  - **P1:** 1-1, 1-2, 1-3, 1-4, 1-6, 1-7, 1-8
+  - **P2:** 2-1, 2-2, 2-4, 2-6, 2-7
+  - **P3:** 3-1, 3-2, 3-3, 3-4a, 3-5, 3-6, 3-7, 3-8
+  - **P4:** 4-1, 4-3, 4-5
+  - **P5:** 5-3
+  - **P6:** 6-2, 6-3, 6-4, 6-6
+  - **P7:** 7-1, 7-2
+  - *(Tally: P0=4 + P1=7 + P2=5 + P3=8 + P4=3 + P5=1 + P6=4 + P7=2 = 34. Thirteen of these Must items were upgraded from Should/Could after the Option-C promotion — see the audit trail below.)*
+- **`[Should]` tasks** pulled in as capacity allows:
+  P1-5, P2-3, P2-5, P3-4b, P4-2, P4-4, P5-1, P5-2, P5-4.
+- **`[Could]` tasks** — deferred without penalty:
+  P2-8, P6-1, P6-5, P7-3.
+
+### Roadmap audit trail (Option C: 1.1.0 promotion)
+
+After the second review cycle the following priority shifts happened.
+This trail exists so future readers understand why the Must-list is
+larger than a typical patch-release roadmap.
+
+| Task | Before | After | Reason |
+|---|---|---|---|
+| P2-6 | (new) | Must | Reviewer-flagged README visibility gap |
+| P2-7 | (new) | Must | Same pattern; surface `.env.example` key vars |
+| P2-8 | (new) | Could | Privacy/cost disclosure, valuable but not gating |
+| P3-1 | Could → 1.1.0 | Must | 1.1.0 now current cycle; migrate blocks DX story |
+| P3-2 | Could → 1.1.0 | Must | Pairs with P3-1 |
+| P3-3 | Could → 1.1.0 | Must | First-run wow factor; needs P3-1 |
+| P3-4 | Could → 1.1.0 | Split (P3-4a Must, P3-4b Should) | Decision first, implementation can slip |
+| P3-8 | (new) | Must | Cold-start gate before tag |
+| P5-3 | Could → 1.1.0 | Must | Contract lock before adding new CLI |
+| P6-2 | Should | Must | P3-1 adds CLI — guard must ship with it |
+| P6-3 | Should | Must | Same as P6-2 |
+| P6-4 | Should | Must | New neutral docs need the strict lint |
+| P6-6 | Should | Must | CHANGELOG (P4-1) is Must — its guard must be too |
 
 ## Completion checklist
 
 - [ ] All `[Must]` tasks checked off.
 - [ ] All verification gates exit 0 on a fresh clone.
-- [ ] `CHANGELOG.md` updated with every shipped task.
-- [ ] Tag `1.0.1` pushed; release notes published.
+- [ ] `CHANGELOG.md` updated with every shipped task, rename mapping
+      included.
+- [ ] `npm run test:contract` green on `main`.
+- [ ] P3-8 cold-start transcript archived.
+- [ ] `package.json` version bumped to `1.1.0`.
+- [ ] Tag `1.1.0` pushed; release notes published.
 - [ ] This file archived to `agents/roadmaps/archive/improve-system.md`
       on completion.
 

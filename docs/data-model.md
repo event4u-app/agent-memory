@@ -53,7 +53,7 @@ id. `memory_verify` traces entries back through this table.
 
 | Column | Notes |
 |---|---|
-| `kind` | e.g. `adr`, `test`, `git_commit`, `pr`, `incident` |
+| `kind` | one of `file`, `commit`, `test`, `adr`, `documentation`, `symbol` (enum `EVIDENCE_KINDS` in [`src/types.ts`](../src/types.ts)) |
 | `ref` | the actual reference (path, SHA, url) |
 | `verified_at` | when a validator last confirmed the ref resolves |
 
@@ -111,10 +111,14 @@ Promotion is run at session-end (`memory_stop` MCP tool) via
 
 ## Decay (Ebbinghaus)
 
-Trust score decays over time unless refreshed by retrieval hits. Per-type
-overrides in `MEMORY_DECAY_OVERRIDES` (see [configuration](configuration.md)).
-Default half-lives: `evergreen` = 180d, `semi_stable` = 30d, `volatile` = 7d.
+`trust_score` decays over time unless refreshed by retrieval hits. This
+is distinct from TTL: TTL controls when an entry becomes `stale` (a
+status transition); decay continuously lowers the score of entries that
+are still `validated`.
 
+- **Decay half-lives** (continuous): `evergreen` = 180d, `semi_stable` = 30d, `volatile` = 7d.
+- **TTL** (status transition, from `TTL_DAYS` in [`src/types.ts`](../src/types.ts)): `evergreen` = 90d, `semi_stable` = 30d, `volatile` = 7d.
+- Per-type overrides via `MEMORY_DECAY_OVERRIDES` (see [configuration](configuration.md)).
 - Retrieval hit → `trust_score` + `refresh_boost` (capped at 1.0), `last_accessed_at` updated.
 - No hit + TTL passed → status → `stale`.
 - `evergreen` + `architecture_decision` (ADRs) → no decay at all (see [`src/trust/decay.ts`](../src/trust/decay.ts)).

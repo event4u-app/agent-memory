@@ -328,6 +328,14 @@ Start the MCP stdio server (for agent clients)
 memory mcp
 ```
 
+### `migrate`
+
+Apply pending database migrations (safe to run repeatedly; idempotent)
+
+```bash
+memory migrate
+```
+
 ### `poison`
 
 Mark an entry as poisoned — cascade review + rollback report

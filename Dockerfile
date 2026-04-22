@@ -45,12 +45,13 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Ensure the compiled CLI is executable and expose the `memory` binary
 # via /usr/local/bin so `docker compose exec <svc> memory <cmd>` works
 # without needing to remember the dist/ path. Matches what `npm link`
 # would produce but without the extra install step.
-RUN chmod +x dist/cli/index.js \
+RUN chmod +x dist/cli/index.js /usr/local/bin/docker-entrypoint.sh \
  && ln -s /app/dist/cli/index.js /usr/local/bin/memory \
  && chown -R node:node /app
 
@@ -61,7 +62,11 @@ USER node
 # Documented runtime knobs — see README for the full list.
 ENV NODE_ENV=production \
     LOG_LEVEL=info \
-    DATABASE_URL=postgresql://memory:memory_dev@postgres:5432/agent_memory
+    DATABASE_URL=postgresql://memory:memory_dev@postgres:5432/agent_memory \
+    MEMORY_AUTO_MIGRATE=true
 
-ENTRYPOINT ["/sbin/tini", "--", "memory"]
-CMD ["mcp"]
+# Entrypoint wraps the command in docker-entrypoint.sh which runs
+# `memory migrate` on startup (idempotent) before exec'ing the CMD.
+# Disable with MEMORY_AUTO_MIGRATE=false.
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["memory", "mcp"]
