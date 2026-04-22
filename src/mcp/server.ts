@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { closeDb, getDb } from "../db/connection.js";
@@ -105,7 +106,13 @@ export async function startMcpServer(): Promise<void> {
 	});
 }
 
-startMcpServer().catch((err) => {
-	console.error("Fatal error:", err);
-	process.exit(1);
-});
+const isMainModule =
+	process.argv[1] !== undefined &&
+	fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMainModule) {
+	startMcpServer().catch((err) => {
+		console.error("Fatal error:", err);
+		process.exit(1);
+	});
+}
