@@ -182,6 +182,25 @@ export const TOOL_DEFINITIONS: Tool[] = [
 		},
 	},
 	{
+		name: "memory_observe_failure",
+		description:
+			"PostToolUseFailure hook. Capture error context (tool name, message, stderr, stack) as a privacy-filtered observation for later analysis.",
+		inputSchema: {
+			type: "object" as const,
+			properties: {
+				sessionId: { type: "string", description: "Current session ID" },
+				toolName: {
+					type: "string",
+					description: "The tool that failed (e.g., 'bash', 'run_tests')",
+				},
+				errorMessage: { type: "string", description: "Error message" },
+				stderr: { type: "string", description: "Captured stderr (optional)" },
+				stack: { type: "string", description: "Stack trace (optional)" },
+			},
+			required: ["sessionId", "toolName", "errorMessage"],
+		},
+	},
+	{
 		name: "memory_session_end",
 		description:
 			"Call at session end. Consolidates Working→Episodic memory and runs revalidation.",
@@ -190,6 +209,32 @@ export const TOOL_DEFINITIONS: Tool[] = [
 			properties: {
 				sessionId: { type: "string" },
 				repository: { type: "string" },
+			},
+			required: ["sessionId", "repository"],
+		},
+	},
+	{
+		name: "memory_stop",
+		description:
+			"Stop hook. Runs the extraction guard (tests + quality); if clean, triggers Working→Episodic consolidation. Skip extraction on test failure.",
+		inputSchema: {
+			type: "object" as const,
+			properties: {
+				sessionId: { type: "string" },
+				repository: { type: "string" },
+				testCommand: {
+					type: "string",
+					description: "Command to run tests (optional)",
+				},
+				qualityCommand: {
+					type: "string",
+					description: "Command to run quality checks (optional)",
+				},
+				skipChecks: {
+					type: "boolean",
+					default: false,
+					description: "Skip guard (dev mode)",
+				},
 			},
 			required: ["sessionId", "repository"],
 		},

@@ -5,6 +5,7 @@ import { ContradictionRepository } from "../db/repositories/contradiction.reposi
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
 import { ObservationRepository } from "../db/repositories/observation.repository.js";
+import { buildEmbeddingChain } from "../embedding/index.js";
 import { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
 import { RevalidationJob } from "../invalidation/revalidation-job.js";
 import { TtlExpiryJob } from "../invalidation/ttl-expiry-job.js";
@@ -64,6 +65,7 @@ export async function startMcpServer(): Promise<void> {
 		entryRepo,
 		evidenceRepo,
 	);
+	const embeddingChain = buildEmbeddingChain();
 
 	const server = new Server(
 		{ name: "agent-memory", version: BACKEND_VERSION },
@@ -85,6 +87,7 @@ export async function startMcpServer(): Promise<void> {
 		ttlExpiryJob,
 		revalidationJob,
 		invalidationOrchestrator,
+		embeddingChain,
 		backendVersion: BACKEND_VERSION,
 	};
 

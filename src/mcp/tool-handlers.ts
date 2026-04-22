@@ -2,6 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { config } from "../config.js";
 import { WorkingToEpisodicConsolidator } from "../consolidation/working-to-episodic.js";
 import { healthCheck } from "../db/connection.js";
+import { ExtractionGuard } from "../ingestion/extraction-guard.js";
 import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
 import {
 	hardInvalidate,
@@ -75,8 +76,12 @@ export async function handleToolCall(
 			return handleSessionStart(args, ctx);
 		case "memory_observe":
 			return handleObserve(args, ctx);
+		case "memory_observe_failure":
+			return handleObserveFailure(args, ctx);
 		case "memory_session_end":
 			return handleSessionEnd(args, ctx);
+		case "memory_stop":
+			return handleStop(args, ctx);
 		case "memory_run_invalidation":
 			return handleRunInvalidation(args, ctx);
 		case "memory_audit":
@@ -170,8 +175,11 @@ async function handleRetrieve(
 	if (args.repository) filters.repository = args.repository as string;
 	if (types.length > 0) filters.types = types as MemoryType[];
 
+	const queryText = (args.query as string) ?? "";
+	const { vector: queryEmbedding } = await ctx.embeddingChain.embed(queryText);
 	const result = await ctx.retrievalEngine.retrieve(allEntries, {
-		query: (args.query as string) ?? "",
+		query: queryText,
+		queryEmbedding,
 		level,
 		tokenBudget: (args.tokenBudget as number) ?? config.tokenBudget,
 		limit: args.limit as number | undefined,
@@ -384,8 +392,10 @@ async function handleSessionStart(
 	let context: unknown[] = [];
 	if (query) {
 		const allEntries = await loadActiveEntries(ctx);
+		const { vector: queryEmbedding } = await ctx.embeddingChain.embed(query);
 		const retrieval = await ctx.retrievalEngine.retrieve(allEntries, {
 			query,
+			queryEmbedding,
 			level: "index",
 			tokenBudget: (args.tokenBudget as number) ?? config.tokenBudget,
 			filters: args.repository
@@ -415,6 +425,26 @@ async function handleObserve(
 	return ok({ stored: true, id: obs.id });
 }
 
+async function handleObserveFailure(
+	args: Args,
+	ctx: McpContext,
+): Promise<CallToolResult> {
+	const parts: string[] = [
+		`tool=${args.toolName as string}`,
+		`error=${args.errorMessage as string}`,
+	];
+	if (args.stderr) parts.push(`stderr=${String(args.stderr)}`);
+	if (args.stack) parts.push(`stack=${String(args.stack)}`);
+	const content = applyPrivacyFilter(parts.join("\n"));
+	const obs = await ctx.observationRepo.create(
+		args.sessionId as string,
+		content,
+		`failure:${args.toolName as string}`,
+	);
+	if (!obs) return ok({ stored: false, reason: "Duplicate (deduped)" });
+	return ok({ stored: true, id: obs.id, kind: "failure" });
+}
+
 async function handleSessionEnd(
 	args: Args,
 	ctx: McpContext,
@@ -440,6 +470,44 @@ async function handleSessionEnd(
 			revalidated: revalidation.revalidated,
 			rejected: revalidation.rejected,
 		},
+	});
+}
+
+async function handleStop(
+	args: Args,
+	ctx: McpContext,
+): Promise<CallToolResult> {
+	const guard = new ExtractionGuard({
+		root: ctx.repoRoot,
+		testCommand: args.testCommand as string | undefined,
+		qualityCommand: args.qualityCommand as string | undefined,
+		skipChecks: (args.skipChecks as boolean | undefined) ?? false,
+	});
+	const guardResult = await guard.check();
+	if (!guardResult.allowed) {
+		return ok({
+			guard: guardResult,
+			consolidation: null,
+			extraction: "blocked",
+		});
+	}
+	const consolidator = new WorkingToEpisodicConsolidator(
+		ctx.observationRepo,
+		ctx.entryRepo,
+	);
+	const consolidation = await consolidator.consolidate(
+		args.sessionId as string,
+		args.repository as string,
+	);
+	return ok({
+		guard: guardResult,
+		consolidation: consolidation
+			? {
+					entryId: consolidation.createdEntryId,
+					observations: consolidation.observationCount,
+				}
+			: null,
+		extraction: "allowed",
 	});
 }
 

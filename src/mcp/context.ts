@@ -3,6 +3,7 @@ import type { ContradictionRepository } from "../db/repositories/contradiction.r
 import type { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import type { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
 import type { ObservationRepository } from "../db/repositories/observation.repository.js";
+import type { EmbeddingFallbackChain } from "../embedding/index.js";
 import type { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
 import type { RevalidationJob } from "../invalidation/revalidation-job.js";
 import type { TtlExpiryJob } from "../invalidation/ttl-expiry-job.js";
@@ -27,6 +28,7 @@ export interface McpContext {
 	ttlExpiryJob: TtlExpiryJob;
 	revalidationJob: RevalidationJob;
 	invalidationOrchestrator: InvalidationOrchestrator;
+	embeddingChain: EmbeddingFallbackChain;
 	/** Package version advertised via health contract */
 	backendVersion: string;
 }
