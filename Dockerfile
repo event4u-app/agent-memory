@@ -42,18 +42,26 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+
+# Ensure the compiled CLI is executable and expose the `memory` binary
+# via /usr/local/bin so `docker compose exec <svc> memory <cmd>` works
+# without needing to remember the dist/ path. Matches what `npm link`
+# would produce but without the extra install step.
+RUN chmod +x dist/cli/index.js \
+ && ln -s /app/dist/cli/index.js /usr/local/bin/memory \
+ && chown -R node:node /app
+
 # Non-root user; matches the pattern used by node:*-alpine which
 # ships a `node` user (uid 1000) but starts as root.
 USER node
-
-COPY --chown=node:node --from=builder /app/node_modules ./node_modules
-COPY --chown=node:node --from=builder /app/dist ./dist
-COPY --chown=node:node --from=builder /app/package.json ./package.json
 
 # Documented runtime knobs — see README for the full list.
 ENV NODE_ENV=production \
     LOG_LEVEL=info \
     DATABASE_URL=postgresql://memory:memory_dev@postgres:5432/agent_memory
 
-ENTRYPOINT ["/sbin/tini", "--", "node", "dist/cli/index.js"]
+ENTRYPOINT ["/sbin/tini", "--", "memory"]
 CMD ["mcp"]
