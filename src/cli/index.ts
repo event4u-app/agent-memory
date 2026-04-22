@@ -1,12 +1,21 @@
 #!/usr/bin/env node
+// Default to silent logger for CLI usage unless caller overrides.
+// Must happen before any import that touches the logger (config/db).
+process.env.LOG_LEVEL ??= "silent";
+
 import { Command } from "commander";
+import { closeDb, getDb, healthCheck } from "../db/connection.js";
+import { BACKEND_FEATURES, CONTRACT_VERSION, type HealthResponseV1 } from "../retrieval/contract.js";
+
+const BACKEND_VERSION = "0.1.0";
+const HEALTH_TIMEOUT_MS = 2000;
 
 const program = new Command();
 
 program
   .name("memory")
   .description("Agent Memory — persistent, trust-scored project knowledge")
-  .version("0.1.0");
+  .version(BACKEND_VERSION);
 
 program
   .command("ingest")
@@ -74,9 +83,33 @@ program
 
 program
   .command("health")
-  .description("Show system health and quality metrics")
-  .action(async () => {
-    console.log("💚 memory health — not yet implemented");
+  .description("Probe backend health — returns contract v1 envelope as JSON")
+  .option("--timeout <ms>", "Timeout in ms", String(HEALTH_TIMEOUT_MS))
+  .action(async (options) => {
+    const timeoutMs = Number.parseInt(options.timeout, 10) || HEALTH_TIMEOUT_MS;
+    const envelope = await probeHealth(timeoutMs);
+    console.log(JSON.stringify(envelope, null, 2));
+    await closeDb();
+    process.exit(envelope.status === "ok" ? 0 : 1);
+  });
+
+program
+  .command("status")
+  .description("Feature detection for consumers — prints present | absent | misconfigured")
+  .option("--timeout <ms>", "Timeout in ms", String(HEALTH_TIMEOUT_MS))
+  .option("--json", "Emit full JSON envelope (always exits 0)")
+  .action(async (options) => {
+    const timeoutMs = Number.parseInt(options.timeout, 10) || HEALTH_TIMEOUT_MS;
+    const envelope = await probeHealth(timeoutMs);
+    const memoryStatus: "present" | "absent" | "misconfigured" =
+      envelope.status === "ok" ? "present" : "misconfigured";
+    if (options.json) {
+      console.log(JSON.stringify({ memory_status: memoryStatus, ...envelope }, null, 2));
+    } else {
+      console.log(memoryStatus);
+    }
+    await closeDb();
+    process.exit(0);
   });
 
 program
@@ -85,5 +118,34 @@ program
   .action(async () => {
     console.log("🩺 memory diagnose — not yet implemented");
   });
+
+async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
+  const start = Date.now();
+  try {
+    getDb();
+    const result = await Promise.race([
+      healthCheck(),
+      new Promise<{ ok: false; latencyMs: number }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, latencyMs: timeoutMs }), timeoutMs),
+      ),
+    ]);
+    return {
+      contract_version: CONTRACT_VERSION,
+      status: result.ok ? "ok" : "error",
+      backend_version: BACKEND_VERSION,
+      features: [...BACKEND_FEATURES],
+      latency_ms: result.latencyMs,
+    };
+  } catch {
+    return {
+      contract_version: CONTRACT_VERSION,
+      status: "error",
+      backend_version: BACKEND_VERSION,
+      features: [...BACKEND_FEATURES],
+      latency_ms: Date.now() - start,
+      counts: { error: 1 },
+    };
+  }
+}
 
 program.parse();
