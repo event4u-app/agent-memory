@@ -8,6 +8,7 @@ import type {
 	MemoryEntry,
 	MemoryScope,
 	MemoryType,
+	PromotionMetadata,
 	TrustInfo,
 	TrustStatus,
 } from "../../types.js";
@@ -26,6 +27,7 @@ export interface CreateEntryInput {
 	embedding?: number[];
 	createdBy?: string;
 	createdInTask?: string;
+	promotionMetadata?: PromotionMetadata;
 }
 
 export class MemoryEntryRepository {
@@ -44,14 +46,15 @@ export class MemoryEntryRepository {
         impact_level, knowledge_class, consolidation_tier,
         embedding_text, embedding,
         trust_status, trust_score, expires_at,
-        created_by, created_in_task
+        created_by, created_in_task, promotion_metadata
       ) VALUES (
         ${input.type}, ${input.title}, ${input.summary}, ${input.details ?? null},
         ${JSON.stringify(input.scope)}::jsonb,
         ${input.impactLevel}, ${input.knowledgeClass}, ${tier},
         ${input.embeddingText}, ${input.embedding ? JSON.stringify(input.embedding) : null}::vector,
         'quarantine', 0.0, ${expiresAt},
-        ${input.createdBy ?? "agent"}, ${input.createdInTask ?? null}
+        ${input.createdBy ?? "agent"}, ${input.createdInTask ?? null},
+        ${JSON.stringify(input.promotionMetadata ?? {})}::jsonb
       )
       RETURNING *
     `;
@@ -149,6 +152,51 @@ export class MemoryEntryRepository {
     `;
 	}
 
+	async updatePromotionMetadata(
+		id: string,
+		metadata: PromotionMetadata,
+	): Promise<void> {
+		await this.sql`
+      UPDATE memory_entries
+      SET promotion_metadata = ${JSON.stringify(metadata)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${id}
+    `;
+	}
+
+	/**
+	 * Find an already-promoted entry that describes the same knowledge as `candidate`.
+	 * Match: same type + same repository + at least one overlapping file OR symbol,
+	 * with trust_status = 'validated' and tier in ('semantic', 'procedural').
+	 * Returns the first such entry (by trust_score desc), or null.
+	 */
+	async findSemanticDuplicate(
+		candidate: MemoryEntry,
+	): Promise<MemoryEntry | null> {
+		const files = candidate.scope.files ?? [];
+		const symbols = candidate.scope.symbols ?? [];
+		if (files.length === 0 && symbols.length === 0) return null;
+
+		const [row] = await this.sql`
+      SELECT * FROM memory_entries
+      WHERE id <> ${candidate.id}
+        AND type = ${candidate.type}
+        AND trust_status = 'validated'
+        AND consolidation_tier IN ('semantic', 'procedural')
+        AND scope->>'repository' = ${candidate.scope.repository}
+        AND (
+          (${JSON.stringify(files)}::jsonb <> '[]'::jsonb
+            AND scope->'files' ?| ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(files)}::jsonb)))
+          OR
+          (${JSON.stringify(symbols)}::jsonb <> '[]'::jsonb
+            AND scope->'symbols' ?| ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(symbols)}::jsonb)))
+        )
+      ORDER BY trust_score DESC, updated_at DESC
+      LIMIT 1
+    `;
+		return row ? this.mapRow(row) : null;
+	}
+
 	async delete(id: string): Promise<boolean> {
 		const result = await this.sql`
       DELETE FROM memory_entries WHERE id = ${id}
@@ -198,6 +246,9 @@ export class MemoryEntryRepository {
 			createdInTask: row.created_in_task,
 			createdAt: new Date(row.created_at),
 			updatedAt: new Date(row.updated_at),
+			promotionMetadata: (typeof row.promotion_metadata === "string"
+				? JSON.parse(row.promotion_metadata)
+				: (row.promotion_metadata ?? {})) as PromotionMetadata,
 		};
 	}
 

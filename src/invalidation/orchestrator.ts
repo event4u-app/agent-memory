@@ -199,6 +199,10 @@ export class InvalidationOrchestrator {
 			createdInTask: row.created_in_task,
 			createdAt: new Date(row.created_at),
 			updatedAt: new Date(row.updated_at),
+			promotionMetadata:
+				typeof row.promotion_metadata === "string"
+					? JSON.parse(row.promotion_metadata)
+					: (row.promotion_metadata ?? {}),
 		};
 	}
 }

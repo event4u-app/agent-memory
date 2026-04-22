@@ -97,7 +97,25 @@ export interface MemoryEntry {
 	createdInTask: string | null;
 	createdAt: Date;
 	updatedAt: Date;
+	promotionMetadata: PromotionMetadata;
 }
+
+/**
+ * Proposal-time metadata carried from `propose()` into `promote()` gate checks.
+ * See `agents/roadmaps/archive/from-agent-config/road-to-promotion-flow.md`
+ * ("Gate criteria" section).
+ */
+export interface PromotionMetadata {
+	/** Three+ plausible future scenarios this entry will inform (3-future-decisions heuristic) */
+	futureScenarios?: string[];
+	/** Origin reference (incident id, PR, ADR) carried from propose() */
+	source?: string;
+	/** Whether the extraction-guard (tests/quality tools/no-only-deletions) was clean at proposal time */
+	gateCleanAtProposal?: boolean;
+}
+
+/** Minimum future-decision scenarios required to promote above Low impact */
+export const MIN_FUTURE_SCENARIOS = 3;
 
 export interface MemoryScope {
 	repository: string;

@@ -294,6 +294,17 @@ export const TOOL_DEFINITIONS: Tool[] = [
 					type: "string",
 					description: "Text used for vector embedding",
 				},
+				futureScenarios: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						"3+ plausible future scenarios this entry will inform. Required to promote above Low impact (3-future-decisions heuristic).",
+				},
+				gateCleanAtProposal: {
+					type: "boolean",
+					description:
+						"Whether the extraction guard (tests green, quality tools clean, not only-deletions) passed at proposal time. false → rejected on promote.",
+				},
 			},
 			required: [
 				"type",
@@ -311,7 +322,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	{
 		name: "memory_promote",
 		description:
-			"Promote a quarantined proposal: runs validators + gate criteria. Transitions to validated or rejected.",
+			"Promote a quarantined proposal: runs gate criteria (allowed_target_types, extraction guard, 3-future-decisions, non-duplication) plus validators + evidence floor. Transitions to validated or rejected with a structured rejection_reason.",
 		inputSchema: {
 			type: "object" as const,
 			properties: {
@@ -319,6 +330,17 @@ export const TOOL_DEFINITIONS: Tool[] = [
 				triggeredBy: {
 					type: "string",
 					description: "Actor identifier (default: system:promote)",
+				},
+				allowedTargetTypes: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						"Consumer policy: memory types allowed for promotion. Entry.type not in list → rejected with rejection_reason='allowed_target_types'.",
+				},
+				skipDuplicateCheck: {
+					type: "boolean",
+					description:
+						"Skip the non-duplication gate (caller explicitly accepts overlap with existing semantic/procedural entries). Default: false.",
 				},
 			},
 			required: ["proposalId"],

@@ -116,6 +116,8 @@ async function handlePropose(
 		createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
 		source: args.source as string,
 		confidence: args.confidence as number,
+		futureScenarios: args.futureScenarios as string[] | undefined,
+		gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
 	});
 	return ok(result);
 }
@@ -124,10 +126,11 @@ async function handlePromote(
 	args: Args,
 	ctx: McpContext,
 ): Promise<CallToolResult> {
-	const result = await ctx.promotionService.promote(
-		args.proposalId as string,
-		(args.triggeredBy as string | undefined) ?? "mcp:promote",
-	);
+	const result = await ctx.promotionService.promote(args.proposalId as string, {
+		triggeredBy: (args.triggeredBy as string | undefined) ?? "mcp:promote",
+		allowedTargetTypes: args.allowedTargetTypes as MemoryType[] | undefined,
+		skipDuplicateCheck: args.skipDuplicateCheck as boolean | undefined,
+	});
 	return ok(result);
 }
 

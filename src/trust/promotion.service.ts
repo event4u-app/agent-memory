@@ -15,7 +15,8 @@ import type {
 	MemoryEntryRepository,
 } from "../db/repositories/memory-entry.repository.js";
 import { purgeArchived, runArchival } from "../quality/archival.js";
-import type { MemoryEntry } from "../types.js";
+import type { MemoryEntry, MemoryType } from "../types.js";
+import { MIN_FUTURE_SCENARIOS } from "../types.js";
 import { logger } from "../utils/logger.js";
 import type { QuarantineService } from "./quarantine.service.js";
 
@@ -24,6 +25,17 @@ export interface ProposeInput extends CreateEntryInput {
 	source: string;
 	/** Initial confidence reported by the caller (0.0–1.0) */
 	confidence: number;
+	/**
+	 * Three+ plausible future scenarios this entry will inform. Required at promote
+	 * time for Critical/High/Normal impact. See road-to-promotion-flow.md,
+	 * "3-future-decisions heuristic".
+	 */
+	futureScenarios?: string[];
+	/**
+	 * Caller-asserted extraction-guard result at proposal time (tests green,
+	 * quality tools clean, diff not only-deletions). `false` → reject on promote.
+	 */
+	gateCleanAtProposal?: boolean;
 }
 
 export interface ProposeResult {
@@ -32,11 +44,40 @@ export interface ProposeResult {
 	trust_score: number;
 }
 
+/**
+ * Rejection categories for promote(), used by callers (CLI/MCP) to build
+ * actionable feedback without parsing `reason` strings.
+ */
+export type PromoteRejectionReason =
+	| "allowed_target_types"
+	| "future_scenarios"
+	| "gate_not_clean"
+	| "duplicate"
+	| "evidence_floor"
+	| "validators"
+	| "contradictions";
+
+export interface PromoteOptions {
+	/**
+	 * Types the consumer allows for promotion (from
+	 * `.agent-project-settings.memory.promotion.allowed_target_types`).
+	 * If provided and `entry.type` is not listed, promote rejects.
+	 */
+	allowedTargetTypes?: MemoryType[];
+	/** Skip the non-duplication check (dangerous — caller accepts the sibling) */
+	skipDuplicateCheck?: boolean;
+	/** Actor identifier for audit trail (default: "system:promote") */
+	triggeredBy?: string;
+}
+
 export interface PromoteResult {
 	id: string;
 	status: "validated" | "rejected";
 	trust_score: number;
 	reason: string;
+	rejection_reason?: PromoteRejectionReason;
+	/** On duplicate rejection: id of the existing validated entry */
+	existing_id?: string;
 }
 
 export interface DeprecateResult {
@@ -73,9 +114,14 @@ export class PromotionService {
 	 * Callers must provide a `source` (incident/PR/ADR ref) and initial confidence.
 	 */
 	async propose(input: ProposeInput): Promise<ProposeResult> {
-		const entry = await this.entryRepo.create(input);
-		// Persist the source as metadata-free confidence hint; actual evidence is
-		// tracked separately via EvidenceRepository when the caller adds sources.
+		const entry = await this.entryRepo.create({
+			...input,
+			promotionMetadata: {
+				source: input.source,
+				futureScenarios: input.futureScenarios,
+				gateCleanAtProposal: input.gateCleanAtProposal,
+			},
+		});
 		const clampedConfidence = Math.max(0, Math.min(1, input.confidence));
 		await this.entryRepo.updateTrustScore(entry.id, clampedConfidence);
 		logger.info(
@@ -84,6 +130,8 @@ export class PromotionService {
 				type: input.type,
 				source: input.source,
 				confidence: clampedConfidence,
+				futureScenarios: input.futureScenarios?.length ?? 0,
+				gateCleanAtProposal: input.gateCleanAtProposal,
 			},
 			"Proposal created",
 		);
@@ -95,13 +143,26 @@ export class PromotionService {
 	}
 
 	/**
-	 * Promote a quarantined entry: run gate criteria (validators, evidence count,
-	 * contradictions). On success → 'validated'. On gate failure → 'rejected'.
+	 * Promote a quarantined entry. Runs gate criteria from
+	 * road-to-promotion-flow.md in order:
+	 *   1. allowed_target_types (consumer policy)
+	 *   2. extraction-guard clean at proposal time
+	 *   3. 3-future-decisions heuristic (skipped for Low impact)
+	 *   4. non-duplication against existing semantic/procedural entries
+	 *   5. evidence floor + validators + contradictions (delegated to QuarantineService)
+	 * Any failure → 'rejected' with a structured `rejection_reason`.
 	 */
 	async promote(
 		proposalId: string,
-		triggeredBy = "system:promote",
+		optionsOrTriggeredBy: PromoteOptions | string = {},
 	): Promise<PromoteResult> {
+		// Back-compat: accept a string triggeredBy as legacy second argument.
+		const opts: PromoteOptions =
+			typeof optionsOrTriggeredBy === "string"
+				? { triggeredBy: optionsOrTriggeredBy }
+				: optionsOrTriggeredBy;
+		const triggeredBy = opts.triggeredBy ?? "system:promote";
+
 		const entry = await this.entryRepo.findById(proposalId);
 		if (!entry) throw new Error(`Proposal not found: ${proposalId}`);
 		if (entry.trust.status !== "quarantine") {
@@ -109,16 +170,112 @@ export class PromotionService {
 				`Entry ${proposalId} is not in quarantine (status: ${entry.trust.status})`,
 			);
 		}
+
+		// Gate 1: allowed_target_types
+		if (
+			opts.allowedTargetTypes &&
+			opts.allowedTargetTypes.length > 0 &&
+			!opts.allowedTargetTypes.includes(entry.type)
+		) {
+			return this.reject(
+				entry,
+				"allowed_target_types",
+				`Type '${entry.type}' not in consumer's allowed_target_types [${opts.allowedTargetTypes.join(", ")}]`,
+				triggeredBy,
+			);
+		}
+
+		// Gate 2: extraction guard
+		if (entry.promotionMetadata.gateCleanAtProposal === false) {
+			return this.reject(
+				entry,
+				"gate_not_clean",
+				"Extraction guard reported failures at proposal time (gateCleanAtProposal=false)",
+				triggeredBy,
+			);
+		}
+
+		// Gate 3: 3-future-decisions heuristic (skipped for Low impact per spec)
+		if (entry.impactLevel !== "low") {
+			const scenarios = entry.promotionMetadata.futureScenarios ?? [];
+			const nonEmpty = scenarios.filter((s) => s?.trim().length > 0);
+			if (nonEmpty.length < MIN_FUTURE_SCENARIOS) {
+				return this.reject(
+					entry,
+					"future_scenarios",
+					`3-future-decisions heuristic failed: got ${nonEmpty.length} non-empty scenarios, need ${MIN_FUTURE_SCENARIOS}`,
+					triggeredBy,
+				);
+			}
+		}
+
+		// Gate 4: non-duplication
+		if (!opts.skipDuplicateCheck) {
+			const existing = await this.entryRepo.findSemanticDuplicate(entry);
+			if (existing) {
+				return this.reject(
+					entry,
+					"duplicate",
+					`Duplicate of existing ${existing.consolidationTier} entry ${existing.id} (same type + overlapping scope)`,
+					triggeredBy,
+					existing.id,
+				);
+			}
+		}
+
+		// Gate 5+: evidence floor + validators + contradictions (delegated)
 		const summary = await this.quarantine.validateEntry(
 			proposalId,
 			triggeredBy,
 		);
+		if (summary.decision === "validate") {
+			return {
+				id: proposalId,
+				status: "validated",
+				trust_score: summary.trustScore,
+				reason: summary.reason,
+			};
+		}
 		return {
 			id: proposalId,
-			status: summary.decision === "validate" ? "validated" : "rejected",
+			status: "rejected",
 			trust_score: summary.trustScore,
 			reason: summary.reason,
+			rejection_reason: this.classifyQuarantineReason(summary.reason),
 		};
+	}
+
+	private async reject(
+		entry: MemoryEntry,
+		rejection: PromoteRejectionReason,
+		reason: string,
+		triggeredBy: string,
+		existingId?: string,
+	): Promise<PromoteResult> {
+		await this.entryRepo.transitionStatus(
+			entry.id,
+			"rejected",
+			reason,
+			triggeredBy,
+		);
+		logger.info(
+			{ proposalId: entry.id, rejection, reason, existingId },
+			"Promotion rejected by gate",
+		);
+		return {
+			id: entry.id,
+			status: "rejected",
+			trust_score: entry.trust.score,
+			reason,
+			rejection_reason: rejection,
+			...(existingId ? { existing_id: existingId } : {}),
+		};
+	}
+
+	private classifyQuarantineReason(reason: string): PromoteRejectionReason {
+		if (reason.startsWith("Unresolved contradictions")) return "contradictions";
+		if (reason.startsWith("Insufficient evidence")) return "evidence_floor";
+		return "validators";
 	}
 
 	/**
