@@ -6,11 +6,13 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "memory_retrieve",
-    description: "Retrieve relevant memory entries for a query. Returns progressive disclosure (L1 index by default).",
+    description: "Retrieve relevant memory entries for a query. Returns contract v1 envelope with per-type slices.",
     inputSchema: {
       type: "object" as const,
       properties: {
         query: { type: "string", description: "Natural language query" },
+        types: { type: "array", items: { type: "string" }, description: "Filter by memory types (slice per type)" },
+        limit: { type: "number", description: "Hard cap across all types combined" },
         level: { type: "string", enum: ["L1", "L2", "L3"], default: "L1", description: "Disclosure level" },
         tokenBudget: { type: "number", default: 2000, description: "Max tokens to return" },
         repository: { type: "string", description: "Filter by repository name" },
@@ -194,6 +196,63 @@ export const TOOL_DEFINITIONS: Tool[] = [
         entryIds: { type: "array", items: { type: "string" }, description: "Entry IDs to merge (min 2)" },
       },
       required: ["entryIds"],
+    },
+  },
+  {
+    name: "memory_propose",
+    description: "Propose a new memory entry. Lands in quarantine with initial confidence — not served until promoted.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        type: { type: "string", description: "Memory type" },
+        title: { type: "string", description: "Short title" },
+        summary: { type: "string", description: "One-line summary" },
+        details: { type: "string", description: "Full details" },
+        source: { type: "string", description: "Origin reference (incident id, PR, ADR)" },
+        confidence: { type: "number", description: "Initial confidence 0.0–1.0" },
+        impactLevel: { type: "string", enum: ["critical", "high", "normal", "low"] },
+        knowledgeClass: { type: "string", enum: ["evergreen", "semi_stable", "volatile"] },
+        scope: { type: "object", description: "{ repository, modules, files, symbols }" },
+        embeddingText: { type: "string", description: "Text used for vector embedding" },
+      },
+      required: ["type", "title", "summary", "source", "confidence", "impactLevel", "knowledgeClass", "scope", "embeddingText"],
+    },
+  },
+  {
+    name: "memory_promote",
+    description: "Promote a quarantined proposal: runs validators + gate criteria. Transitions to validated or rejected.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        proposalId: { type: "string", description: "Quarantined entry id" },
+        triggeredBy: { type: "string", description: "Actor identifier (default: system:promote)" },
+      },
+      required: ["proposalId"],
+    },
+  },
+  {
+    name: "memory_deprecate",
+    description: "Deprecate a validated entry. Transitions to invalidated with a reason, optionally recording the successor.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: { type: "string", description: "Entry id" },
+        reason: { type: "string", description: "Human-readable deprecation reason" },
+        supersededBy: { type: "string", description: "Successor entry id (optional)" },
+      },
+      required: ["id", "reason"],
+    },
+  },
+  {
+    name: "memory_prune",
+    description: "Run hygiene pass: archive terminal-state entries, optionally hard-delete old archives.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        archivalAgeDays: { type: "number", description: "Days in terminal state before archival (default: 30)" },
+        purgeAgeDays: { type: "number", description: "Days archived before purge (default: 90)" },
+        runPurge: { type: "boolean", default: false, description: "Also hard-delete archived entries" },
+      },
     },
   },
 ];

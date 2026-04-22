@@ -7,6 +7,7 @@ import { ContradictionRepository } from "../db/repositories/contradiction.reposi
 import { ObservationRepository } from "../db/repositories/observation.repository.js";
 import { RetrievalEngine } from "../retrieval/engine.js";
 import { QuarantineService } from "../trust/quarantine.service.js";
+import { PromotionService } from "../trust/promotion.service.js";
 import { ContradictionService } from "../trust/contradiction.service.js";
 import { PoisonService } from "../trust/poison.service.js";
 import { FileExistsValidator } from "../trust/validators/file-exists.validator.js";
@@ -41,6 +42,7 @@ export async function startMcpServer(): Promise<void> {
 
   const retrievalEngine = new RetrievalEngine(sql);
   const quarantineService = new QuarantineService(entryRepo, evidenceRepo, contradictionRepo, validators);
+  const promotionService = new PromotionService(sql, entryRepo, quarantineService);
   const contradictionService = new ContradictionService(sql, contradictionRepo);
   const poisonService = new PoisonService(sql, entryRepo);
   const ttlExpiryJob = new TtlExpiryJob(sql, entryRepo);
@@ -54,7 +56,7 @@ export async function startMcpServer(): Promise<void> {
 
   const ctx = {
     sql, repoRoot, entryRepo, evidenceRepo, contradictionRepo, observationRepo,
-    retrievalEngine, quarantineService, contradictionService, poisonService,
+    retrievalEngine, quarantineService, promotionService, contradictionService, poisonService,
     ttlExpiryJob, revalidationJob, invalidationOrchestrator,
     backendVersion: BACKEND_VERSION,
   };

@@ -52,8 +52,56 @@ export async function handleToolCall(name: string, args: Args, ctx: McpContext):
     case "memory_review": return handleReview(args, ctx);
     case "memory_resolve_contradiction": return handleResolveContradiction(args, ctx);
     case "memory_merge_duplicates": return handleMergeDuplicates(args, ctx);
+    case "memory_propose": return handlePropose(args, ctx);
+    case "memory_promote": return handlePromote(args, ctx);
+    case "memory_deprecate": return handleDeprecate(args, ctx);
+    case "memory_prune": return handlePrune(args, ctx);
     default: return err(`Unknown tool: ${name}`);
   }
+}
+
+async function handlePropose(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const result = await ctx.promotionService.propose({
+    type: args.type as MemoryType,
+    title: args.title as string,
+    summary: args.summary as string,
+    details: args.details as string | undefined,
+    scope: args.scope as import("../types.js").MemoryScope,
+    impactLevel: args.impactLevel as ImpactLevel,
+    knowledgeClass: args.knowledgeClass as KnowledgeClass,
+    embeddingText: args.embeddingText as string,
+    createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
+    source: args.source as string,
+    confidence: args.confidence as number,
+  });
+  return ok(result);
+}
+
+async function handlePromote(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const result = await ctx.promotionService.promote(
+    args.proposalId as string,
+    (args.triggeredBy as string | undefined) ?? "mcp:promote",
+  );
+  return ok(result);
+}
+
+async function handleDeprecate(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const result = await ctx.promotionService.deprecate(
+    args.id as string,
+    args.reason as string,
+    (args.supersededBy as string | undefined) ?? null,
+    "mcp:deprecate",
+  );
+  return ok(result);
+}
+
+async function handlePrune(args: Args, ctx: McpContext): Promise<CallToolResult> {
+  const result = await ctx.promotionService.prune({
+    archivalAgeDays: args.archivalAgeDays as number | undefined,
+    purgeAgeDays: args.purgeAgeDays as number | undefined,
+    runPurge: (args.runPurge as boolean | undefined) ?? false,
+  });
+  return ok(result);
 }
 
 async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResult> {

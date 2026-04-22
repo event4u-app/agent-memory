@@ -5,6 +5,7 @@ import type { ContradictionRepository } from "../db/repositories/contradiction.r
 import type { ObservationRepository } from "../db/repositories/observation.repository.js";
 import type { RetrievalEngine } from "../retrieval/engine.js";
 import type { QuarantineService } from "../trust/quarantine.service.js";
+import type { PromotionService } from "../trust/promotion.service.js";
 import type { ContradictionService } from "../trust/contradiction.service.js";
 import type { PoisonService } from "../trust/poison.service.js";
 import type { TtlExpiryJob } from "../invalidation/ttl-expiry-job.js";
@@ -20,6 +21,7 @@ export interface McpContext {
   observationRepo: ObservationRepository;
   retrievalEngine: RetrievalEngine;
   quarantineService: QuarantineService;
+  promotionService: PromotionService;
   contradictionService: ContradictionService;
   poisonService: PoisonService;
   ttlExpiryJob: TtlExpiryJob;
