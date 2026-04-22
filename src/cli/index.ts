@@ -9,10 +9,23 @@ import { ContradictionRepository } from "../db/repositories/contradiction.reposi
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
 import {
+	hardInvalidate,
+	softInvalidate,
+} from "../invalidation/invalidation-flows.js";
+import { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
+import { RollbackService } from "../invalidation/rollback.js";
+import {
 	BACKEND_FEATURES,
 	CONTRACT_VERSION,
+	computeEnvelopeStatus,
 	type HealthResponseV1,
+	type RetrieveResponseV1,
+	type SliceSummary,
+	toContractEntry,
 } from "../retrieval/contract.js";
+import { RetrievalEngine } from "../retrieval/engine.js";
+import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import { PoisonService } from "../trust/poison.service.js";
 import { PromotionService } from "../trust/promotion.service.js";
 import { QuarantineService } from "../trust/quarantine.service.js";
 import { DiffImpactValidator } from "../trust/validators/diff-impact.validator.js";
@@ -38,69 +51,305 @@ program
 
 program
 	.command("ingest")
-	.description("Ingest knowledge from a repository or diff")
-	.argument("[path]", "Path to repository or file", ".")
-	.option("--from-diff <range>", "Extract from git diff (e.g., HEAD~1..HEAD)")
-	.option("--dry-run", "Show what would be ingested without storing")
-	.action(async (path, options) => {
-		console.log("🔍 memory ingest — not yet implemented");
-		console.log({ path, ...options });
+	.description(
+		"Create a memory entry in quarantine (one-shot; parity with mcp.memory_ingest)",
+	)
+	.requiredOption("--type <type>", "Memory type (e.g., architecture_decision)")
+	.requiredOption("--title <title>", "Short title")
+	.requiredOption("--summary <summary>", "One-paragraph summary")
+	.option("--details <details>", "Optional long-form details")
+	.requiredOption("--repository <repository>", "Repository identifier")
+	.option("--file <path>", "File in scope (repeatable)", collect, [])
+	.option("--symbol <symbol>", "Symbol in scope (repeatable)", collect, [])
+	.option("--module <module>", "Module in scope (repeatable)", collect, [])
+	.option(
+		"--impact <level>",
+		"Impact level (critical|high|normal|low)",
+		"normal",
+	)
+	.option(
+		"--knowledge-class <class>",
+		"Knowledge class (evergreen|semi_stable|volatile)",
+		"semi_stable",
+	)
+	.option("--created-by <actor>", "Caller identifier", "cli:ingest")
+	.action(async (options) => {
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			const entry = await entryRepo.create({
+				type: options.type as MemoryType,
+				title: options.title,
+				summary: options.summary,
+				details: options.details,
+				scope: {
+					repository: options.repository,
+					files: options.file,
+					symbols: options.symbol,
+					modules: options.module,
+				},
+				impactLevel: options.impact as ImpactLevel,
+				knowledgeClass: options.knowledgeClass as KnowledgeClass,
+				embeddingText: `${options.title}\n${options.summary}`,
+				createdBy: options.createdBy,
+			});
+			console.log(
+				JSON.stringify(
+					{
+						id: entry.id,
+						status: "quarantine",
+						message: "Entry created. Needs validation.",
+					},
+					null,
+					2,
+				),
+			);
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
 	.command("retrieve")
-	.description("Query memory for relevant knowledge")
+	.description("Query memory for relevant knowledge (contract v1 envelope)")
 	.argument("<query>", "Natural language query")
-	.option("--layer <n>", "Disclosure layer: 1=index, 2=timeline, 3=full", "1")
+	.option("--layer <n>", "Disclosure layer (1|2|3 or L1|L2|L3)", "2")
 	.option("--budget <tokens>", "Max token budget", "2000")
-	.option("--low-trust", "Include low-trust entries (⚠️ marker)")
-	.option("--type <type>", "Filter by memory type")
-	.option("--module <module>", "Filter by module")
+	.option("--limit <n>", "Max result count")
+	.option("--low-trust", "Include low-trust entries (lower threshold, marked)")
+	.option("--type <type>", "Filter by memory type (repeatable)", collect, [])
+	.option("--repository <id>", "Filter by repository")
 	.action(async (query, options) => {
-		console.log("🔍 memory retrieve — not yet implemented");
-		console.log({ query, ...options });
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			const engine = new RetrievalEngine(sql);
+			const validated = await entryRepo.findByStatus("validated");
+			const stale = await entryRepo.findByStatus("stale");
+			const allEntries = [...validated, ...stale];
+			const level = parseLevel(options.layer);
+			const typeFilter = options.type as MemoryType[];
+			const filters: { repository?: string; types?: MemoryType[] } = {};
+			if (options.repository) filters.repository = options.repository;
+			if (typeFilter.length > 0) filters.types = typeFilter;
+			const result = await engine.retrieve(allEntries, {
+				query,
+				level,
+				tokenBudget: Number.parseInt(options.budget, 10),
+				limit: options.limit ? Number.parseInt(options.limit, 10) : undefined,
+				filters: Object.keys(filters).length > 0 ? filters : undefined,
+				lowTrustMode: !!options.lowTrust,
+			});
+			const contractEntries = result.entries.map((e) => toContractEntry(e));
+			const slices: Record<string, SliceSummary> = {};
+			if (typeFilter.length > 0) {
+				for (const t of typeFilter) {
+					slices[t] = {
+						status: "ok",
+						count: contractEntries.filter((e) => e.type === t).length,
+					};
+				}
+			} else {
+				slices["*"] = { status: "ok", count: contractEntries.length };
+			}
+			const envelope: RetrieveResponseV1 = {
+				contract_version: CONTRACT_VERSION,
+				status: computeEnvelopeStatus(slices, contractEntries.length),
+				entries: contractEntries,
+				slices,
+				errors: [],
+			};
+			console.log(
+				JSON.stringify({ ...envelope, metadata: result.metadata }, null, 2),
+			);
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
 	.command("validate")
-	.description("Validate a specific memory entry against current code")
+	.description("Run validators against a quarantined entry")
 	.argument("<id>", "Memory entry ID")
-	.action(async (id) => {
-		console.log("✅ memory validate — not yet implemented");
-		console.log({ id });
+	.option("--triggered-by <actor>", "Caller identifier", "cli:validate")
+	.action(async (id, options) => {
+		try {
+			const service = buildQuarantineService();
+			const result = await service.validateEntry(id, options.triggeredBy);
+			console.log(JSON.stringify(result, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
 	.command("invalidate")
-	.description("Mark entries as stale or invalidated")
-	.option(
-		"--from-git-diff",
-		"Invalidate entries affected by recent git changes",
+	.description(
+		"Mark entries as stale or rejected (soft/hard or git-diff sweep)",
 	)
 	.option("--entry <id>", "Invalidate a specific entry")
 	.option("--hard", "Hard invalidation (entry is completely wrong)")
+	.option("--reason <text>", "Reason for invalidation", "cli:invalidate")
+	.option(
+		"--from-git-diff",
+		"Run git-diff invalidation orchestrator (sweeps all affected entries)",
+	)
+	.option("--from-ref <ref>", "Git ref to compare from (with --from-git-diff)")
+	.option(
+		"--since <date>",
+		"Alternative to --from-ref — ISO date (with --from-git-diff)",
+	)
+	.option("--triggered-by <actor>", "Caller identifier", "cli:invalidate")
 	.action(async (options) => {
-		console.log("❌ memory invalidate — not yet implemented");
-		console.log(options);
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			if (options.fromGitDiff) {
+				const evidenceRepo = new EvidenceRepository(sql);
+				const repoRoot = process.env.REPO_ROOT ?? process.cwd();
+				const orchestrator = new InvalidationOrchestrator(
+					sql,
+					entryRepo,
+					evidenceRepo,
+				);
+				const result = await orchestrator.run({
+					root: repoRoot,
+					fromRef: options.fromRef,
+					sinceDate: options.since,
+				});
+				console.log(JSON.stringify(result, null, 2));
+			} else if (options.entry) {
+				const result = options.hard
+					? await hardInvalidate(
+							options.entry,
+							options.reason,
+							entryRepo,
+							options.triggeredBy,
+						)
+					: await softInvalidate(
+							options.entry,
+							options.reason,
+							entryRepo,
+							options.triggeredBy,
+						);
+				console.log(JSON.stringify(result, null, 2));
+			} else {
+				throw new Error("Provide either --entry <id> or --from-git-diff");
+			}
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
 	.command("poison")
-	.description("Mark an entry as confirmed wrong — triggers cascade review")
+	.description("Mark an entry as poisoned — cascade review + rollback report")
 	.argument("<id>", "Memory entry ID")
 	.argument("<reason>", "Why this entry is wrong")
-	.action(async (id, reason) => {
-		console.log("☠️ memory poison — not yet implemented");
-		console.log({ id, reason });
+	.option("--triggered-by <actor>", "Caller identifier", "cli:poison")
+	.action(async (id, reason, options) => {
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			const poisonService = new PoisonService(sql, entryRepo);
+			const rollback = new RollbackService(sql, poisonService);
+			const report = await rollback.poisonAndReport(
+				id,
+				reason,
+				options.triggeredBy,
+			);
+			console.log(JSON.stringify(report, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
 	.command("verify")
-	.description("Trace a memory entry back to its source evidence")
+	.description(
+		"Trace a memory entry to its evidence, contradictions, and audit trail",
+	)
 	.argument("<id>", "Memory entry ID")
 	.action(async (id) => {
-		console.log("🔗 memory verify — not yet implemented");
-		console.log({ id });
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			const evidenceRepo = new EvidenceRepository(sql);
+			const contradictionRepo = new ContradictionRepository(sql);
+			const entry = await entryRepo.findById(id);
+			if (!entry) throw new Error(`Entry not found: ${id}`);
+			const evidence = await evidenceRepo.findByEntryId(id);
+			const contradictions = await contradictionRepo.findByEntryId(id);
+			const history = await sql`
+				SELECT from_status, to_status, reason, triggered_by, created_at
+				FROM memory_status_history WHERE memory_entry_id = ${id}
+				ORDER BY created_at DESC LIMIT 20
+			`;
+			console.log(
+				JSON.stringify(
+					{
+						entry: {
+							id: entry.id,
+							title: entry.title,
+							type: entry.type,
+							status: entry.trust.status,
+							trustScore: entry.trust.score,
+						},
+						evidence: evidence.map((e) => ({
+							id: e.id,
+							kind: e.kind,
+							ref: e.ref,
+							verified: !!e.verifiedAt,
+						})),
+						contradictions: contradictions.map((c) => ({
+							id: c.id,
+							resolved: !!c.resolvedAt,
+						})),
+						statusHistory: history.map((h) => ({
+							from: h.from_status,
+							to: h.to_status,
+							reason: h.reason,
+							by: h.triggered_by,
+							at: h.created_at,
+						})),
+					},
+					null,
+					2,
+				),
+			);
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
 program
@@ -260,12 +509,32 @@ program
 
 program
 	.command("diagnose")
-	.description("Identify issues: stale entries, contradictions, low trust")
-	.action(async () => {
-		console.log("🩺 memory diagnose — not yet implemented");
+	.description("Identify issues: stale entries, low-trust entries")
+	.option("--max-results <n>", "Max entries per category", "10")
+	.action(async (options) => {
+		try {
+			const sql = getDb();
+			const max = Number.parseInt(options.maxResults, 10);
+			const staleEntries = await sql`
+				SELECT id, title, impact_level FROM memory_entries
+				WHERE trust_status = 'stale' LIMIT ${max}
+			`;
+			const lowTrustEntries = await sql`
+				SELECT id, title, trust_score FROM memory_entries
+				WHERE trust_status = 'validated' AND trust_score < 0.4 LIMIT ${max}
+			`;
+			console.log(JSON.stringify({ staleEntries, lowTrustEntries }, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
 	});
 
-function buildPromotionService(): PromotionService {
+function buildQuarantineService(): QuarantineService {
 	const sql = getDb();
 	const entryRepo = new MemoryEntryRepository(sql);
 	const evidenceRepo = new EvidenceRepository(sql);
@@ -277,13 +546,32 @@ function buildPromotionService(): PromotionService {
 		new DiffImpactValidator(repoRoot),
 		new TestLinkedValidator(repoRoot),
 	];
-	const quarantine = new QuarantineService(
+	return new QuarantineService(
 		entryRepo,
 		evidenceRepo,
 		contradictionRepo,
 		validators,
 	);
+}
+
+function buildPromotionService(): PromotionService {
+	const sql = getDb();
+	const entryRepo = new MemoryEntryRepository(sql);
+	const quarantine = buildQuarantineService();
 	return new PromotionService(sql, entryRepo, quarantine);
+}
+
+function parseLevel(input: string): DisclosureLevel {
+	const normalized = input.toLowerCase();
+	if (normalized === "l1" || normalized === "1" || normalized === "index")
+		return "index";
+	if (normalized === "l2" || normalized === "2" || normalized === "timeline")
+		return "timeline";
+	if (normalized === "l3" || normalized === "3" || normalized === "full")
+		return "full";
+	throw new Error(
+		`Invalid layer: ${input}. Expected 1|2|3 or L1|L2|L3 or index|timeline|full.`,
+	);
 }
 
 async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
