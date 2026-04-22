@@ -70,3 +70,26 @@ jobs:
 
       - name: Scan AGENTS.md + copilot-instructions.md for foreign-project leakage
         run: npm run check:portability
+
+  link-check:
+    name: Link checker (P4-4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lychee — fail on any broken relative or external link
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config lychee.toml
+            README.md
+            AGENTS.md
+            docs
+            examples
+            agents/roadmaps/improve-setup.md
+            .github/copilot-instructions.md
+          fail: true
+        env:
+          # Raise the rate limit for GitHub anchor checks; lychee falls
+          # back to anonymous requests otherwise and hits 60-req/h.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
