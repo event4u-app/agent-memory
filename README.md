@@ -38,6 +38,19 @@ Point your MCP client at the sidecar with `command: docker`,
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
 - **Privacy filter** — strips secrets, API keys, PII before anything hits the DB.
 
+## Integrate with your project
+
+Pick the guide that matches your stack — each is a full-stack setup,
+not a reference card.
+
+| Stack | Guide | Runnable example |
+|---|---|---|
+| PHP / Laravel (any language, really) | [`docs/consumer-setup-php.md`](docs/consumer-setup-php.md) | [`examples/php-laravel-sidecar/`](examples/php-laravel-sidecar/) |
+| Node / TypeScript | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | [`examples/node-programmatic/`](examples/node-programmatic/) |
+
+Both examples boot with a single `docker compose up -d` and end with
+a working `memory health → status: ok`.
+
 ## Installation
 
 ### As a dependency
