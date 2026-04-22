@@ -192,6 +192,29 @@ List stale entries, low-trust entries, and known contradictions.
 memory diagnose --max-results 20
 ```
 
+### `doctor`
+
+Self-diagnosing environment check. Verifies `DATABASE_URL` is reachable,
+the `pgvector` extension is installed, all migrations are applied, and
+(optionally) `@event4u/agent-config` symlinks are intact.
+
+Writes a human-readable summary to stderr and a JSON report to stdout.
+Exit code: **0** if healthy or warnings-only, **1** if any check fails.
+
+```bash
+memory doctor                 # human summary on stderr + JSON on stdout
+memory doctor --json          # JSON only (no stderr summary)
+memory doctor | jq '.status'  # → "healthy" | "warnings" | "unhealthy"
+```
+
+Checks:
+
+- `env.DATABASE_URL` — explicit env var vs. dev default
+- `db.connect` — TCP + auth against Postgres
+- `db.pgvector` — extension present and version
+- `db.migrations` — every migration in `memory_migrations`
+- `agent-config` — optional; symlinks under `.augment/commands/`
+
 ## Pattern: piping
 
 Every command emits JSON — compose with `jq`:
@@ -224,6 +247,20 @@ memory diagnose [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--max-results <n>` | no | `10` | Max entries per category |
+
+### `doctor`
+
+Diagnose environment: DATABASE_URL, pgvector, migrations, agent-config
+
+```bash
+memory doctor [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--json` | no | off | Emit JSON only (no human summary on stderr) |
 
 ### `health`
 
