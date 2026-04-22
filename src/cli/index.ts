@@ -598,6 +598,46 @@ program
 	});
 
 program
+	.command("serve")
+	.description(
+		"Long-running supervisor for container deployments — runs migrations, then idles until SIGTERM (see ADR-0002)",
+	)
+	.action(async () => {
+		// Supervisor mode: logs belong on stderr; stdout stays quiet for
+		// operators tailing container output.
+		process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
+		const { runMigrations } = await import("../db/migrate.js");
+		const { logger } = await import("../utils/logger.js");
+
+		try {
+			const result = await runMigrations();
+			logger.info(
+				{ applied: result.applied, skipped: result.skipped.length },
+				"serve: migrations up-to-date",
+			);
+		} catch (err) {
+			logger.error({ err }, "serve: migrations failed — continuing, retry with 'memory migrate'");
+		}
+
+		const shutdown = async (signal: NodeJS.Signals) => {
+			logger.info({ signal }, "serve: shutting down");
+			try {
+				await closeDb();
+			} catch (err) {
+				logger.warn({ err }, "serve: error closing database pool");
+			}
+			process.exit(0);
+		};
+		process.on("SIGTERM", () => void shutdown("SIGTERM"));
+		process.on("SIGINT", () => void shutdown("SIGINT"));
+
+		logger.info("serve: supervisor ready — awaiting SIGTERM");
+		// Park forever. Replace with a heartbeat / scheduler tick in a
+		// later release when in-process timers land (ADR-0002 non-goal).
+		await new Promise<void>(() => {});
+	});
+
+program
 	.command("mcp")
 	.description("Start the MCP stdio server (for agent clients)")
 	.action(async () => {

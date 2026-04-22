@@ -68,5 +68,9 @@ ENV NODE_ENV=production \
 # Entrypoint wraps the command in docker-entrypoint.sh which runs
 # `memory migrate` on startup (idempotent) before exec'ing the CMD.
 # Disable with MEMORY_AUTO_MIGRATE=false.
+#
+# Default CMD is `memory serve` — a supervisor loop (ADR-0002) that
+# keeps the container alive with a real Node process. Consumers still
+# spawn `memory mcp` and other CLI calls via `docker compose exec`.
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
-CMD ["memory", "mcp"]
+CMD ["memory", "serve"]

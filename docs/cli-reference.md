@@ -454,6 +454,14 @@ memory rollback <id> [options]
 | `--reason <text>` | no | `Rolled back via CLI` | Why this entry is being rolled back |
 | `--triggered-by <actor>` | no | `cli:rollback` | Caller identifier |
 
+### `serve`
+
+Long-running supervisor for container deployments — runs migrations, then idles until SIGTERM (see ADR-0002)
+
+```bash
+memory serve
+```
+
 ### `status`
 
 Feature detection for consumers — prints present | absent | misconfigured

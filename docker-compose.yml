@@ -49,14 +49,11 @@ services:
       # not by overriding this value — the host path does not exist
       # inside the container.
       REPO_ROOT: /workspace
-    # Keep the container alive so consumers spawn `memory mcp` (or any
-    # CLI command) via `docker compose exec -i agent-memory memory …`.
-    # Running the stdio MCP server as the long-lived process would idle
-    # on stdin without a client and complicate signal forwarding.
-    # The image's default entrypoint (docker-entrypoint.sh) runs
-    # `memory migrate` on startup — idempotent; opt out with
-    # MEMORY_AUTO_MIGRATE=false.
-    command: ["tail", "-f", "/dev/null"]
+    # The image's default command is `memory serve` — a supervisor
+    # loop (ADR-0002) that runs migrations on startup and parks on
+    # SIGTERM. Consumers still spawn `memory mcp` (and any other CLI
+    # command) via `docker compose exec -i agent-memory memory …`.
+    # Opt out of auto-migrate with MEMORY_AUTO_MIGRATE=false.
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s

@@ -72,8 +72,9 @@ services:
       DATABASE_URL: postgresql://memory:memory_dev@agent-memory-postgres:5432/agent_memory
       REPO_ROOT: /workspace
     volumes: [ ".:/workspace:ro" ]    # read-only host mount for file validators
-    entrypoint: ["/sbin/tini", "--"]
-    command: ["tail", "-f", "/dev/null"]
+    # Image default: `memory serve` — supervisor loop that runs
+    # migrations on startup (ADR-0002). Opt out with
+    # MEMORY_AUTO_MIGRATE=false. No `command:` override needed.
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s

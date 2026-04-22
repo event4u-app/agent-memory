@@ -41,9 +41,8 @@ services:
       REPO_ROOT: /workspace
     volumes:
       - .:/workspace:ro
-    # Image default entrypoint runs `memory migrate` on startup
-    # (idempotent; opt out via MEMORY_AUTO_MIGRATE=false).
-    command: ["tail", "-f", "/dev/null"]
+    # Image default CMD is `memory serve` (ADR-0002) — supervisor loop
+    # that auto-runs migrations (opt out via MEMORY_AUTO_MIGRATE=false).
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s
