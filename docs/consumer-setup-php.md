@@ -119,7 +119,7 @@ and is safe to call from anywhere `docker` is available.
 // From any PHP code, e.g. a Laravel service:
 $process = new \Symfony\Component\Process\Process([
     'docker', 'compose', 'exec', '-T', 'agent-memory',
-    'memory', 'retrieve', '--query', 'how do invoices work?',
+    'memory', 'retrieve', 'how do invoices work?',
     '--type', 'architecture_decision', '--limit', '5',
 ]);
 $process->mustRun();
