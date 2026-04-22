@@ -8,6 +8,11 @@
   "bin": {
     "memory": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/cli/index.ts",
