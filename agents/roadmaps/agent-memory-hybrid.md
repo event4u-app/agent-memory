@@ -987,9 +987,9 @@ Prove the system on a real project.
 
 ### Prerequisites (from `agent-config` spec: `road-to-agents-md-fix.md`)
 
-- [ ] Fix AGENTS.md: remove all Laravel/Galawork references, replace with TypeScript/Node/pgvector stack
-- [ ] AGENTS.md describes: package layout, npm scripts, public API surface, Postgres setup, relationship to agent-config
-- [ ] Add "what this repo is NOT" section (not an application, not a UI, not a dataset)
+- [x] Fix AGENTS.md: remove all Laravel/Galawork references, replace with TypeScript/Node/pgvector stack
+- [x] AGENTS.md describes: package layout, npm scripts, public API surface, Postgres setup, relationship to agent-config
+- [x] Add "what this repo is NOT" section (not an application, not a UI, not a dataset)
 
 ### Checklist
 
@@ -1125,11 +1125,11 @@ They have been integrated into the phases above. The original specs are preserve
 
 | Spec | Integrated Into | Status |
 |---|---|---|
-| `road-to-retrieval-contract.md` | Phase 3 (Retrieval Contract) | New checklist items |
-| `road-to-promotion-flow.md` | Phase 4 (Promotion Flow) | New checklist items |
-| `road-to-decay-calibration.md` | Phase 4 (Decay Calibration) | New checklist items |
-| `road-to-consumer-integration-guide.md` | Phase 7 (Consumer Integration) | New checklist items |
-| `road-to-agents-md-fix.md` | Phase 10 (Prerequisites) | AGENTS.md fix before pilot |
+| `road-to-retrieval-contract.md` | Phase 3 (Retrieval Contract) | ✅ Implemented — `src/retrieval/contract.ts`, schemas + 20 conformance tests |
+| `road-to-promotion-flow.md` | Phase 4 (Promotion Flow) | ✅ Implemented — `src/trust/promotion.service.ts` + 4 MCP tools |
+| `road-to-decay-calibration.md` | Phase 4 (Decay Calibration) | ✅ Implemented — `src/trust/decay.ts` + per-type overrides + 14 tests |
+| `road-to-consumer-integration-guide.md` | Phase 7 (Consumer Integration) | ✅ Implemented — `memory status` + `memory health` CLI with contract envelopes |
+| `road-to-agents-md-fix.md` | Phase 10 (Prerequisites) | ✅ Done — AGENTS.md rewritten for TS/Node/pgvector stack |
 | `road-to-cross-project-learning.md` | V2 Possibilities | Deferred — requires 2+ production consumers |
 
 ## Notes
