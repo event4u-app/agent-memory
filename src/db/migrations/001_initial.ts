@@ -43,10 +43,13 @@ export async function up(sql: postgres.Sql): Promise<void> {
     )
   `;
 
-  // Dedup index for observations (SHA-256 hash + time window)
+  // Dedup index for observations (SHA-256 hash + time window).
+  // NOTE: `created_at::date` is not IMMUTABLE in PG17+ because the session
+  // TimeZone can influence the result. Casting through UTC first yields an
+  // IMMUTABLE expression that PG accepts in an index.
   await sql`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_hash_window
-    ON memory_observations (hash, (created_at::date))
+    ON memory_observations (hash, ((created_at AT TIME ZONE 'UTC')::date))
   `;
 
   // Episodes — Episodic Memory (session summaries)
