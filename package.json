@@ -37,6 +37,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:rollback": "tsx src/db/rollback.ts",
     "mcp:start": "tsx src/mcp/server.ts",
+    "docs:cli": "tsx scripts/generate-cli-docs.ts",
+    "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
     "prepare": "npm run build",
     "postinstall": "bash scripts/postinstall.sh"
   },

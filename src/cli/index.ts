@@ -3,6 +3,7 @@
 // Must happen before any import that touches the logger (config/db).
 process.env.LOG_LEVEL ??= "silent";
 
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
@@ -668,4 +669,10 @@ program
 		}
 	});
 
-program.parse();
+// Only parse argv when invoked as a script. The generator in
+// scripts/generate-cli-docs.ts imports `program` to introspect commands.
+if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+	program.parse();
+}
+
+export { program };
