@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type postgres from "postgres";
+import postgres from "postgres";
 import { logger } from "../utils/logger.js";
 import { closeDb, getDb } from "./connection.js";
 import { up as up001 } from "./migrations/001_initial.js";
@@ -15,16 +15,50 @@ export interface MigrationResult {
 	skipped: string[];
 }
 
-/**
- * Run all pending migrations.
- *
- * Caller owns the connection lifecycle — this function does NOT close the
- * passed / shared `sql` instance. Use this from the CLI (`memory migrate`),
- * container entrypoints (auto-migrate), or tests.
- */
-export async function runMigrations(sql?: postgres.Sql): Promise<MigrationResult> {
-	const db = sql ?? getDb();
+export interface RunMigrationsOptions {
+	/**
+	 * Existing `postgres.Sql` instance. Lifecycle owned by the caller —
+	 * this function will not close it. Takes precedence over `databaseUrl`.
+	 */
+	sql?: postgres.Sql;
+	/**
+	 * Custom database URL. When provided (and no `sql`), opens a dedicated
+	 * connection for this run and closes it on completion. Useful for
+	 * scripts and tests that do not want to pollute the shared `getDb()`
+	 * connection pool.
+	 */
+	databaseUrl?: string;
+}
 
+/**
+ * Run all pending migrations. Idempotent — already-applied migrations are
+ * skipped.
+ *
+ * Use this from the CLI (`memory migrate`), container entrypoints
+ * (auto-migrate), consumer setup scripts, or tests. Exported from the
+ * package root as the stable programmatic entry point.
+ */
+export async function runMigrations(opts: RunMigrationsOptions = {}): Promise<MigrationResult> {
+	if (opts.sql) {
+		return executeMigrations(opts.sql);
+	}
+	if (opts.databaseUrl) {
+		const sql = postgres(opts.databaseUrl, {
+			max: 5,
+			idle_timeout: 10,
+			connect_timeout: 10,
+			onnotice: () => {},
+		});
+		try {
+			return await executeMigrations(sql);
+		} finally {
+			await sql.end();
+		}
+	}
+	return executeMigrations(getDb());
+}
+
+async function executeMigrations(db: postgres.Sql): Promise<MigrationResult> {
 	const tableExists = await db`
 		SELECT EXISTS (
 			SELECT FROM information_schema.tables
