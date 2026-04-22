@@ -8,6 +8,7 @@ import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
+import { buildEmbeddingChain } from "../embedding/index.js";
 import {
 	hardInvalidate,
 	softInvalidate,
@@ -137,8 +138,11 @@ program
 			const filters: { repository?: string; types?: MemoryType[] } = {};
 			if (options.repository) filters.repository = options.repository;
 			if (typeFilter.length > 0) filters.types = typeFilter;
+			const chain = buildEmbeddingChain();
+			const { vector: queryEmbedding } = await chain.embed(query);
 			const result = await engine.retrieve(allEntries, {
 				query,
+				queryEmbedding,
 				level,
 				tokenBudget: Number.parseInt(options.budget, 10),
 				limit: options.limit ? Number.parseInt(options.limit, 10) : undefined,
@@ -279,6 +283,49 @@ program
 				options.triggeredBy,
 			);
 			console.log(JSON.stringify(report, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
+	});
+
+program
+	.command("rollback")
+	.description(
+		"Roll back a poisoned entry — report affected tasks + cascaded entries",
+	)
+	.argument("<id>", "Memory entry ID to roll back")
+	.option(
+		"--reason <text>",
+		"Why this entry is being rolled back",
+		"Rolled back via CLI",
+	)
+	.option("--triggered-by <actor>", "Caller identifier", "cli:rollback")
+	.action(async (id, options) => {
+		try {
+			const sql = getDb();
+			const entryRepo = new MemoryEntryRepository(sql);
+			const poisonService = new PoisonService(sql, entryRepo);
+			const rollback = new RollbackService(sql, poisonService);
+			const report = await rollback.poisonAndReport(
+				id,
+				options.reason,
+				options.triggeredBy,
+			);
+			const output = {
+				rolledBackEntryId: report.poisonedEntryId,
+				cascadedEntryIds: report.cascadedEntryIds,
+				affectedTasks: report.affectedTasks,
+				summary: {
+					cascadedCount: report.cascadedEntryIds.length,
+					taskCount: report.affectedTasks.length,
+				},
+			};
+			console.log(JSON.stringify(output, null, 2));
 			await closeDb();
 			process.exit(0);
 		} catch (error) {
