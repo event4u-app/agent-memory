@@ -1,12 +1,7 @@
 import type { Sql } from "postgres";
 import { shouldRefreshOnHit } from "../trust/decay.js";
 import { applyExpiryFilter } from "../trust/expiry.js";
-import type {
-	ConsolidationTier,
-	MemoryEntry,
-	MemoryType,
-	TrustStatus,
-} from "../types.js";
+import type { ConsolidationTier, MemoryEntry, MemoryType, TrustStatus } from "../types.js";
 import { logger } from "../utils/logger.js";
 import { BM25Scorer } from "./bm25.js";
 import {
@@ -17,7 +12,7 @@ import {
 	type L3FullEntry,
 	project,
 } from "./progressive-disclosure.js";
-import { type FusionResult, rrfFuse } from "./rrf-fusion.js";
+import { rrfFuse } from "./rrf-fusion.js";
 import { vectorSearch } from "./vector-search.js";
 
 // --- Trust-aware ranking weights ---
@@ -117,10 +112,7 @@ export class RetrievalEngine {
 	/**
 	 * Retrieve memory entries matching a query with full trust enforcement.
 	 */
-	async retrieve(
-		allEntries: MemoryEntry[],
-		options: RetrievalOptions,
-	): Promise<RetrievalResponse> {
+	async retrieve(allEntries: MemoryEntry[], options: RetrievalOptions): Promise<RetrievalResponse> {
 		const level = options.level ?? "timeline";
 		const tokenBudget = options.tokenBudget ?? DEFAULT_TOKEN_BUDGET;
 		const limit = options.limit ?? DEFAULT_LIMIT;
@@ -135,11 +127,7 @@ export class RetrievalEngine {
 		const candidates = [...expiryResult.servable, ...expiryResult.staleWarning];
 
 		// 3. Apply metadata filters
-		const filtered = this.applyFilters(
-			candidates,
-			options.filters,
-			trustThreshold,
-		);
+		const filtered = this.applyFilters(candidates, options.filters, trustThreshold);
 
 		// 4. BM25 search
 		const bm25Results = this.bm25.search(options.query, limit * 2);
@@ -153,10 +141,7 @@ export class RetrievalEngine {
 		}
 
 		// 6. RRF fusion
-		const fused = rrfFuse(
-			{ bm25: bm25Results, vector: vectorResults },
-			{ limit },
-		);
+		const fused = rrfFuse({ bm25: bm25Results, vector: vectorResults }, { limit });
 
 		// 7. Resolve fused IDs to full entries, apply trust-aware re-ranking
 		const entryMap = new Map(filtered.map((e) => [e.id, e]));
@@ -216,18 +201,11 @@ export class RetrievalEngine {
 
 			if (!filters) return true;
 
-			if (filters.repository && entry.scope.repository !== filters.repository)
-				return false;
-			if (filters.module && !entry.scope.modules.includes(filters.module))
-				return false;
+			if (filters.repository && entry.scope.repository !== filters.repository) return false;
+			if (filters.module && !entry.scope.modules.includes(filters.module)) return false;
 			if (filters.types && !filters.types.includes(entry.type)) return false;
-			if (filters.tiers && !filters.tiers.includes(entry.consolidationTier))
-				return false;
-			if (
-				filters.excludeStatuses &&
-				filters.excludeStatuses.includes(entry.trust.status)
-			)
-				return false;
+			if (filters.tiers && !filters.tiers.includes(entry.consolidationTier)) return false;
+			if (filters.excludeStatuses?.includes(entry.trust.status)) return false;
 
 			return true;
 		});
@@ -239,18 +217,12 @@ export class RetrievalEngine {
 	 */
 	private computeFinalScore(entry: MemoryEntry, fusionScore: number): number {
 		const trustBoost = entry.trust.score * TRUST_RANKING_WEIGHT;
-		const tierBoost =
-			(TIER_WEIGHT[entry.consolidationTier] ?? 0.5) * TIER_RANKING_WEIGHT;
-		const accessBoost =
-			Math.min(entry.accessCount / 100, 1) * ACCESS_RANKING_WEIGHT;
+		const tierBoost = (TIER_WEIGHT[entry.consolidationTier] ?? 0.5) * TIER_RANKING_WEIGHT;
+		const accessBoost = Math.min(entry.accessCount / 100, 1) * ACCESS_RANKING_WEIGHT;
 
 		// Fusion score is the primary signal (~50%), trust signals are secondary
 		return (
-			fusionScore *
-				(1 -
-					TRUST_RANKING_WEIGHT -
-					ACCESS_RANKING_WEIGHT -
-					TIER_RANKING_WEIGHT) +
+			fusionScore * (1 - TRUST_RANKING_WEIGHT - ACCESS_RANKING_WEIGHT - TIER_RANKING_WEIGHT) +
 			trustBoost +
 			tierBoost +
 			accessBoost
@@ -264,10 +236,7 @@ export class RetrievalEngine {
 	 * per `REFRESH_COOLDOWN_DAYS` — enforced by the caller).
 	 * Non-blocking — errors are logged but don't fail retrieval.
 	 */
-	private async recordAccess(
-		id: string,
-		refreshValidated = false,
-	): Promise<void> {
+	private async recordAccess(id: string, refreshValidated = false): Promise<void> {
 		try {
 			if (refreshValidated) {
 				await this.sql`

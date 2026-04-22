@@ -5,12 +5,7 @@
  * otherwise. Callers rely on dimension stability across a single DB instance.
  */
 
-export type EmbeddingProviderName =
-	| "bm25-only"
-	| "local"
-	| "gemini"
-	| "openai"
-	| "voyage";
+export type EmbeddingProviderName = "bm25-only" | "local" | "gemini" | "openai" | "voyage";
 
 export interface EmbeddingProvider {
 	/** Unique name used in logs + config. */

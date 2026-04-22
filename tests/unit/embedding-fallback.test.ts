@@ -36,31 +36,25 @@ describe("EmbeddingFallbackChain", () => {
 	});
 
 	it("falls through to next provider on persistent failure", async () => {
-		const failing = new FakeActiveProvider(() =>
-			Promise.reject(new Error("down")),
-		);
-		const chain = new EmbeddingFallbackChain(
-			[failing, new Bm25OnlyProvider()],
-			{ retryAttempts: 2, retryBaseDelayMs: 1, circuitFailureThreshold: 1 },
-		);
+		const failing = new FakeActiveProvider(() => Promise.reject(new Error("down")));
+		const chain = new EmbeddingFallbackChain([failing, new Bm25OnlyProvider()], {
+			retryAttempts: 2,
+			retryBaseDelayMs: 1,
+			circuitFailureThreshold: 1,
+		});
 		const { vector, provider } = await chain.embed("q");
 		expect(vector).toEqual([]);
 		expect(provider).toBe("bm25-only");
 	});
 
 	it("breaker prevents retries after threshold is hit", async () => {
-		const failing = new FakeActiveProvider(() =>
-			Promise.reject(new Error("down")),
-		);
-		const chain = new EmbeddingFallbackChain(
-			[failing, new Bm25OnlyProvider()],
-			{
-				retryAttempts: 2,
-				retryBaseDelayMs: 1,
-				circuitFailureThreshold: 1,
-				circuitCooldownMs: 60_000,
-			},
-		);
+		const failing = new FakeActiveProvider(() => Promise.reject(new Error("down")));
+		const chain = new EmbeddingFallbackChain([failing, new Bm25OnlyProvider()], {
+			retryAttempts: 2,
+			retryBaseDelayMs: 1,
+			circuitFailureThreshold: 1,
+			circuitCooldownMs: 60_000,
+		});
 		await chain.embed("q1");
 		const callsAfterFirst = failing.calls;
 		await chain.embed("q2");

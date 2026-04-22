@@ -110,8 +110,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_poison",
-		description:
-			"Mark an entry as confirmed wrong. Triggers cascade review of related entries.",
+		description: "Mark an entry as confirmed wrong. Triggers cascade review of related entries.",
 		inputSchema: {
 			type: "object" as const,
 			properties: {
@@ -123,8 +122,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_verify",
-		description:
-			"Trace an entry back to its source evidence (citation provenance).",
+		description: "Trace an entry back to its source evidence (citation provenance).",
 		inputSchema: {
 			type: "object" as const,
 			properties: { id: { type: "string", description: "Entry ID to verify" } },
@@ -138,8 +136,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_diagnose",
-		description:
-			"Identify issues: stale entries, low trust, unresolved contradictions.",
+		description: "Identify issues: stale entries, low trust, unresolved contradictions.",
 		inputSchema: {
 			type: "object" as const,
 			properties: { maxResults: { type: "number", default: 10 } },
@@ -147,8 +144,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_session_start",
-		description:
-			"Call at session start. Returns relevant context and runs TTL expiry.",
+		description: "Call at session start. Returns relevant context and runs TTL expiry.",
 		inputSchema: {
 			type: "object" as const,
 			properties: {
@@ -166,8 +162,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_observe",
-		description:
-			"Record an observation from tool use (Working Memory). Deduped by content hash.",
+		description: "Record an observation from tool use (Working Memory). Deduped by content hash.",
 		inputSchema: {
 			type: "object" as const,
 			properties: {
@@ -202,8 +197,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	},
 	{
 		name: "memory_session_end",
-		description:
-			"Call at session end. Consolidates Working→Episodic memory and runs revalidation.",
+		description: "Call at session end. Consolidates Working→Episodic memory and runs revalidation.",
 		inputSchema: {
 			type: "object" as const,
 			properties: {

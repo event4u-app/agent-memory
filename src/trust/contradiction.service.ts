@@ -34,7 +34,7 @@ export class ContradictionService {
 		const scope = entry.scope;
 
 		// Build conditions for overlap detection
-		const conditions: string[] = [];
+		const _conditions: string[] = [];
 		const fileOverlap = scope.files.length > 0;
 		const symbolOverlap = scope.symbols.length > 0;
 		const moduleOverlap = scope.modules.length > 0;
@@ -66,9 +66,7 @@ export class ContradictionService {
 	 * Check a new/updated entry for contradictions against existing entries.
 	 * If contradictions found, creates contradiction records and returns them.
 	 */
-	async detectContradictions(
-		entry: MemoryEntry,
-	): Promise<ContradictionCandidate[]> {
+	async detectContradictions(entry: MemoryEntry): Promise<ContradictionCandidate[]> {
 		const overlapping = await this.findOverlapping(entry);
 		const candidates: ContradictionCandidate[] = [];
 
@@ -154,9 +152,7 @@ export class ContradictionService {
 			embeddingText: row.embedding_text,
 			embedding: row.embedding,
 			accessCount: row.access_count,
-			lastAccessedAt: row.last_accessed_at
-				? new Date(row.last_accessed_at)
-				: null,
+			lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : null,
 			createdBy: row.created_by,
 			createdInTask: row.created_in_task,
 			createdAt: new Date(row.created_at),

@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PromotionService } from "../../src/trust/promotion.service.js";
-import type {
-	ImpactLevel,
-	MemoryEntry,
-	MemoryType,
-	PromotionMetadata,
-} from "../../src/types.js";
+import type { ImpactLevel, MemoryEntry, MemoryType, PromotionMetadata } from "../../src/types.js";
 
 function makeEntry(
 	overrides: {
@@ -70,10 +65,7 @@ function makeQuarantine(decision: "validate" | "reject" = "validate") {
 	return {
 		validateEntry: vi.fn().mockResolvedValue({
 			decision,
-			reason:
-				decision === "validate"
-					? "All validators passed"
-					: "Insufficient evidence: 0/1",
+			reason: decision === "validate" ? "All validators passed" : "Insufficient evidence: 0/1",
 			trustScore: decision === "validate" ? 0.8 : 0.1,
 		}),
 	};
@@ -246,11 +238,7 @@ describe("PromotionService — gate criteria", () => {
 			const candidate = makeEntry();
 			const sibling = makeEntry({ id: "entry_existing", status: "validated" });
 			const repo = makeRepo(candidate, sibling);
-			const svc = new PromotionService(
-				sqlStub,
-				repo as never,
-				makeQuarantine() as never,
-			);
+			const svc = new PromotionService(sqlStub, repo as never, makeQuarantine() as never);
 			const res = await svc.promote("entry_1", { skipDuplicateCheck: true });
 			expect(res.status).toBe("validated");
 			expect(repo.findSemanticDuplicate).not.toHaveBeenCalled();

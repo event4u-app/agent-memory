@@ -17,10 +17,7 @@ export interface RetryOptions {
 	name?: string;
 }
 
-export async function withRetry<T>(
-	fn: () => Promise<T>,
-	opts: RetryOptions = {},
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T> {
 	const attempts = opts.attempts ?? 3;
 	const baseDelayMs = opts.baseDelayMs ?? 100;
 	const factor = opts.factor ?? 2;
@@ -49,12 +46,7 @@ export async function withRetry<T>(
 	throw lastErr;
 }
 
-function computeDelay(
-	attempt: number,
-	base: number,
-	factor: number,
-	jitter: boolean,
-): number {
+function computeDelay(attempt: number, base: number, factor: number, jitter: boolean): number {
 	const exp = base * factor ** (attempt - 1);
 	if (!jitter) return exp;
 	const jitterFactor = 0.8 + Math.random() * 0.4;

@@ -1,5 +1,20 @@
+export { type ArchivalResult, purgeArchived, runArchival } from "./archival.js";
+export {
+	listUnresolved,
+	type ResolutionResult,
+	type ResolutionStrategy,
+	resolveContradiction,
+	type UnresolvedContradiction,
+} from "./contradiction-resolution.js";
+export {
+	type DuplicateGroup,
+	findDuplicates,
+	type MergeResult,
+	mergeDuplicates,
+} from "./dedup.js";
+export {
+	diffSnapshots,
+	exportSnapshot,
+	type MemorySnapshot,
+} from "./export.js";
 export { calculateMetrics, type QualityMetrics } from "./metrics.js";
-export { findDuplicates, mergeDuplicates, type DuplicateGroup, type MergeResult } from "./dedup.js";
-export { listUnresolved, resolveContradiction, type UnresolvedContradiction, type ResolutionStrategy, type ResolutionResult } from "./contradiction-resolution.js";
-export { runArchival, purgeArchived, type ArchivalResult } from "./archival.js";
-export { exportSnapshot, diffSnapshots, type MemorySnapshot } from "./export.js";

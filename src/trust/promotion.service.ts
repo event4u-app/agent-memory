@@ -166,9 +166,7 @@ export class PromotionService {
 		const entry = await this.entryRepo.findById(proposalId);
 		if (!entry) throw new Error(`Proposal not found: ${proposalId}`);
 		if (entry.trust.status !== "quarantine") {
-			throw new Error(
-				`Entry ${proposalId} is not in quarantine (status: ${entry.trust.status})`,
-			);
+			throw new Error(`Entry ${proposalId} is not in quarantine (status: ${entry.trust.status})`);
 		}
 
 		// Gate 1: allowed_target_types
@@ -224,10 +222,7 @@ export class PromotionService {
 		}
 
 		// Gate 5+: evidence floor + validators + contradictions (delegated)
-		const summary = await this.quarantine.validateEntry(
-			proposalId,
-			triggeredBy,
-		);
+		const summary = await this.quarantine.validateEntry(proposalId, triggeredBy);
 		if (summary.decision === "validate") {
 			return {
 				id: proposalId,
@@ -252,12 +247,7 @@ export class PromotionService {
 		triggeredBy: string,
 		existingId?: string,
 	): Promise<PromoteResult> {
-		await this.entryRepo.transitionStatus(
-			entry.id,
-			"rejected",
-			reason,
-			triggeredBy,
-		);
+		await this.entryRepo.transitionStatus(entry.id, "rejected", reason, triggeredBy);
 		logger.info(
 			{ proposalId: entry.id, rejection, reason, existingId },
 			"Promotion rejected by gate",
@@ -290,15 +280,8 @@ export class PromotionService {
 	): Promise<DeprecateResult> {
 		const entry = await this.entryRepo.findById(id);
 		if (!entry) throw new Error(`Entry not found: ${id}`);
-		const fullReason = supersededBy
-			? `${reason} (superseded_by=${supersededBy})`
-			: reason;
-		await this.entryRepo.transitionStatus(
-			id,
-			"invalidated",
-			fullReason,
-			triggeredBy,
-		);
+		const fullReason = supersededBy ? `${reason} (superseded_by=${supersededBy})` : reason;
+		await this.entryRepo.transitionStatus(id, "invalidated", fullReason, triggeredBy);
 		logger.info({ id, reason, supersededBy }, "Entry deprecated");
 		return {
 			id,
@@ -313,11 +296,7 @@ export class PromotionService {
 	 * purge (hard delete) after `purgeAgeDays`.
 	 */
 	async prune(policy: PrunePolicy = {}): Promise<PruneResult> {
-		const archival = await runArchival(
-			this.sql,
-			this.entryRepo,
-			policy.archivalAgeDays,
-		);
+		const archival = await runArchival(this.sql, this.entryRepo, policy.archivalAgeDays);
 		let purged = 0;
 		if (policy.runPurge) {
 			const res = await purgeArchived(this.sql, policy.purgeAgeDays);

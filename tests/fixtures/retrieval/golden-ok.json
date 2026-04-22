@@ -1,38 +1,38 @@
 {
-  "contract_version": 1,
-  "status": "ok",
-  "entries": [
-    {
-      "id": "01H7M4NSRBX8C3J2Y9K1V5WDEF",
-      "type": "historical-pattern",
-      "source": "operational",
-      "confidence": 0.82,
-      "trust": 0.74,
-      "body": {
-        "title": "Tenant-scoped query missing WHERE org_id",
-        "summary": "Bug pattern from 3 past incidents",
-        "scope": { "repository": "example-app", "modules": ["billing"] }
-      },
-      "last_validated": "2026-04-21T00:00:00.000Z",
-      "shadowed_by": null
-    },
-    {
-      "id": "01H7M4NSRBX8C3J2Y9K1V5WABC",
-      "type": "ownership",
-      "source": "repo",
-      "confidence": 0.95,
-      "trust": 0.95,
-      "body": {
-        "title": "billing/* owned by @payments-team",
-        "path": "src/billing/**"
-      },
-      "last_validated": "2026-04-20T12:00:00.000Z",
-      "shadowed_by": null
-    }
-  ],
-  "slices": {
-    "historical-pattern": { "status": "ok", "count": 1 },
-    "ownership": { "status": "ok", "count": 1 }
-  },
-  "errors": []
+	"contract_version": 1,
+	"status": "ok",
+	"entries": [
+		{
+			"id": "01H7M4NSRBX8C3J2Y9K1V5WDEF",
+			"type": "historical-pattern",
+			"source": "operational",
+			"confidence": 0.82,
+			"trust": 0.74,
+			"body": {
+				"title": "Tenant-scoped query missing WHERE org_id",
+				"summary": "Bug pattern from 3 past incidents",
+				"scope": { "repository": "example-app", "modules": ["billing"] }
+			},
+			"last_validated": "2026-04-21T00:00:00.000Z",
+			"shadowed_by": null
+		},
+		{
+			"id": "01H7M4NSRBX8C3J2Y9K1V5WABC",
+			"type": "ownership",
+			"source": "repo",
+			"confidence": 0.95,
+			"trust": 0.95,
+			"body": {
+				"title": "billing/* owned by @payments-team",
+				"path": "src/billing/**"
+			},
+			"last_validated": "2026-04-20T12:00:00.000Z",
+			"shadowed_by": null
+		}
+	],
+	"slices": {
+		"historical-pattern": { "status": "ok", "count": 1 },
+		"ownership": { "status": "ok", "count": 1 }
+	},
+	"errors": []
 }

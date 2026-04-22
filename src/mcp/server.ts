@@ -48,24 +48,12 @@ export async function startMcpServer(): Promise<void> {
 		contradictionRepo,
 		validators,
 	);
-	const promotionService = new PromotionService(
-		sql,
-		entryRepo,
-		quarantineService,
-	);
+	const promotionService = new PromotionService(sql, entryRepo, quarantineService);
 	const contradictionService = new ContradictionService(sql, contradictionRepo);
 	const poisonService = new PoisonService(sql, entryRepo);
 	const ttlExpiryJob = new TtlExpiryJob(sql, entryRepo);
-	const revalidationJob = new RevalidationJob(
-		sql,
-		entryRepo,
-		quarantineService,
-	);
-	const invalidationOrchestrator = new InvalidationOrchestrator(
-		sql,
-		entryRepo,
-		evidenceRepo,
-	);
+	const revalidationJob = new RevalidationJob(sql, entryRepo, quarantineService);
+	const invalidationOrchestrator = new InvalidationOrchestrator(sql, entryRepo, evidenceRepo);
 	const embeddingChain = buildEmbeddingChain();
 
 	const server = new Server(
@@ -107,8 +95,7 @@ export async function startMcpServer(): Promise<void> {
 }
 
 const isMainModule =
-	process.argv[1] !== undefined &&
-	fileURLToPath(import.meta.url) === process.argv[1];
+	process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMainModule) {
 	startMcpServer().catch((err) => {

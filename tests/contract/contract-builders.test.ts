@@ -16,9 +16,7 @@ const FIXTURE_DIR = join(process.cwd(), "tests/fixtures/retrieval");
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);
 const validateRetrieval = ajv.compile(
-	JSON.parse(
-		readFileSync(join(FIXTURE_DIR, "retrieval-v1.schema.json"), "utf-8"),
-	),
+	JSON.parse(readFileSync(join(FIXTURE_DIR, "retrieval-v1.schema.json"), "utf-8")),
 );
 const validateHealth = ajv.compile(
 	JSON.parse(readFileSync(join(FIXTURE_DIR, "health-v1.schema.json"), "utf-8")),

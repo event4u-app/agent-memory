@@ -44,10 +44,7 @@ export class CircuitBreaker {
 	}
 
 	get currentState(): CircuitState {
-		if (
-			this.state === "open" &&
-			Date.now() - this.openedAt >= this.cooldownMs
-		) {
+		if (this.state === "open" && Date.now() - this.openedAt >= this.cooldownMs) {
 			this.state = "half-open";
 			logger.info({ breaker: this.name }, "Circuit transitioned to half-open");
 		}

@@ -40,8 +40,7 @@ async function checkEnv(): Promise<DoctorCheck> {
 		return {
 			name: "env.DATABASE_URL",
 			status: "warn",
-			message:
-				"DATABASE_URL not set — falling back to the dev default. Export it in production.",
+			message: "DATABASE_URL not set — falling back to the dev default. Export it in production.",
 			detail: { using: config.database.url.replace(/\/\/.*@/, "//***@") },
 		};
 	}
@@ -186,8 +185,7 @@ function checkAgentConfig(): DoctorCheck {
 			return {
 				name: "agent-config",
 				status: "warn",
-				message:
-					".augment/commands has no symlinks into vendor. Re-run `npm install`.",
+				message: ".augment/commands has no symlinks into vendor. Re-run `npm install`.",
 			};
 		}
 	} catch (err) {
@@ -240,10 +238,7 @@ export async function runDoctor(): Promise<DoctorReport> {
 
 export function renderHuman(report: DoctorReport): string {
 	const icon = { ok: "✅", warn: "⚠️ ", fail: "❌", skip: "⏭️ " } as const;
-	const lines = [
-		`memory doctor — ${report.status.toUpperCase()}`,
-		"─".repeat(48),
-	];
+	const lines = [`memory doctor — ${report.status.toUpperCase()}`, "─".repeat(48)];
 	for (const c of report.checks) {
 		lines.push(`${icon[c.status]}  ${c.name.padEnd(22)} ${c.message}`);
 	}

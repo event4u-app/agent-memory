@@ -1,8 +1,5 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-	CallToolRequestSchema,
-	ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { McpContext } from "./context.js";
 import { TOOL_DEFINITIONS } from "./tool-definitions.js";
 import { handleToolCall } from "./tool-handlers.js";

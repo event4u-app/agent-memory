@@ -6,12 +6,12 @@ import { logger } from "../utils/logger.js";
  * V2: Team-level namespaces, role-based access.
  */
 export interface AccessScope {
-  /** Repository the caller is operating on */
-  repository: string;
-  /** Caller identity (agent ID, user ID, or "anonymous") */
-  callerId: string;
-  /** Optional team namespace for multi-team isolation */
-  teamNamespace?: string;
+	/** Repository the caller is operating on */
+	repository: string;
+	/** Caller identity (agent ID, user ID, or "anonymous") */
+	callerId: string;
+	/** Optional team namespace for multi-team isolation */
+	teamNamespace?: string;
 }
 
 /**
@@ -19,15 +19,19 @@ export interface AccessScope {
  * V1: Simple repository match. V2: team namespace + role checks.
  */
 export function canAccess(callerScope: AccessScope, entryRepository: string): boolean {
-  // Repository-level isolation: caller can only access entries in their repository
-  if (callerScope.repository !== entryRepository) {
-    logger.debug(
-      { caller: callerScope.callerId, callerRepo: callerScope.repository, entryRepo: entryRepository },
-      "Access denied: repository mismatch",
-    );
-    return false;
-  }
-  return true;
+	// Repository-level isolation: caller can only access entries in their repository
+	if (callerScope.repository !== entryRepository) {
+		logger.debug(
+			{
+				caller: callerScope.callerId,
+				callerRepo: callerScope.repository,
+				entryRepo: entryRepository,
+			},
+			"Access denied: repository mismatch",
+		);
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -35,7 +39,7 @@ export function canAccess(callerScope: AccessScope, entryRepository: string): bo
  * V1: Same as canAccess. V2: Could require elevated permissions for poison/invalidate.
  */
 export function canModify(callerScope: AccessScope, entryRepository: string): boolean {
-  return canAccess(callerScope, entryRepository);
+	return canAccess(callerScope, entryRepository);
 }
 
 /**
@@ -43,51 +47,51 @@ export function canModify(callerScope: AccessScope, entryRepository: string): bo
  * Extracts repository + caller identity from the request context.
  */
 export function buildAccessScope(
-  repository: string,
-  callerId = "agent:mcp",
-  teamNamespace?: string,
+	repository: string,
+	callerId = "agent:mcp",
+	teamNamespace?: string,
 ): AccessScope {
-  return { repository, callerId, teamNamespace };
+	return { repository, callerId, teamNamespace };
 }
 
 /**
  * Filter entries to only those accessible by the caller.
  */
 export function filterByScope<T extends { scope: { repository: string } }>(
-  entries: T[],
-  callerScope: AccessScope,
+	entries: T[],
+	callerScope: AccessScope,
 ): T[] {
-  return entries.filter((entry) => canAccess(callerScope, entry.scope.repository));
+	return entries.filter((entry) => canAccess(callerScope, entry.scope.repository));
 }
 
 /**
  * Validate scope fields on ingestion — reject entries with missing/invalid scope.
  */
 export function validateScope(scope: {
-  repository: string;
-  files: string[];
-  symbols: string[];
-  modules: string[];
+	repository: string;
+	files: string[];
+	symbols: string[];
+	modules: string[];
 }): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
+	const errors: string[] = [];
 
-  if (!scope.repository || scope.repository.trim().length === 0) {
-    errors.push("repository is required");
-  }
+	if (!scope.repository || scope.repository.trim().length === 0) {
+		errors.push("repository is required");
+	}
 
-  // Files must be relative paths (no absolute paths, no ..)
-  for (const file of scope.files) {
-    if (file.startsWith("/") || file.startsWith("\\") || file.includes("..")) {
-      errors.push(`Invalid file path: ${file} (must be relative, no ..)`);
-    }
-  }
+	// Files must be relative paths (no absolute paths, no ..)
+	for (const file of scope.files) {
+		if (file.startsWith("/") || file.startsWith("\\") || file.includes("..")) {
+			errors.push(`Invalid file path: ${file} (must be relative, no ..)`);
+		}
+	}
 
-  // Symbols must be non-empty strings
-  for (const symbol of scope.symbols) {
-    if (!symbol || symbol.trim().length === 0) {
-      errors.push("Empty symbol name not allowed");
-    }
-  }
+	// Symbols must be non-empty strings
+	for (const symbol of scope.symbols) {
+		if (!symbol || symbol.trim().length === 0) {
+			errors.push("Empty symbol name not allowed");
+		}
+	}
 
-  return { valid: errors.length === 0, errors };
+	return { valid: errors.length === 0, errors };
 }
