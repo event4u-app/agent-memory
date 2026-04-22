@@ -27,7 +27,7 @@
     "db:migrate:rollback": "tsx src/db/rollback.ts",
     "mcp:start": "tsx src/mcp/server.ts",
     "prepare": "npm run build",
-    "postinstall": "bash node_modules/@event4u/agent-config/scripts/install.sh --quiet"
+    "postinstall": "bash scripts/postinstall.sh"
   },
   "keywords": [
     "agent-memory",
