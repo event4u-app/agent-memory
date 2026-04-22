@@ -25,17 +25,17 @@ the completion checklist at the bottom of this file.
 
 ## Phase overview
 
-| Phase | Theme | Tasks | Blocks downstream? |
+| Phase | Theme | Tasks | Status |
 |---|---|---|---|
-| P0 | Documentation drift reconciliation | 6 | Yes — PHP consumer guide depends on correct CLI |
-| P1 | Ship-hygiene (publishability) | 7 | Yes — image build and npm publish need this |
-| P2 | Docker-first sidecar | 6 | Yes — consumer guide and examples depend on image |
-| P3 | Consumer integration guides | 5 | — |
-| P4 | Maintainability / drift-prevention | 4 | — |
-| P5 | Wow polish (stretch) | 4 | — |
+| P0 | Documentation drift reconciliation | 6/6 | ✅ Done |
+| P1 | Ship-hygiene (publishability) | 7/7 | ✅ Done |
+| P2 | Docker-first sidecar | 6/6 | ✅ Done |
+| P3 | Consumer integration guides | 5/5 | ✅ Done |
+| P4 | Maintainability / drift-prevention | 4/4 | ✅ Done |
+| P5 | Wow polish (stretch) | 4/4 | ✅ Done |
 
-Execute strictly in order P0 → P4. P5 is optional and can be picked up
-any time after P3.
+Executed strictly in order P0 → P5. All phases shipped on
+`feat/improve-setup` (PR #2) with CI green.
 
 ---
 
@@ -43,7 +43,7 @@ any time after P3.
 
 Cheapest, highest immediate value: consumers can actually follow the docs.
 
-### P0-1 · CLI audit — docs vs commander
+### ✅ P0-1 · CLI audit — docs vs commander
 - **Why:** Three confirmed drift points already; full audit needed to
   catch the rest before guides reference them.
 - **Scope:** Produce a side-by-side table of every command in
@@ -52,13 +52,13 @@ Cheapest, highest immediate value: consumers can actually follow the docs.
 - **Done:** Audit table committed or pasted in PR; every row marked
   ✅ match / 🔴 drift with target fix.
 
-### P0-2 · Fix `propose` scenario flag
+### ✅ P0-2 · Fix `propose` scenario flag
 - **Why:** Docs say `--future-scenario`, CLI uses `--scenario` (see
   `src/cli/index.ts` L427).
 - **Scope:** `docs/cli-reference.md` L59, L62, any README mention.
 - **Done:** `grep -n "future-scenario" docs README.md` returns nothing.
 
-### P0-3 · Fix `promote` signature
+### ✅ P0-3 · Fix `promote` signature
 - **Why:** Docs show `memory promote --entry <uuid> --evidence-ref adr-017.md`.
   CLI uses **positional** `<proposal-id>`, has **no** `--entry`, has **no**
   `--evidence-ref` (only `--allowed-type` repeatable and
@@ -67,7 +67,7 @@ Cheapest, highest immediate value: consumers can actually follow the docs.
 - **Done:** Example reads `memory promote <proposal-id> [--allowed-type …]`;
   `--entry` and `--evidence-ref` removed.
 
-### P0-4 · Fix `invalidate --to-ref`
+### ✅ P0-4 · Fix `invalidate --to-ref`
 - **Why:** Docs L94 show `--to-ref HEAD`, which doesn't exist. CLI has
   `--from-ref` and `--since` as alternatives; `to` is implicit HEAD.
 - **Scope:** Remove `--to-ref` from example; add a note that
@@ -75,7 +75,7 @@ Cheapest, highest immediate value: consumers can actually follow the docs.
   alternative to `--from-ref`.
 - **Done:** `grep -n "to-ref" docs/` returns nothing.
 
-### P0-5 · Audit README for the same drift
+### ✅ P0-5 · Audit README for the same drift
 - **Why:** README has its own copy of CLI examples (different wording,
   same risk). Confirmed drift propagates unless audited.
 - **Scope:** Apply P0-2 / P0-3 / P0-4 fixes to README; harmonize
@@ -83,7 +83,7 @@ Cheapest, highest immediate value: consumers can actually follow the docs.
 - **Done:** Cross-grep passes; README points at cli-reference.md for
   the exhaustive list.
 
-### P0-6 · Mark source of truth
+### ✅ P0-6 · Mark source of truth
 - **Why:** Prevent future drift from well-meaning contributors.
 - **Scope:** Add a banner at the top of `docs/cli-reference.md`:
   *"Source of truth: `src/cli/index.ts`. Regenerate with
@@ -97,7 +97,7 @@ Cheapest, highest immediate value: consumers can actually follow the docs.
 Make the package installable from npm, from Git, and from a fresh clone
 without hand-holding.
 
-### P1-1 · Add LICENSE file
+### ✅ P1-1 · Add LICENSE file
 - **Why:** `package.json` declares `"license": "MIT"` but no LICENSE
   file exists. npm and GitHub flag this; some consumers refuse to
   depend on packages without a LICENSE file.
@@ -105,21 +105,21 @@ without hand-holding.
   copyright holder "event4u".
 - **Done:** `ls LICENSE` succeeds; npm pack includes it.
 
-### P1-2 · Add `files` whitelist
+### ✅ P1-2 · Add `files` whitelist
 - **Why:** Currently unset → npm includes everything. Ships unnecessary
   bulk (tests, `.augment/`, `agents/`), and fails for git-installs
   because `dist/` isn't built.
 - **Scope:** `package.json.files = ["dist", "README.md", "LICENSE"]`.
 - **Done:** `npm pack --dry-run` lists only those entries.
 
-### P1-3 · Add `prepare` script
+### ✅ P1-3 · Add `prepare` script
 - **Why:** Git installs (`npm install github:event4u-app/agent-memory`)
   don't have `dist/`. `prepare` runs on install-from-git.
 - **Scope:** `package.json.scripts.prepare = "npm run build"`.
 - **Done:** Git install into a throwaway project yields a working
   `node_modules/@event4u/agent-memory/dist/cli/index.js`.
 
-### P1-4 · Defensive `postinstall`
+### ✅ P1-4 · Defensive `postinstall`
 - **Why:** Current script hard-references
   `node_modules/@event4u/agent-config/scripts/install.sh`. Fails hard
   when consumer hasn't installed agent-config, or in non-Node Docker
@@ -130,13 +130,13 @@ without hand-holding.
 - **Done:** `npm install @event4u/agent-memory` without agent-config
   present exits 0 with an informational log.
 
-### P1-5 · Add `repository`, `homepage`, `bugs`
+### ✅ P1-5 · Add `repository`, `homepage`, `bugs`
 - **Why:** Missing fields hurt npm page, GitHub integration, and Dependabot.
 - **Scope:** Add all three pointing at
   `https://github.com/event4u-app/agent-memory`.
 - **Done:** `npm view` (after publish) shows the metadata.
 
-### P1-6 · Add `exports` map
+### ✅ P1-6 · Add `exports` map
 - **Why:** Consumers importing submodules (e.g. `@event4u/agent-memory/cli`)
   hit no-entry errors. Explicit `exports` also prevents accidental
   imports of internals.
@@ -145,7 +145,7 @@ without hand-holding.
 - **Done:** `import { retrieve } from "@event4u/agent-memory"` resolves;
   internal imports like `@event4u/agent-memory/src/trust` don't.
 
-### P1-7 · `publishConfig.access = public`
+### ✅ P1-7 · `publishConfig.access = public`
 - **Why:** `@event4u/` is a scoped package; npm defaults scoped packages
   to private. First `npm publish` will fail without this.
 - **Scope:** `package.json.publishConfig = { "access": "public" }`.
@@ -157,20 +157,20 @@ without hand-holding.
 
 Goal: consumer runs **one command** and gets a working MCP endpoint.
 
-### P2-1 · Write `Dockerfile`
+### ✅ P2-1 · Write `Dockerfile`
 - **Why:** No Dockerfile today; image can't be published.
 - **Scope:** Multi-stage: `node:20-alpine` builder (npm ci + build) →
   runtime image (only `dist/`, `package.json`, prod deps). Expose nothing
   (stdio MCP) but set `ENTRYPOINT ["node", "dist/cli/index.js"]`.
 - **Done:** `docker build .` succeeds; image under 200 MB.
 
-### P2-2 · Add `.dockerignore`
+### ✅ P2-2 · Add `.dockerignore`
 - **Why:** Avoid shipping `node_modules/`, `tests/`, `agents/`,
   `.augment/`, `.git/`, etc. into the build context.
 - **Scope:** Standard Node `.dockerignore`.
 - **Done:** `docker build` context reported < 5 MB.
 
-### P2-3 · Extend `docker-compose.yml` with `agent-memory` service
+### ✅ P2-3 · Extend `docker-compose.yml` with `agent-memory` service
 - **Why:** Today compose only runs Postgres. Consumers still need a
   local Node setup to boot the MCP server.
 - **Scope:** Add `agent-memory` service pulling the published image
@@ -181,7 +181,7 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** `docker compose up` yields a healthy agent-memory service;
   `docker compose exec agent-memory memory health` returns OK.
 
-### P2-4 · Implement `memory mcp` CLI subcommand
+### ✅ P2-4 · Implement `memory mcp` CLI subcommand
 - **Why:** `npm run mcp:start` is a script, not a first-class command.
   Consumer MCP clients (e.g. Augment in an external project) need a
   stable binary invocation like `memory mcp`.
@@ -191,14 +191,14 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** `memory mcp` starts the stdio MCP server; docs and MCP
   client-config examples use it.
 
-### P2-5 · GH Actions — build & push image
+### ✅ P2-5 · GH Actions — build & push image
 - **Why:** Consumers need `ghcr.io/event4u-app/agent-memory:latest`.
 - **Scope:** Workflow on push to main + tags: build image, push to
   `ghcr.io/event4u-app/agent-memory` with `latest` + `vX.Y.Z` + sha tags.
   Reuse existing repo secrets.
 - **Done:** A tag push produces a public pullable image.
 
-### P2-6 · Document the one-command start
+### ✅ P2-6 · Document the one-command start
 - **Why:** The whole point of this phase.
 - **Scope:** Top of README: a 5-line "Run it" section —
   `curl -O docker-compose.yml && docker compose up`. Link to full
@@ -210,7 +210,7 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 
 ## Phase 3 — Consumer Integration Guides
 
-### P3-1 · `docs/consumer-setup-php.md`
+### ✅ P3-1 · `docs/consumer-setup-php.md`
 - **Why:** The primary external consumer is a PHP/Laravel app using
   `@event4u/agent-config`. They need an end-to-end guide that does NOT
   assume Node knowledge.
@@ -220,13 +220,13 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** A PHP developer who has never touched Node can reproduce
   the setup from scratch.
 
-### P3-2 · `docs/consumer-setup-node.md`
+### ✅ P3-2 · `docs/consumer-setup-node.md`
 - **Why:** Node consumers want programmatic use (import) AND CLI.
 - **Scope:** Install, import signature examples for `retrieve`,
   `propose`, `promote`, `health`; CLI fallback; migration management.
 - **Done:** Sample code compiles with `tsc --strict`.
 
-### P3-3 · `examples/php-laravel-sidecar/`
+### ✅ P3-3 · `examples/php-laravel-sidecar/`
 - **Why:** Copy-pasteable beats prose.
 - **Scope:** Minimal runnable folder — `docker-compose.yml` that
   includes the agent-memory service, a Laravel-style `.env.example`,
@@ -234,13 +234,13 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** From `cd examples/php-laravel-sidecar && docker compose up`
   the stack comes up healthy.
 
-### P3-4 · `examples/node-programmatic/`
+### ✅ P3-4 · `examples/node-programmatic/`
 - **Why:** Same reason, Node side.
 - **Scope:** Minimal Node project with `package.json`, `index.ts`,
   `.env.example`. One retrieve call, one propose call.
 - **Done:** `npm install && npm start` produces JSON output.
 
-### P3-5 · Cross-link from README
+### ✅ P3-5 · Cross-link from README
 - **Why:** Guides are useless if invisible.
 - **Scope:** "Integrate with your project" section linking P3-1/P3-2/
   examples.
@@ -250,7 +250,7 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 
 ## Phase 4 — Maintainability / Drift-Prevention
 
-### P4-1 · CLI doc generator
+### ✅ P4-1 · CLI doc generator
 - **Why:** P0 fixes existing drift; this prevents the next round.
 - **Scope:** `scripts/generate-cli-docs.ts` — walks the Commander
   `program.commands`, emits `docs/cli-reference.md` with a hand-written
@@ -258,14 +258,14 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** `npm run docs:cli && git diff --exit-code docs/cli-reference.md`
   is clean on main.
 
-### P4-2 · CI drift guard
+### ✅ P4-2 · CI drift guard
 - **Why:** P4-1 only helps if it runs.
 - **Scope:** GH Action step in the existing CI: run `npm run docs:cli`,
   fail if the diff is non-empty. Message points reviewers at P4-1.
 - **Done:** A deliberate drift in a sandbox PR fails CI with a clear
   pointer.
 
-### P4-3 · Portability-guard CI
+### ✅ P4-3 · Portability-guard CI
 - **Why:** Prevent re-leakage of foreign-project identifiers (like the
   Laravel leak just removed from `.github/copilot-instructions.md`).
 - **Scope:** CI step running
@@ -274,7 +274,7 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
   `docs/`, `examples/`. Fail on blocklist hits.
 - **Done:** Intentionally adding `laravel` to README fails CI.
 
-### P4-4 · Link-checker in CI
+### ✅ P4-4 · Link-checker in CI
 - **Why:** The docs link to files and anchors; broken links erode trust.
 - **Scope:** Run `lychee` (or equivalent) against all `*.md`. Allow-list
   external URLs that 403 on bots.
@@ -284,14 +284,14 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 
 ## Phase 5 — Wow Polish (stretch, optional)
 
-### P5-1 · `.devcontainer/`
+### ✅ P5-1 · `.devcontainer/`
 - **Why:** Contributors get zero-setup Node 20 + Postgres + pgvector.
 - **Scope:** `devcontainer.json` pulling `node:20`, feature
   `pgvector`, post-create `npm install && npm run db:migrate`.
 - **Done:** "Open in Codespaces" button works end-to-end; tests green
   on first run.
 
-### P5-2 · `memory doctor`
+### ✅ P5-2 · `memory doctor`
 - **Why:** Self-diagnosing beats reading error messages.
 - **Scope:** New CLI command verifying: `DATABASE_URL` reachable,
   `pgvector` extension present, latest migration applied, optional
@@ -300,14 +300,14 @@ Goal: consumer runs **one command** and gets a working MCP endpoint.
 - **Done:** `memory doctor` prints a green report on a healthy setup,
   a machine-readable failure on any broken component.
 
-### P5-3 · 60-second quick-start in README
+### ✅ P5-3 · 60-second quick-start in README
 - **Why:** Marketing value; first-30-second impression decides
   adoption.
 - **Scope:** Top-of-README block: what it is (1 sentence), run it
   (one command), query it (one command), integrate it (one link).
 - **Done:** A cold reader understands the value prop in < 1 minute.
 
-### P5-4 · Asciinema / GIF of the one-command setup
+### ✅ P5-4 · Asciinema / GIF of the one-command setup
 - **Why:** Same reason as P5-3, visual channel.
 - **Scope:** Record a ~40s asciinema (or mp4/gif) of
   `docker compose up` → `memory health` → `memory retrieve "…"`.
