@@ -56,10 +56,10 @@ Like `ingest` but records proposal metadata used by `promote`.
 memory propose --type bug_pattern --title "N+1 on invoice list" \
   --summary "..." --repository my-app \
   --source "incident-42" --confidence 0.7 \
-  --future-scenario "paginated-list" --future-scenario "export"
+  --scenario "paginated-list" --scenario "export"
 ```
 
-Required: `--source --confidence`. Accepts repeatable `--future-scenario`.
+Required: `--source --confidence`. Accepts repeatable `--scenario`.
 
 ### `promote`
 
