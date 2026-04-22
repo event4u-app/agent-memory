@@ -4,9 +4,9 @@
 
 ## Prerequisites
 
-- [ ] Read this roadmap fully before starting
-- [ ] Decide on target repository for the memory service (separate repo)
-- [ ] Decide on programming language (TypeScript recommended)
+- [x] Read this roadmap fully before starting
+- [x] Decide on target repository for the memory service (separate repo) → this repo: `event4u-app/agent-memory`
+- [x] Decide on programming language (TypeScript recommended) → TypeScript (strict, ESM, Node ≥ 20)
 
 ## Context
 
@@ -613,12 +613,12 @@ Store, load, and version memory entries in a structured way.
 - [x] Add `created_in_task` for traceability
 - [x] Add `observation_hash` column → SHA-256 dedup in ObservationRepository
 - [x] Implement status transition rules → `trust/transitions.ts`
-- [ ] Implement TTL expiry check (auto-stale on query if expired)
+- [x] Implement TTL expiry check (auto-stale on query if expired) → `applyExpiryFilter()` in retrieval engine + `ttl-expiry-job.ts`
 - [x] Implement Ebbinghaus decay → `recordAccess()` in MemoryEntryRepository
 - [x] Implement repository / DAO layer → 4 repositories
 - [x] Write unit tests for CRUD operations → 26 tests
 - [x] Write unit tests for status transition enforcement → 15 tests
-- [ ] Write unit tests for consolidation tier promotion rules
+- [x] Write unit tests for consolidation tier promotion rules → `tests/unit/tier-promotion.test.ts` (205 lines)
 
 ### Acceptance Criteria
 
@@ -666,15 +666,15 @@ Find relevant knowledge snippets for the current task.
 
 **Retrieval Contract (from `agent-config` spec: `road-to-retrieval-contract.md`):**
 
-- [ ] Add `contract_version: 1` to every retrieve response envelope
-- [ ] Implement partial-hit semantics: per-slice status (`ok` / `timeout` / `unknown_type` / `misconfigured`)
-- [ ] Return `status: ok | partial | error` on envelope level
-- [ ] Enforce `timeout_ms` budget across concurrent slices (hard ceiling: budget + 100ms)
-- [ ] Implement error codes: `ok`, `timeout`, `unknown_type`, `misconfigured`, `internal`
-- [ ] Implement health contract: `health(timeout_ms)` → `{ contract_version, status, backend_version, features[] }`
-- [ ] Publish JSON schema for retrieval contract v1
-- [ ] Create golden fixture test files for contract conformance
-- [ ] Implement version negotiation: callers pinned to v1 ignore unknown fields from v2+
+- [x] Add `contract_version: 1` to every retrieve response envelope → `src/retrieval/contract.ts`
+- [x] Implement partial-hit semantics: per-slice status (`ok` / `timeout` / `unknown_type` / `misconfigured`) → `SliceStatus`, `SliceSummary`
+- [x] Return `status: ok | partial | error` on envelope level → `computeEnvelopeStatus()`
+- [x] Enforce `timeout_ms` budget across concurrent slices (hard ceiling: budget + 100ms) → enforced via `Promise.race` in retrieve handler
+- [x] Implement error codes: `ok`, `timeout`, `unknown_type`, `misconfigured`, `internal`
+- [x] Implement health contract: `health(timeout_ms)` → `{ contract_version, status, backend_version, features[] }` → `memory_health` MCP + `memory health` CLI
+- [x] Publish JSON schema for retrieval contract v1 → `tests/fixtures/retrieval/retrieval-v1.schema.json` + `health-v1.schema.json`
+- [x] Create golden fixture test files for contract conformance → 5 fixtures + 20 conformance tests
+- [x] Implement version negotiation: callers pinned to v1 ignore unknown fields from v2+ → envelope `additionalProperties: true`, consumer pattern documented in README
 
 ### Acceptance Criteria
 
@@ -720,29 +720,29 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 
 **Decay Calibration (from `agent-config` spec: `road-to-decay-calibration.md`):**
 
-- [ ] Implement per-type decay overrides (not just per-tier):
+- [x] Implement per-type decay overrides (not just per-tier) → `src/trust/decay.ts` `DEFAULT_DECAY_CONFIG.types`:
   - Domain invariant: half-life 365d
   - Ownership: half-life 365d
   - Historical bug pattern: half-life 180d, floor 0.5
   - Incident learning: half-life 90d
   - ADR: no decay (only explicit deprecate)
   - Product rule: half-life 365d
-- [ ] Accept `half_life_days: null` → skip decay arithmetic for matching entries
-- [ ] Implement retrieval-hit refresh: successful retrieval counts as validation (max 1 refresh per entry per 7 days)
-- [ ] Working memory: 2h half-life, hard-drop at session end, not returned via `retrieve()`
-- [ ] Accept decay config from consumer via config override surface
+- [x] Accept `half_life_days: null` → skip decay arithmetic for matching entries → `resolveDecayRule()`
+- [x] Implement retrieval-hit refresh: successful retrieval counts as validation (max 1 refresh per entry per 7 days) → `shouldRefreshOnHit()` wired into `engine.ts` recordAccess
+- [x] Working memory: 2h half-life, hard-drop at session end, not returned via `retrieve()` → `tier-promotion.ts` session-end, tier filter in retrieval
+- [x] Accept decay config from consumer via config override surface → `MEMORY_DECAY_TYPE_OVERRIDES` env JSON + `mergeDecayConfig()`
 
 **Promotion Flow (from `agent-config` spec: `road-to-promotion-flow.md`):**
 
-- [ ] Implement `propose()` API: accepts entry + type + source + confidence → proposal_id
-- [ ] Implement `promote(proposal_id)` with gate criteria:
+- [x] Implement `propose()` API: accepts entry + type + source + confidence → proposal_id → `memory_propose` MCP tool
+- [x] Implement `promote(proposal_id)` with gate criteria → `memory_promote` MCP tool + `PromotionService`:
   - Mandatory fields: id, status, confidence, source, owner, last_validated
   - At least one source reference (incident id, PR, ADR)
   - Impact-level evidence floor satisfied
   - Extraction guard clean at proposal time
   - Non-duplication check against existing semantic entries
-- [ ] Implement `deprecate(id, reason, superseded_by?)` API
-- [ ] Implement `prune(policy)` API → counts of decayed/archived
+- [x] Implement `deprecate(id, reason, superseded_by?)` API → `memory_deprecate` MCP tool
+- [x] Implement `prune(policy)` API → counts of decayed/archived → `memory_prune` MCP tool
 
 ### Acceptance Criteria
 
@@ -901,15 +901,15 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 
 **Consumer Integration (from `agent-config` spec: `road-to-consumer-integration-guide.md`):**
 
-- [ ] Implement feature detection helper: `memory_status` → `present | absent | misconfigured`
+- [x] Implement feature detection helper: `memory_status` → `present | absent | misconfigured` → `memory status` CLI
   - `present`: health() responds within 2s
-  - `absent`: package not installed or not on PATH
+  - `absent`: package not installed or not on PATH (consumer-side shell check)
   - `misconfigured`: installed but health() returns error (typically DB)
-- [ ] Publish reference `docker-compose.yml` snippet for consumer local dev
-- [ ] Publish CI job template for consumers
-- [ ] Ensure CLI is primary V1 contract — MCP wraps CLI, never exposes new surface
-- [ ] Document consumer prerequisites: Postgres 15+, pgvector, connection string in env var
-- [ ] Publish compatibility matrix (agent-memory version ↔ agent-config version) in README
+- [x] Publish reference `docker-compose.yml` snippet for consumer local dev → `examples/consumer-docker-compose.yml`
+- [x] Publish CI job template for consumers → `examples/consumer-ci.yml` (GitHub Actions)
+- [x] Ensure CLI is primary V1 contract — MCP wraps CLI, never exposes new surface → MCP tools map 1:1 to CLI commands via shared handlers
+- [x] Document consumer prerequisites: Postgres 15+, pgvector, connection string in env var → `README.md` Compatibility section
+- [x] Publish compatibility matrix (agent-memory version ↔ agent-config version) in README → `README.md` Compatibility table
 
 ### Acceptance Criteria
 
