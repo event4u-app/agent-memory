@@ -38,6 +38,14 @@
   ],
   "author": "event4u",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/event4u-app/agent-memory.git"
+  },
+  "homepage": "https://github.com/event4u-app/agent-memory#readme",
+  "bugs": {
+    "url": "https://github.com/event4u-app/agent-memory/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
