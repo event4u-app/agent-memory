@@ -664,6 +664,18 @@ Find relevant knowledge snippets for the current task.
 - [x] Write tests: token budget is respected
 - [x] Write tests with realistic queries
 
+**Retrieval Contract (from `agent-config` spec: `road-to-retrieval-contract.md`):**
+
+- [ ] Add `contract_version: 1` to every retrieve response envelope
+- [ ] Implement partial-hit semantics: per-slice status (`ok` / `timeout` / `unknown_type` / `misconfigured`)
+- [ ] Return `status: ok | partial | error` on envelope level
+- [ ] Enforce `timeout_ms` budget across concurrent slices (hard ceiling: budget + 100ms)
+- [ ] Implement error codes: `ok`, `timeout`, `unknown_type`, `misconfigured`, `internal`
+- [ ] Implement health contract: `health(timeout_ms)` → `{ contract_version, status, backend_version, features[] }`
+- [ ] Publish JSON schema for retrieval contract v1
+- [ ] Create golden fixture test files for contract conformance
+- [ ] Implement version negotiation: callers pinned to v1 ignore unknown fields from v2+
+
 ### Acceptance Criteria
 
 - For real coding tasks, relevant memory entries are found
@@ -673,6 +685,7 @@ Find relevant knowledge snippets for the current task.
 - Stale entries are only returned with explicit warning
 - Quarantined / invalidated / poisoned entries are NEVER returned
 - Trust score, status, and tier visible in every response
+- Retrieval contract v1: every response carries `contract_version`, partial failures don't crash callers
 
 ---
 
@@ -705,6 +718,32 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 - [x] Write tests: contradiction blocks both entries → `quarantine.test.ts`
 - [x] Write tests: TTL expiry correctly triggers staleness → `expiry.test.ts` (Phase 2)
 
+**Decay Calibration (from `agent-config` spec: `road-to-decay-calibration.md`):**
+
+- [ ] Implement per-type decay overrides (not just per-tier):
+  - Domain invariant: half-life 365d
+  - Ownership: half-life 365d
+  - Historical bug pattern: half-life 180d, floor 0.5
+  - Incident learning: half-life 90d
+  - ADR: no decay (only explicit deprecate)
+  - Product rule: half-life 365d
+- [ ] Accept `half_life_days: null` → skip decay arithmetic for matching entries
+- [ ] Implement retrieval-hit refresh: successful retrieval counts as validation (max 1 refresh per entry per 7 days)
+- [ ] Working memory: 2h half-life, hard-drop at session end, not returned via `retrieve()`
+- [ ] Accept decay config from consumer via config override surface
+
+**Promotion Flow (from `agent-config` spec: `road-to-promotion-flow.md`):**
+
+- [ ] Implement `propose()` API: accepts entry + type + source + confidence → proposal_id
+- [ ] Implement `promote(proposal_id)` with gate criteria:
+  - Mandatory fields: id, status, confidence, source, owner, last_validated
+  - At least one source reference (incident id, PR, ADR)
+  - Impact-level evidence floor satisfied
+  - Extraction guard clean at proposal time
+  - Non-duplication check against existing semantic entries
+- [ ] Implement `deprecate(id, reason, superseded_by?)` API
+- [ ] Implement `prune(policy)` API → counts of decayed/archived
+
 ### Acceptance Criteria
 
 - Every returned entry has a traceable trust status
@@ -712,6 +751,8 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 - New entries must pass quarantine before being served
 - Contradictions are detected and both entries blocked
 - Poisoning an entry triggers review of all dependent entries
+- Per-type decay rates applied correctly (ADRs never decay, bug patterns decay slower)
+- Promotion gate rejects entries without sufficient evidence
 
 ---
 
@@ -858,6 +899,18 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - [x] Separate Working Memory (session) from persistent Semantic/Procedural Memory → consolidation
 - [ ] Test with at least 2 different agents (e.g., Claude Code + Augment)
 
+**Consumer Integration (from `agent-config` spec: `road-to-consumer-integration-guide.md`):**
+
+- [ ] Implement feature detection helper: `memory_status` → `present | absent | misconfigured`
+  - `present`: health() responds within 2s
+  - `absent`: package not installed or not on PATH
+  - `misconfigured`: installed but health() returns error (typically DB)
+- [ ] Publish reference `docker-compose.yml` snippet for consumer local dev
+- [ ] Publish CI job template for consumers
+- [ ] Ensure CLI is primary V1 contract — MCP wraps CLI, never exposes new surface
+- [ ] Document consumer prerequisites: Postgres 15+, pgvector, connection string in env var
+- [ ] Publish compatibility matrix (agent-memory version ↔ agent-config version) in README
+
 ### Acceptance Criteria
 
 - Workflow is usable without manual special logic
@@ -866,6 +919,7 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - Lifecycle hooks capture observations automatically
 - Token budget respected on session start injection
 - Post-task extraction blocked when tests fail
+- Consumer can detect memory status (`present`/`absent`/`misconfigured`) reliably
 
 ---
 
@@ -931,6 +985,12 @@ System is safe for team use.
 
 Prove the system on a real project.
 
+### Prerequisites (from `agent-config` spec: `road-to-agents-md-fix.md`)
+
+- [ ] Fix AGENTS.md: remove all Laravel/Galawork references, replace with TypeScript/Node/pgvector stack
+- [ ] AGENTS.md describes: package layout, npm scripts, public API surface, Postgres setup, relationship to agent-config
+- [ ] Add "what this repo is NOT" section (not an application, not a UI, not a dataset)
+
 ### Checklist
 
 - [ ] Select pilot repository
@@ -939,12 +999,14 @@ Prove the system on a real project.
 - [ ] Document false positives
 - [ ] Document stale memory occurrences
 - [ ] Collect developer feedback
+- [ ] Test with at least 2 different agents (Claude Code + Augment)
 - [ ] Create prioritized V2 backlog
 
 ### Acceptance Criteria
 
 - System saves noticeable discovery time in real tasks
 - Stale knowledge is mostly correctly detected
+- Agent reading AGENTS.md correctly identifies the TypeScript/Node stack
 
 ---
 
@@ -963,6 +1025,14 @@ Prove the system on a real project.
 
 - **MEMORY.md Bridge** — bi-directional sync between file-based memory (built-in) and database memory
 - **Endless Mode** — biomimetic memory architecture for extended sessions (prevents context overflow)
+
+### From agent-config specs
+
+- **Cross-Project Learning (Stage 3)** — anonymised signal feed across consumers; pattern reaches `semantic` in ≥3 projects → proposal PR on agent-config. Options: SaaS aggregator / federated pull / manual meta-review. See `road-to-cross-project-learning.md`
+- **REST API** — remote multi-machine setups (V2 only per consumer integration spec)
+- **Streaming Responses** — deferred until a consumer hits the 20-entry limit budget
+- **Per-Entry No-Decay** — specific entries (e.g. critical security invariants) can declare `no_decay: true`, settable only by human review
+- **Negative Signals** — deprecation emits a counter-signal weakening earlier proposals
 
 ### Our own
 
@@ -1048,9 +1118,24 @@ V1 is reached when:
 - [ ] At least 2 different agents tested via MCP — **requires Phase 10 pilot**
 - [x] `memory health` shows all quality metrics green → `memory_health` + `calculateMetrics()`
 
+## Integration Specs (from `agent-config`)
+
+The following specs were authored in `agent-config` and define the **contract** between the two packages.
+They have been integrated into the phases above. The original specs are preserved in `agents/roadmaps/from-agent-config/` for reference.
+
+| Spec | Integrated Into | Status |
+|---|---|---|
+| `road-to-retrieval-contract.md` | Phase 3 (Retrieval Contract) | New checklist items |
+| `road-to-promotion-flow.md` | Phase 4 (Promotion Flow) | New checklist items |
+| `road-to-decay-calibration.md` | Phase 4 (Decay Calibration) | New checklist items |
+| `road-to-consumer-integration-guide.md` | Phase 7 (Consumer Integration) | New checklist items |
+| `road-to-agents-md-fix.md` | Phase 10 (Prerequisites) | AGENTS.md fix before pilot |
+| `road-to-cross-project-learning.md` | V2 Possibilities | Deferred — requires 2+ production consumers |
+
 ## Notes
 
-- This roadmap lives in `agent-config` for planning purposes — the actual memory system will be a **separate repository**
 - The system is agent-agnostic by design: any model (GPT, Claude, Gemini, etc.) and any agent (Augment, Cursor, Cline, etc.) can use it
 - MCP (Model Context Protocol) is the primary integration mechanism — supported by most modern agents
+- CLI is the primary V1 contract; MCP wraps the CLI (from consumer integration spec)
 - The original German roadmap is archived in `agents/roadmaps/augment-agent-memory-hybrid-roadmap.md`
+- Integration specs from `agent-config` are preserved in `agents/roadmaps/from-agent-config/`
