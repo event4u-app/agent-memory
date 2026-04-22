@@ -147,13 +147,15 @@ Nine canonical types cover most project knowledge:
 
 ## Tools & commands
 
-### MCP tools (17)
+### MCP tools (23)
 
 | Category | Tools |
 |---|---|
-| **Core** | `memory_retrieve`, `memory_retrieve_details`, `memory_ingest`, `memory_validate`, `memory_invalidate`, `memory_poison`, `memory_verify` |
-| **Lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
-| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates` |
+| **Retrieval** | `memory_retrieve`, `memory_retrieve_details` |
+| **Ingestion** | `memory_ingest`, `memory_propose`, `memory_promote` |
+| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate` |
+| **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
+| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
 ### CLI commands (12)
 
@@ -171,16 +173,16 @@ memory propose --type bug_pattern \
   --summary "Iterating order.items without with('items') triggers N+1." \
   --repository my-app \
   --source "PR#234" --confidence 0.7 \
-  --future-scenario "invoice-export"
+  --scenario "invoice-export"
 
 # After 3+ future decisions reference it and tests pass → promote
-memory promote --entry <uuid>
+memory promote <proposal-id>
 
-# Later: code change may invalidate it
-memory invalidate --from-git-diff --from-ref main --to-ref HEAD
+# Later: code change may invalidate it (diff target is always HEAD)
+memory invalidate --from-git-diff --from-ref main
 
 # A week later: entry turns out to be wrong — poison + rollback cascade
-memory poison <uuid>
+memory poison <uuid> "reason the entry is wrong"
 memory rollback <uuid>
 ```
 
