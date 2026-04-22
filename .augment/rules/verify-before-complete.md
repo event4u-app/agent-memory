@@ -62,45 +62,59 @@ Skip any step = the claim is unverified.
 - Relying on partial verification (ran tests but not PHPStan)
 - ANY wording implying success without fresh evidence
 
-## Common verification commands
+## Verification commands
 
-### Laravel projects (inside Docker container)
-```bash
-php artisan test                          # Tests
-vendor/bin/phpstan analyse                # Static analysis (1st run)
-vendor/bin/rector process                 # Rector (or: php artisan quality:rector --fix)
-vendor/bin/ecs check --fix                # Code style (or: php artisan quality:ecs --fix)
-vendor/bin/phpstan analyse                # Static analysis (final — verify Rector/ECS didn't break anything)
-```
+For specific commands → see the `quality-tools` skill.
 
-### Frontend projects
-```bash
-npm test          # or: bun test
-npm run build     # or: bun run build
-npm run lint      # or: bun run lint
-npx tsc --noEmit  # TypeScript check
-```
-
-For tool-specific commands → see the `quality-workflow` rule.
+For the detailed evidence-gate playbook (claim→command mapping, output
+inspection, end-of-work sequence) → see the `verify-before-complete`
+skill.
 
 ## Minimum verification per task type
 
 | Task | Required evidence |
 |---|---|
-| Code change | Tests + PHPStan (command output with exit code) |
-| New feature | Tests + PHPStan + manual smoke test |
-| Bug fix | Regression test + full test suite |
-| Refactoring | Full test suite + PHPStan + Rector |
-| Config change | Relevant tests or verification command output |
+| Code change | Tests + PHPStan |
+| New feature | Tests + PHPStan + smoke test |
+| Bug fix | Regression test + full suite |
+| Refactoring | Full suite + PHPStan + Rector |
+| Config/migration | Relevant tests or command output |
 | API endpoint | curl/HTTP response output |
-| UI change | Screenshot or browser verification |
-| Migration | Migration run + rollback test |
 | Documentation only | No verification needed |
 
-**Never accept** these as proof:
-- "It should work"
-- "Looks correct"
-- "I've done similar before"
-- "The logic is sound"
+**Never accept** as proof: "should work", "looks correct", "logic is sound".
+No captured output = not verified.
 
-If you can't produce captured output, it's not verified.
+## Confidence gating
+
+State confidence explicitly before claiming completion on non-trivial work.
+
+- **High** — runtime path read end-to-end, relevant tests inspected or run,
+  no hidden side-effects (queues/events/observers) unaccounted for.
+- **Medium** — main path verified but one gap remains; list the gap in the
+  completion message.
+- **Low** — broad implementation NOT allowed; switch to analysis, narrow
+  the scope, or ask the user before proceeding.
+
+For high-risk areas (auth, tenancy, migrations, queues, dependencies,
+external APIs, data exposure), "high" requires tests AND a cross-layer
+read — not inference from a single file.
+
+## Break-glass reduction
+
+During a live production incident the verification gate is **narrowed**,
+never skipped. Break-glass requires explicit user invocation (e.g.
+`break-glass: true`, "this is a hotfix"). Never enter it unilaterally.
+
+Minimum evidence:
+
+- **Targeted test(s)** covering the exact regression — zero tests is not
+  acceptable.
+- **Smoke check** of the fixed path (curl, manual trigger, log tail) with
+  output captured in the message.
+- **Explicit list of skipped validations** and a **follow-up commitment**
+  (ticket or PR line) to run them within 24h.
+
+Completion wording: _"hotfix applied, full verification deferred per
+break-glass"_ — never _"done"_ or _"verified"_. The normal gate resumes
+on the follow-up PR.

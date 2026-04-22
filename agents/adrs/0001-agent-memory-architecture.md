@@ -2,7 +2,7 @@
 
 > **Status:** Accepted
 > **Date:** 2026-04-14
-> **Roadmap:** `agents/roadmaps/agent-memory-hybrid.md`
+> **Roadmap:** `agents/roadmaps/archive/agent-memory-hybrid.md` (archived — V1 complete)
 > **Inspiration:** [agentmemory](https://github.com/rohitg00/agentmemory), [claude-mem](https://github.com/thedotmack/claude-mem)
 
 ## V1 Goal

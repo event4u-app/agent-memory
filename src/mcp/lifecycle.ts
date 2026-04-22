@@ -8,7 +8,10 @@ import type { McpContext } from "./context.js";
  *
  * This module is reserved for future MCP notifications/resources if needed.
  */
-export function registerLifecycleHandlers(_server: Server, _ctx: McpContext): void {
-  // Future: could register MCP notifications for lifecycle events
-  // e.g. server.sendNotification on trust status changes
+export function registerLifecycleHandlers(
+	_server: Server,
+	_ctx: McpContext,
+): void {
+	// Future: could register MCP notifications for lifecycle events
+	// e.g. server.sendNotification on trust status changes
 }

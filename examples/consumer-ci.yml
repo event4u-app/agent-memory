@@ -1,0 +1,71 @@
+# Reference GitHub Actions job template for consumers of @event4u/agent-memory.
+#
+# Purpose:
+#   - Spin up Postgres + pgvector as a service container
+#   - Run `memory health` as a smoke test — non-zero exit fails the job
+#   - Demonstrates the `memory status` feature-detection call used by
+#     agent-config skills
+#
+# Copy this file into `.github/workflows/` in your consumer repo and adapt as
+# needed. This is *illustrative*, not a drop-in reusable workflow.
+
+name: agent-memory-smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  memory-health:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: agent_memory
+          POSTGRES_USER: memory
+          POSTGRES_PASSWORD: memory_dev
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U memory -d agent_memory"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://memory:memory_dev@localhost:5433/agent_memory
+      # Machine-readable CLI output; logger already writes to stderr.
+      LOG_LEVEL: silent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations
+        run: npm run db:migrate
+
+      - name: Probe memory status (feature detection)
+        # Should print `present`, `absent`, or `misconfigured` on stdout.
+        # Fails the job only on hard errors, not on misconfigured state —
+        # consumers use this to *decide* whether to enable memory-dependent
+        # skills, not to gate the build.
+        run: |
+          STATUS=$(npx memory status --timeout 2000)
+          echo "memory_status=$STATUS"
+          if [ "$STATUS" = "absent" ]; then
+            echo "::warning::agent-memory CLI not on PATH"
+          fi
+
+      - name: Run health (must be ok)
+        # Exits non-zero on error — this gates the build.
+        run: npx memory health --timeout 2000

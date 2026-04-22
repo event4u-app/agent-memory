@@ -27,3 +27,17 @@ coverage/
 .windsurfrules
 GEMINI.md
 .idea/
+
+# event4u/agent-config
+# Agent config — symlinked from vendor (auto-managed)
+.augment/skills/
+.augment/commands/
+.augment/guidelines/
+.augment/templates/
+.augment/contexts/
+.augment/scripts/
+.augment/README.md
+
+# Agent config — NOT ignored (real copies, may contain project overrides)
+# .augment/rules/
+/.agent-settings.yml

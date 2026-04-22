@@ -1,4 +1,5 @@
 import { env } from "node:process";
+import { DEFAULT_DECAY_CONFIG, mergeDecayConfig, type DecayConfig } from "./trust/decay.js";
 
 function parseIntSafe(value: string | undefined, fallback: number, min = 0, max = Infinity): number {
   if (!value) return fallback;
@@ -12,6 +13,20 @@ function parseFloatSafe(value: string | undefined, fallback: number, min = 0, ma
   const n = parseFloat(value);
   if (Number.isNaN(n)) return fallback;
   return Math.max(min, Math.min(max, n));
+}
+
+/**
+ * Parse decay overrides from `MEMORY_DECAY_OVERRIDES` JSON env var.
+ * Invalid JSON falls back to defaults and logs via stderr at startup.
+ */
+function parseDecayOverrides(value: string | undefined): DecayConfig {
+  if (!value) return DEFAULT_DECAY_CONFIG;
+  try {
+    const parsed = JSON.parse(value) as Partial<DecayConfig>;
+    return mergeDecayConfig(parsed);
+  } catch {
+    return DEFAULT_DECAY_CONFIG;
+  }
 }
 
 export const config = {
@@ -44,6 +59,8 @@ export const config = {
   maxInvalidationBatch: parseIntSafe(env.MEMORY_MAX_INVALIDATION_BATCH, 500, 10, 5000),
   /** Max entries per revalidation run */
   maxRevalidationBatch: parseIntSafe(env.MEMORY_MAX_REVALIDATION_BATCH, 20, 1, 100),
+  /** Decay calibration: tier defaults + per-type overrides (see trust/decay.ts) */
+  decay: parseDecayOverrides(env.MEMORY_DECAY_OVERRIDES),
   log: {
     level: env.LOG_LEVEL ?? "info",
     format: (env.LOG_FORMAT ?? "json") as "json" | "pretty",

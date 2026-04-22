@@ -1,213 +1,143 @@
-# Galawork API
+# @event4u/agent-memory
 
-Laravel backend API for the Galawork platform — a SaaS application for the landscaping industry.
+Persistent, trust-scored project memory for AI coding agents — MCP server + CLI, backed by PostgreSQL + pgvector.
+
+## What this repo IS
+
+- A **TypeScript / Node ≥ 20** library that implements a memory store for AI coding agents
+- A **CLI** (`memory`) for scripts, CI, and IDE agents without MCP support
+- An **MCP server** (stdio transport) exposing 17 tools for memory retrieval, ingestion, and management
+- A **companion** to [`@event4u/agent-config`](https://github.com/event4u-app/agent-config) — optional dependency, governance and behavior
+
+## What this repo is NOT
+
+- **Not** a web application, UI, or SaaS service
+- **Not** a dataset or pretrained model
+- **Not** Laravel / PHP / MariaDB — if you see those references, they are stale and should be corrected
+- **Not** a general-purpose vector database — it is specifically about agent-facing project knowledge with trust scoring, decay, and invalidation
+
+## Tech Stack
+
+- **Language:** TypeScript (strict mode), ES modules
+- **Runtime:** Node ≥ 20
+- **Package manager:** npm (lockfile: `package-lock.json`)
+- **Database:** PostgreSQL 15+ with the `pgvector` extension
+- **Testing:** Vitest (unit + integration), 176 tests passing
+- **Lint:** Biome
+- **Protocol:** Model Context Protocol (MCP) v1 via `@modelcontextprotocol/sdk`
 
 ## Agent Infrastructure
 
 | Layer | Location | Purpose |
 |---|---|---|
-| **Shared package** | `.augment/` | Skills, rules, commands, guidelines, templates, contexts (read-only) |
-| **Project overrides** | `agents/overrides/` | Project-specific customizations of shared resources |
-| **Project docs** | `agents/` | Architecture docs, features, roadmaps, sessions, contexts |
-| **Module docs** | `app/Modules/*/agents/` | Module-specific documentation |
+| **Shared package** | `.augment/` | Skills, rules, commands, guidelines from `@event4u/agent-config` (mostly symlinked) |
+| **Project docs** | `agents/` | Architecture docs, ADRs, roadmaps specific to this package |
+| **Integration specs** | `agents/roadmaps/from-agent-config/` | Contracts between this repo and agent-config |
 
 ### Key References
 
 | What | Where |
 |---|---|
-| Behavior rules | `.augment/rules/` (always active) |
-| Coding guidelines | `.augment/guidelines/php/` |
-| Skills (on-demand expertise) | `.augment/skills/` |
-| Commands (workflows) | `.augment/commands/` |
-| Override system | `.augment/contexts/override-system.md` |
-| Full infrastructure overview | `.augment/contexts/augment-infrastructure.md` |
-| Copilot instructions | `.github/copilot-instructions.md` |
-
-### Multi-Agent Support
-
-Rules, skills, and commands are available for multiple AI coding tools:
-
-| Tool | Rules | Skills | How |
-|---|---|---|---|
-| **Augment Code** | `.augment/rules/` | `.augment/skills/` | Native (source of truth) |
-| **Claude Code** | `.claude/rules/` | `.claude/skills/` | Symlinks + Agent Skills standard |
-| **Cursor** | `.cursor/rules/` | — | Symlinks |
-| **Cline** | `.clinerules/` | — | Symlinks |
-| **Windsurf** | `.windsurfrules` | — | Concatenated file |
-| **Gemini CLI** | `GEMINI.md` | — | Symlink → AGENTS.md |
-
-Skills follow the [Agent Skills open standard](https://agentskills.io) (SKILL.md with YAML frontmatter).
-Commands are converted to Claude Code Skills with `disable-model-invocation: true`.
-
-Regenerate: `task generate-tools` · Clean: `task clean-tools`
-
----
-
-## Tech Stack
-
-- **Framework:** Laravel 11 (PHP ^8.2)
-- **Database:** MariaDB / MySQL (multi-tenant, customer-specific databases)
-- **Queue:** Redis + Laravel Horizon
-- **Search:** Meilisearch (to be removed)
-- **Testing:** Pest (PHPUnit 11 under the hood)
-- **Static Analysis:** PHPStan Level 9 (with Larastan)
-- **Code Style:** ECS (Easy Coding Standard) — PSR-12 based
-- **Refactoring:** Rector
-- **Quality Tooling:** `galawork/php-quality` package (wraps ECS, Rector, PHPStan)
-- **Editor Config:** `.editorconfig` is used — respect it
-
----
+| Behavior rules | `.augment/rules/` (always active — real copies, may contain project overrides) |
+| Skills (on-demand) | `.augment/skills/` (symlinked from vendor) |
+| Commands | `.augment/commands/` (symlinked from vendor) |
+| Architecture ADR | `agents/adrs/0001-agent-memory-architecture.md` |
+| Archived V1 roadmap | `agents/roadmaps/archive/agent-memory-hybrid.md` (V1 complete; pilot items skipped) |
 
 ## Development Setup
 
-The project runs in Docker. All commands are executed **inside the PHP container** unless stated otherwise.
+All commands run on the host (no Docker container for development — only PostgreSQL runs in Docker).
 
 ```bash
-# Start all containers
-make start
+# 1. Start Postgres with pgvector
+docker compose up -d postgres
 
-# Enter the PHP container
-make console
+# 2. Install dependencies
+npm install
 
-# Run composer install inside the container
-make composer-install
+# 3. Run migrations
+npm run db:migrate
 
-# Run migrations + seed (local)
-make migrate-and-seed
+# 4. Run tests
+npm test
 
-# Run migrations + seed (testing environment)
-make migrate-testing
+# 5. Start MCP server (stdio transport)
+npm run mcp:start
 
-# Open Artisan tinker
-make tinker
+# 6. Or use CLI directly
+npx tsx src/cli/index.ts retrieve "how are invoices calculated?"
+npx tsx src/cli/index.ts health
 ```
 
-### Environment Files
+### Environment variables
 
-| File                 | Purpose                                             |
-|----------------------|-----------------------------------------------------|
-| `.env`               | Main environment (auto-created from `.env.example`) |
-| `.env.local`         | Local overrides (DB credentials, etc.)              |
-| `.env.testing`       | Testing environment configuration                   |
-| `.env.testing.local` | Local Testing environment configuration             |
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://memory:memory_dev@localhost:5433/agent_memory` | Postgres connection |
+| `REPO_ROOT` | `process.cwd()` | Repository root for file/symbol validators |
+| `MEMORY_TRUST_THRESHOLD_DEFAULT` | `0.6` | Minimum trust score for retrieval |
+| `MEMORY_TOKEN_BUDGET` | `2000` | Default token budget for retrieval |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 
-Files are loaded in the listed order — each subsequent file overrides values from the previous one.
-For testing: `.env` → `.env.testing` → `.env.testing.local`.
+See `README.md` → Configuration for the full list.
 
-### Important: `--env=testing`
+## Project Structure
 
-When running Artisan commands that should operate on the **testing database**, always pass `--env=testing`:
-
-```bash
-php artisan migrate --env=testing
-php artisan db:seed --env=testing
-php artisan db:seed --class=ApiDatabaseSeeder --env=testing
-php artisan migrate:customers --fresh --env=testing
-php artisan db:seed:customers --fqdn=local.galawork.de --env=testing
+```
+src/
+├── config.ts            # Configuration with env var overrides
+├── types.ts             # Core types, enums, trust lifecycle
+├── db/                  # Postgres connection, migrations, repositories
+├── retrieval/           # BM25 + vector + RRF + progressive disclosure
+├── trust/               # Scoring, transitions, validators, quarantine, poison
+├── ingestion/           # Privacy filter, scanners, extraction guard, pipeline
+├── consolidation/       # Working → Episodic → Semantic tier promotion
+├── invalidation/        # Git diff, semantic drift, TTL expiry
+├── quality/             # Metrics, dedup, contradiction resolution, archival
+├── security/            # Access scopes
+├── mcp/                 # MCP server (stdio), 17 tools
+└── cli/                 # Commander-based CLI
 ```
 
-Or use the Makefile targets which handle this automatically:
+## Public API surface (consumed by agent-config)
 
-```bash
-make migrate-testing
-make seed-testing
-```
+See `agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md` for the full v1 contract.
 
----
+| API | Purpose |
+|---|---|
+| `retrieve(types, keys, limit, timeout_ms)` | Query with progressive disclosure |
+| `propose(entry, type, source, confidence)` | Create quarantined entry |
+| `promote(proposal_id)` | Promote quarantined → validated (gate criteria) |
+| `deprecate(id, reason, superseded_by?)` | Mark entry as deprecated |
+| `health(timeout_ms)` | `{ contract_version, status, backend_version, features[] }` |
+| `prune(policy)` | Run archival / purge |
 
-## Project Structure & Modules
+All available via CLI, MCP tools, and programmatic import.
 
-Before creating new files, always check the existing directory structure (`app/`, `app/Modules/`, `tests/`)
-to place code in the correct location. New features should preferably go into the appropriate module
-in `app/Modules/`. Use `.module-template` as a starting point for new modules.
+## Scripts the agent should run
 
-Key directories: `app/Http/Controllers/`, `app/Services/`, `app/Models/`, `app/Repositories/`,
-`app/DTO/`, `app/Enums/`, `app/Events/`, `app/Jobs/`, `app/Policies/`, `app/Modules/`.
+| Task | Command |
+|---|---|
+| Run tests | `npm test` |
+| Type check | `npm run typecheck` |
+| Lint | `npm run lint` (auto-fix: `npm run lint:fix`) |
+| Build | `npm run build` |
+| DB migrate | `npm run db:migrate` |
+| Start MCP | `npm run mcp:start` |
+| Start Postgres | `docker compose up -d postgres` |
 
-Module namespace pattern: `App\Modules\{ModuleName}\App\{Layer}\` (e.g. `App\Modules\Import\App\Services\`).
-Module routes (`Routes/api.php`, `Routes/web.php`, `Routes/console.php`) are auto-loaded by `ModuleServiceProvider`.
+## Relationship to `@event4u/agent-config`
 
-See `app/Modules/README.md` and `docs/creating-a-new-module.md` for full details.
-
----
-
-## Testing
-
-### Test Framework: Pest
-
-This project uses **Pest** as the test framework. All tests are written in Pest syntax.
-
-### Running Tests
-
-```bash
-# Run all tests (parallel, fastest)
-make test
-
-# Run specific test suites
-make test-unit              # Unit tests only
-make test-component         # Component tests only
-make test-integration       # Integration tests only
-
-# Run with stop-on-failure for quick feedback
-make test-quick
-
-# Run a specific test file or filter
-php artisan test --filter=YourTestName
-
-# Run tests synchronously (useful for debugging)
-make test-synchron
-```
-
-### Test Suites (defined in `phpunit.xml`)
-
-| Suite        | Location                                                   | Purpose                           |
-|--------------|------------------------------------------------------------|-----------------------------------|
-| Unit         | `tests/Unit/`, `app/Modules/*/Tests/Unit/`                 | Isolated class tests, no DB       |
-| Component    | `tests/Component/`, `app/Modules/*/Tests/Component/`       | Tests with real DB connections    |
-| Integration  | `tests/Integration/`, `app/Modules/*/Tests/Integration/`   | Full HTTP request/response cycles |
-| Architecture | `tests/Architecture/`, `app/Modules/*/Tests/Architecture/` | Structural/architecture tests     |
-
-### Test Environment
-
-- `phpunit.xml` sets `APP_ENV=testing`, `CACHE_DRIVER=array`, `QUEUE_CONNECTION=sync`
-- Parallel testing is configured with 8 processes by default
-- Use **seeders** for test data setup; model **factories** MAY be used in tests unless a module- or feature-specific agent doc (e.g.
-  `agents/docs/seeders.md`) explicitly forbids factories for that area
-- Mock external services using `Http::fake()` or Mockery
-- Feature/integration tests are preferred over unit tests
-
-### Test Guidelines
-
-- Write clear, human-readable test names
-- Focus on meaningful tests over 100% coverage obsession
-- See `.augment/rules/php-coding.md` for Pest-specific rules (readonly, final, use statements)
-- See `.augment/skills/pest-testing/SKILL.md` for flaky test prevention and best practices
-
----
-
-## Quality Tools
-
-Uses `galawork/php-quality` v2. Configs in project root: `phpstan.neon`, `ecs.php`, `rector.php`.
-
-```bash
-php artisan quality:phpstan          # PHPStan (Level 9)
-php artisan quality:rector --fix     # Rector (auto-fix)
-php artisan quality:ecs --fix        # ECS (auto-fix)
-php artisan quality:finalize         # Full pipeline
-```
-
-**Do NOT add entries to `phpstan-baseline.neon`** — always fix the actual error.
-
-See `.augment/rules/quality-workflow.md` for full workflow and policies.
-
----
+- `agent-config` = behavior, governance, rules, skills (source of truth for `.augment/rules/*`)
+- `agent-memory` (this repo) = persistence, retrieval, trust scoring, decay
+- This repo **consumes** `agent-config` via `postinstall` → symlinks `.augment/skills/`, `.augment/commands/`, etc.
+- `.augment/rules/` in this repo are **real copies** (tracked in git) so project-specific rules remain possible
 
 ## Additional Documentation
 
 | Document | Topic |
 |---|---|
-| `.github/copilot-instructions.md` | Coding standards for GitHub Copilot (self-contained) |
-| `.augment/contexts/augment-infrastructure.md` | Full agent infrastructure overview |
-| `.augment/contexts/override-system.md` | How project overrides work |
-| `app/Modules/README.md` | Module system documentation |
-| `docs/creating-a-new-module.md` | Step-by-step module creation guide |
+| `README.md` | User-facing overview, MCP tool list, configuration |
+| `agents/roadmaps/archive/agent-memory-hybrid.md` | Archived V1 implementation roadmap (phases 0-10, V1 complete) |
+| `agents/roadmaps/from-agent-config/` | Integration contracts authored by agent-config |
+| `.augment/contexts/` | Shared agent infrastructure docs (symlinked from vendor) |

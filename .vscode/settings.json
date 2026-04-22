@@ -1,0 +1,5 @@
+{
+    "chat.pluginLocations": {
+        "./node_modules/@event4u/agent-config/plugin/agent-config": true
+    }
+}

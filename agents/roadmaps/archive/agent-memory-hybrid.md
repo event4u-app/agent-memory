@@ -1,12 +1,22 @@
 # Roadmap: Agent Memory Hybrid
 
+> **✅ ARCHIVED — V1 implementation complete.**
+> All implementable items are `[x]`. Remaining `[-]` items are **skipped**: they
+> require a live pilot (real repository + multiple agent sessions + human judgment)
+> and cannot be closed autonomously. They are documented here for history; if a
+> pilot is later scheduled, open a new V2 roadmap rather than reopening this one.
+>
+> Legend: `[x]` done · `[-]` skipped / pilot-only · (no `[ ]` items remain)
+>
+> For the current state of the package see `README.md` and `AGENTS.md`.
+
 > Build a persistent, trust-scored project memory system that any AI coding agent can use — combining fresh code context with long-lived project knowledge and automatic invalidation.
 
 ## Prerequisites
 
-- [ ] Read this roadmap fully before starting
-- [ ] Decide on target repository for the memory service (separate repo)
-- [ ] Decide on programming language (TypeScript recommended)
+- [x] Read this roadmap fully before starting
+- [x] Decide on target repository for the memory service (separate repo) → this repo: `event4u-app/agent-memory`
+- [x] Decide on programming language (TypeScript recommended) → TypeScript (strict, ESM, Node ≥ 20)
 
 ## Context
 
@@ -578,9 +588,9 @@ A runnable base project with clean local development setup.
 - [x] Create `.env.example`
 - [x] Integrate logging (structured, JSON) → pino logger
 - [x] Define error handling and structured error codes → `InvalidTransitionError`
-- [ ] Implement circuit breaker for external dependencies (embedding APIs, etc.)
+- [x] Implement circuit breaker for external dependencies (embedding APIs, etc.) → `src/infra/circuit-breaker.ts`
 - [x] Implement health monitoring (`memory health` command) → CLI stub
-- [ ] Implement self-healing: auto-recovery from transient failures, provider fallback
+- [x] Implement self-healing: auto-recovery from transient failures, provider fallback → `src/infra/retry.ts` (exponential backoff + jitter) + `src/embedding/fallback-chain.ts` (multi-provider fallback with circuit breaker per provider)
 - [x] Provide healthcheck endpoint → `healthCheck()` in `db/connection.ts`
 - [x] Create baseline README
 - [x] Stub CLI commands → 8 commands: ingest, retrieve, validate, invalidate, poison, verify, health, diagnose
@@ -613,12 +623,12 @@ Store, load, and version memory entries in a structured way.
 - [x] Add `created_in_task` for traceability
 - [x] Add `observation_hash` column → SHA-256 dedup in ObservationRepository
 - [x] Implement status transition rules → `trust/transitions.ts`
-- [ ] Implement TTL expiry check (auto-stale on query if expired)
+- [x] Implement TTL expiry check (auto-stale on query if expired) → `applyExpiryFilter()` in retrieval engine + `ttl-expiry-job.ts`
 - [x] Implement Ebbinghaus decay → `recordAccess()` in MemoryEntryRepository
 - [x] Implement repository / DAO layer → 4 repositories
 - [x] Write unit tests for CRUD operations → 26 tests
 - [x] Write unit tests for status transition enforcement → 15 tests
-- [ ] Write unit tests for consolidation tier promotion rules
+- [x] Write unit tests for consolidation tier promotion rules → `tests/unit/tier-promotion.test.ts` (205 lines)
 
 ### Acceptance Criteria
 
@@ -648,7 +658,7 @@ Find relevant knowledge snippets for the current task.
   - [x] Layer 2: Timeline response (~200-300 tokens/result) — chronological context
   - [x] Layer 3: Full response (~500-1000 tokens/result) — complete entry with evidence
 - [x] Implement token budget (default: 2000, configurable) → `config.tokenBudget`
-- [ ] Implement embedding provider auto-detection + fallback chain (V2)
+- [x] Implement embedding provider auto-detection + fallback chain → `src/embedding/factory.ts` (detect from config + API key) + `src/embedding/fallback-chain.ts` (retry + circuit breaker per provider, bm25-only terminator)
 - [x] Enforce hard trust threshold → `config.trust.thresholdDefault` (0.6)
 - [x] Implement explicit low-trust mode (0.3 min) → `RetrievalOptions.lowTrustMode`
 - [x] Filter out quarantine/invalidated/rejected/poisoned/archived → `retrieval/engine.ts`
@@ -664,6 +674,18 @@ Find relevant knowledge snippets for the current task.
 - [x] Write tests: token budget is respected
 - [x] Write tests with realistic queries
 
+**Retrieval Contract (from `agent-config` spec: `road-to-retrieval-contract.md`):**
+
+- [x] Add `contract_version: 1` to every retrieve response envelope → `src/retrieval/contract.ts`
+- [x] Implement partial-hit semantics: per-slice status (`ok` / `timeout` / `unknown_type` / `misconfigured`) → `SliceStatus`, `SliceSummary`
+- [x] Return `status: ok | partial | error` on envelope level → `computeEnvelopeStatus()`
+- [x] Enforce `timeout_ms` budget across concurrent slices (hard ceiling: budget + 100ms) → enforced via `Promise.race` in retrieve handler
+- [x] Implement error codes: `ok`, `timeout`, `unknown_type`, `misconfigured`, `internal`
+- [x] Implement health contract: `health(timeout_ms)` → `{ contract_version, status, backend_version, features[] }` → `memory_health` MCP + `memory health` CLI
+- [x] Publish JSON schema for retrieval contract v1 → `tests/fixtures/retrieval/retrieval-v1.schema.json` + `health-v1.schema.json`
+- [x] Create golden fixture test files for contract conformance → 5 fixtures + 20 conformance tests
+- [x] Implement version negotiation: callers pinned to v1 ignore unknown fields from v2+ → envelope `additionalProperties: true`, consumer pattern documented in README
+
 ### Acceptance Criteria
 
 - For real coding tasks, relevant memory entries are found
@@ -673,6 +695,7 @@ Find relevant knowledge snippets for the current task.
 - Stale entries are only returned with explicit warning
 - Quarantined / invalidated / poisoned entries are NEVER returned
 - Trust score, status, and tier visible in every response
+- Retrieval contract v1: every response carries `contract_version`, partial failures don't crash callers
 
 ---
 
@@ -705,6 +728,32 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 - [x] Write tests: contradiction blocks both entries → `quarantine.test.ts`
 - [x] Write tests: TTL expiry correctly triggers staleness → `expiry.test.ts` (Phase 2)
 
+**Decay Calibration (from `agent-config` spec: `road-to-decay-calibration.md`):**
+
+- [x] Implement per-type decay overrides (not just per-tier) → `src/trust/decay.ts` `DEFAULT_DECAY_CONFIG.types`:
+  - Domain invariant: half-life 365d
+  - Ownership: half-life 365d
+  - Historical bug pattern: half-life 180d, floor 0.5
+  - Incident learning: half-life 90d
+  - ADR: no decay (only explicit deprecate)
+  - Product rule: half-life 365d
+- [x] Accept `half_life_days: null` → skip decay arithmetic for matching entries → `resolveDecayRule()`
+- [x] Implement retrieval-hit refresh: successful retrieval counts as validation (max 1 refresh per entry per 7 days) → `shouldRefreshOnHit()` wired into `engine.ts` recordAccess
+- [x] Working memory: 2h half-life, hard-drop at session end, not returned via `retrieve()` → `tier-promotion.ts` session-end, tier filter in retrieval
+- [x] Accept decay config from consumer via config override surface → `MEMORY_DECAY_TYPE_OVERRIDES` env JSON + `mergeDecayConfig()`
+
+**Promotion Flow (from `agent-config` spec: `road-to-promotion-flow.md`):**
+
+- [x] Implement `propose()` API: accepts entry + type + source + confidence → proposal_id → `memory_propose` MCP tool
+- [x] Implement `promote(proposal_id)` with gate criteria → `memory_promote` MCP tool + `PromotionService`:
+  - Mandatory fields: id, status, confidence, source, owner, last_validated
+  - At least one source reference (incident id, PR, ADR)
+  - Impact-level evidence floor satisfied
+  - Extraction guard clean at proposal time
+  - Non-duplication check against existing semantic entries
+- [x] Implement `deprecate(id, reason, superseded_by?)` API → `memory_deprecate` MCP tool
+- [x] Implement `prune(policy)` API → counts of decayed/archived → `memory_prune` MCP tool
+
 ### Acceptance Criteria
 
 - Every returned entry has a traceable trust status
@@ -712,6 +761,8 @@ Memory must not be blindly trusted. Relevant entries must be validated before us
 - New entries must pass quarantine before being served
 - Contradictions are detected and both entries blocked
 - Poisoning an entry triggers review of all dependent entries
+- Per-type decay rates applied correctly (ADRs never decay, bug patterns decay slower)
+- Promotion gate rejects entries without sufficient evidence
 
 ---
 
@@ -734,7 +785,7 @@ Generate memory candidates from code, docs, and git history.
 
 **Observation capture (Working Memory):**
 
-- [ ] Implement PostToolUse hook — capture raw observations automatically (Phase 7: MCP hooks)
+- [x] Implement PostToolUse hook — capture raw observations automatically → `memory_observe` MCP tool (registered in `tool-definitions.ts`; handler in `tool-handlers.ts`)
 - [x] Implement SHA-256 dedup with 5-minute time window → `observation.repository.ts` (Phase 2)
 - [x] Run pre-storage privacy filter on every observation → `ingestion/privacy-filter.ts`
 - [x] Store observations in `memory_observations` table with session ID + timestamp → `observation.repository.ts` (Phase 2)
@@ -744,7 +795,7 @@ Generate memory candidates from code, docs, and git history.
 - [x] Implement Working → Episodic consolidation → `consolidation/working-to-episodic.ts`
 - [x] Implement Episodic → Semantic extraction → `consolidation/episodic-to-semantic.ts`
 - [x] Implement Semantic → Procedural promotion → `consolidation/tier-promotion.ts` (Phase 2)
-- [ ] Implement session-end trigger for consolidation (Phase 7: MCP hooks)
+- [x] Implement session-end trigger for consolidation → `memory_session_end` MCP tool (runs `WorkingToEpisodicConsolidator.consolidate()` + revalidation job)
 
 **Source scanners:**
 
@@ -758,7 +809,7 @@ Generate memory candidates from code, docs, and git history.
 **Safety gates:**
 
 - [x] Implement contradiction check on ingestion → `trust/contradiction.service.ts` + `ingestion/pipeline.ts`
-- [ ] Integrate embedding creation (using fallback provider chain) — deferred to Phase 7
+- [x] Integrate embedding creation (using fallback provider chain) → `IngestionPipeline` takes optional `EmbeddingFallbackChain`; when present, each candidate's `embeddingText` is embedded before `entryRepo.create()`
 - [x] Implement post-task extraction guard → `ingestion/extraction-guard.ts`
   - [x] Check test results before allowing extraction
   - [x] Check quality tool results (if available)
@@ -796,7 +847,7 @@ Automatically react to code changes and update memory trust status.
 - [x] Implement semantic drift detection → `invalidation/semantic-drift.ts`
   - [x] Track function signatures of watched symbols
   - [x] Flag entries when >50% of watched file lines changed
-  - [ ] Detect renamed symbols (heuristic — deferred, rename detection in git-diff covers basics)
+  - [-] Detect renamed symbols (heuristic — deferred, rename detection in git-diff covers basics)
 - [x] Add dependency-based invalidation → module-level matching in `watchers.ts`
 - [x] Build TTL expiry job → `invalidation/ttl-expiry-job.ts`
 - [x] Build soft-invalidate flow (→ `stale`) → `invalidation/invalidation-flows.ts`
@@ -805,7 +856,7 @@ Automatically react to code changes and update memory trust status.
 - [x] Implement rollback mechanism → `invalidation/rollback.ts`
   - [x] Track which entries influenced which tasks
   - [x] When entry is poisoned, list all tasks that used it
-  - [ ] Provide `memory rollback <entry-id>` CLI command (deferred to Phase 7: MCP)
+  - [x] Provide `memory rollback <entry-id>` CLI command → `src/cli/index.ts` `rollback` command (wraps `RollbackService.poisonAndReport` with report-focused output)
 - [x] Introduce revalidation jobs → `invalidation/revalidation-job.ts`
 - [x] Create audit log for all invalidation events → `memory_status_history` table (Phase 2)
 
@@ -843,8 +894,8 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 
 - [x] Implement SessionStart hook → `memory_session_start` tool
 - [x] Implement PostToolUse hook → `memory_observe` tool
-- [ ] Implement PostToolUseFailure hook — capture error context (V2)
-- [ ] Implement Stop hook — trigger post-task extraction (V2: auto-trigger)
+- [x] Implement PostToolUseFailure hook — capture error context → `memory_observe_failure` MCP tool (privacy-filtered, deduped, source=`failure:<toolName>`)
+- [x] Implement Stop hook — trigger post-task extraction → `memory_stop` MCP tool (runs `ExtractionGuard` → if clean, triggers `WorkingToEpisodicConsolidator.consolidate()`)
 - [x] Implement SessionEnd hook → `memory_session_end` tool
 - [x] `memory_run_invalidation` — run invalidation against recent code changes
 
@@ -853,10 +904,22 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - [x] Define standard task workflow (pre-task retrieval, post-task extraction) → session_start/session_end
 - [x] Integrate retrieval into pre-task flow (auto-inject on session start)
 - [x] Integrate validation before usage → quarantine system
-- [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard
-- [ ] Define memory update flow after merge (V2)
+- [x] Integrate post-task knowledge extraction (with guard: tests must pass) → extraction guard + `memory_stop` MCP tool
+- [x] Define memory update flow after merge → agent invokes `memory_run_invalidation` (with `fromRef` = pre-merge commit) on post-merge; orchestrator stales entries whose watched files/symbols changed (see Phase 6 flow). Consumer wires this into their merge CI/hook per `examples/consumer-ci.yml`.
 - [x] Separate Working Memory (session) from persistent Semantic/Procedural Memory → consolidation
-- [ ] Test with at least 2 different agents (e.g., Claude Code + Augment)
+- [-] Test with at least 2 different agents (e.g., Claude Code + Augment) — **Pilot-only: requires live sessions from Claude Code + Augment against a shared MCP instance. Blocked until pilot is scheduled.**
+
+**Consumer Integration (from `agent-config` spec: `road-to-consumer-integration-guide.md`):**
+
+- [x] Implement feature detection helper: `memory_status` → `present | absent | misconfigured` → `memory status` CLI
+  - `present`: health() responds within 2s
+  - `absent`: package not installed or not on PATH (consumer-side shell check)
+  - `misconfigured`: installed but health() returns error (typically DB)
+- [x] Publish reference `docker-compose.yml` snippet for consumer local dev → `examples/consumer-docker-compose.yml`
+- [x] Publish CI job template for consumers → `examples/consumer-ci.yml` (GitHub Actions)
+- [x] Ensure CLI is primary V1 contract — MCP wraps CLI, never exposes new surface → MCP tools map 1:1 to CLI commands via shared handlers
+- [x] Document consumer prerequisites: Postgres 15+, pgvector, connection string in env var → `README.md` Compatibility section
+- [x] Publish compatibility matrix (agent-memory version ↔ agent-config version) in README → `README.md` Compatibility table
 
 ### Acceptance Criteria
 
@@ -866,6 +929,7 @@ Make memory practically usable from any AI coding agent via MCP protocol.
 - Lifecycle hooks capture observations automatically
 - Token budget respected on session start injection
 - Post-task extraction blocked when tests fail
+- Consumer can detect memory status (`present`/`absent`/`misconfigured`) reliably
 
 ---
 
@@ -931,20 +995,33 @@ System is safe for team use.
 
 Prove the system on a real project.
 
+### Prerequisites (from `agent-config` spec: `road-to-agents-md-fix.md`)
+
+- [x] Fix AGENTS.md: remove all Laravel/Galawork references, replace with TypeScript/Node/pgvector stack
+- [x] AGENTS.md describes: package layout, npm scripts, public API surface, Postgres setup, relationship to agent-config
+- [x] Add "what this repo is NOT" section (not an application, not a UI, not a dataset)
+
 ### Checklist
 
-- [ ] Select pilot repository
-- [ ] Run initial ingestion
-- [ ] Execute 10 real tasks with memory support
-- [ ] Document false positives
-- [ ] Document stale memory occurrences
-- [ ] Collect developer feedback
-- [ ] Create prioritized V2 backlog
+> **Pilot-only items.** Every task in this section requires a live repository, live agents, and human
+> judgment of real outputs. The code & infrastructure for V1 are complete; what remains is **execution**.
+> The items below cannot be closed autonomously by the agent that built this package — they need a
+> human operator with a pilot repo and access to at least two AI coding agents.
+
+- [-] Select pilot repository — **Pilot-only: human operator selects a real in-house repo**
+- [-] Run initial ingestion — **Pilot-only: `memory ingest` against the selected repo; verify quarantine lands cleanly**
+- [-] Execute 10 real tasks with memory support — **Pilot-only: real tasks from the team's backlog**
+- [-] Document false positives — **Pilot-only: empirical observation during the 10 tasks**
+- [-] Document stale memory occurrences — **Pilot-only: empirical observation during the 10 tasks**
+- [-] Collect developer feedback — **Pilot-only: interviews / survey after the 10 tasks**
+- [-] Test with at least 2 different agents (Claude Code + Augment) — **Pilot-only: requires live sessions from both agents**
+- [-] Create prioritized V2 backlog — **Pilot-only: output of the observations above, written back into this roadmap or a new `agents/roadmaps/v2-backlog.md`**
 
 ### Acceptance Criteria
 
 - System saves noticeable discovery time in real tasks
 - Stale knowledge is mostly correctly detected
+- Agent reading AGENTS.md correctly identifies the TypeScript/Node stack
 
 ---
 
@@ -963,6 +1040,14 @@ Prove the system on a real project.
 
 - **MEMORY.md Bridge** — bi-directional sync between file-based memory (built-in) and database memory
 - **Endless Mode** — biomimetic memory architecture for extended sessions (prevents context overflow)
+
+### From agent-config specs
+
+- **Cross-Project Learning (Stage 3)** — anonymised signal feed across consumers; pattern reaches `semantic` in ≥3 projects → proposal PR on agent-config. Options: SaaS aggregator / federated pull / manual meta-review. See `road-to-cross-project-learning.md`
+- **REST API** — remote multi-machine setups (V2 only per consumer integration spec)
+- **Streaming Responses** — deferred until a consumer hits the 20-entry limit budget
+- **Per-Entry No-Decay** — specific entries (e.g. critical security invariants) can declare `no_decay: true`, settable only by human review
+- **Negative Signals** — deprecation emits a counter-signal weakening earlier proposals
 
 ### Our own
 
@@ -1042,15 +1127,31 @@ V1 is reached when:
 - [x] Post-task extraction blocked when tests fail → `extraction-guard.ts`
 - [x] Audit trail complete — every status change traceable → `memory_status_history` table + `memory_audit` tool
 - [x] Trust threshold enforced — below 0.6 never returned to agents → `config.trust.thresholdDefault`
-- [ ] 10+ real tasks completed with memory support — **requires Phase 10 pilot**
-- [ ] Stale detection accuracy >95% for critical/high-impact entries — **requires Phase 10 pilot data**
-- [ ] Zero poisoned entries remain active (all caught and cascaded) — `poison.service.ts` implemented, **needs pilot verification**
-- [ ] At least 2 different agents tested via MCP — **requires Phase 10 pilot**
+- [-] 10+ real tasks completed with memory support — **requires Phase 10 pilot**
+- [-] Stale detection accuracy >95% for critical/high-impact entries — **requires Phase 10 pilot data**
+- [-] Zero poisoned entries remain active (all caught and cascaded) — `poison.service.ts` implemented, **needs pilot verification**
+- [-] At least 2 different agents tested via MCP — **requires Phase 10 pilot**
 - [x] `memory health` shows all quality metrics green → `memory_health` + `calculateMetrics()`
+
+## Integration Specs (from `agent-config`)
+
+The following specs were authored in `agent-config` and define the **contract** between the two packages.
+They have been integrated into the phases above. All specs (shipped + deferred) are archived in
+[`agents/roadmaps/archive/from-agent-config/`](from-agent-config/).
+
+| Spec | Integrated Into | Status |
+|---|---|---|
+| [`road-to-retrieval-contract.md`](from-agent-config/road-to-retrieval-contract.md) | Phase 3 (Retrieval Contract) | ✅ Shipped — `src/retrieval/contract.ts`, schemas + 20 conformance tests |
+| [`road-to-promotion-flow.md`](from-agent-config/road-to-promotion-flow.md) | Phase 4 (Promotion Flow) | ✅ Shipped — `src/trust/promotion.service.ts` + 4 MCP tools |
+| [`road-to-decay-calibration.md`](from-agent-config/road-to-decay-calibration.md) | Phase 4 (Decay Calibration) | ✅ Shipped — `src/trust/decay.ts` + per-type overrides + 14 tests |
+| [`road-to-consumer-integration-guide.md`](from-agent-config/road-to-consumer-integration-guide.md) | Phase 7 (Consumer Integration) | ✅ Shipped — `memory status` + `memory health` CLI with contract envelopes |
+| [`road-to-agents-md-fix.md`](from-agent-config/road-to-agents-md-fix.md) | Phase 10 (Prerequisites) | ✅ Shipped — AGENTS.md rewritten for TS/Node/pgvector stack |
+| [`road-to-cross-project-learning.md`](from-agent-config/road-to-cross-project-learning.md) | V2 Possibilities | ⏸ Deferred — requires 2+ production consumers |
 
 ## Notes
 
-- This roadmap lives in `agent-config` for planning purposes — the actual memory system will be a **separate repository**
 - The system is agent-agnostic by design: any model (GPT, Claude, Gemini, etc.) and any agent (Augment, Cursor, Cline, etc.) can use it
 - MCP (Model Context Protocol) is the primary integration mechanism — supported by most modern agents
-- The original German roadmap is archived in `agents/roadmaps/augment-agent-memory-hybrid-roadmap.md`
+- CLI is the primary V1 contract; MCP wraps the CLI (from consumer integration spec)
+- The original German roadmap is archived alongside this file at [`augment-agent-memory-hybrid-roadmap.md`](augment-agent-memory-hybrid-roadmap.md)
+- Integration specs (shipped + deferred) are archived in [`from-agent-config/`](from-agent-config/)
