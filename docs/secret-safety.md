@@ -60,7 +60,7 @@ If this table and the catalog disagree, the catalog wins — CI fails on drift.
 | `bitbucket` | `bitbucket_access_token` | `SECRET_DETECTED` | high | Bitbucket repository/workspace access token (ATCTT…). | — |
 | `digitalocean` | `digitalocean_pat` | `SECRET_DETECTED` | high | DigitalOcean personal access token (dop_v1_…). | — |
 | `gcp` | `gcp_api_key` | `SECRET_DETECTED` | high | Google Cloud API key (AIza…). | — |
-| `generic` | `basic_auth_url` | `SECRET_DETECTED` | high | Basic auth embedded in a URL (https://user:pass@host). | — |
+| `generic` | `basic_auth_url` | `SECRET_DETECTED` | high | Basic auth embedded in a URL (`https://user:pass@host`). | — |
 | `generic` | `jwt` | `SECRET_DETECTED` | high | JSON Web Token (three base64url segments). | — |
 | `generic` | `connection_string` | `SECRET_DETECTED` | high | Database connection string (postgres://, mysql://, redis://, mongodb://). | — |
 | `generic` | `private_key_pem` | `SECRET_DETECTED` | high | PEM-encoded RSA/EC/DSA/PKCS8 private key. | — |

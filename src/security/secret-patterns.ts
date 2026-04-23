@@ -208,7 +208,7 @@ export const SECRET_PATTERNS: SecretPattern[] = [
 		code: "SECRET_DETECTED",
 		confidence: "high",
 		regex: /https?:\/\/[^:@\s/]+:[^@\s/]+@[^\s/'"]+/g,
-		description: "Basic auth embedded in a URL (https://user:pass@host).",
+		description: "Basic auth embedded in a URL (`https://user:pass@host`).",
 	},
 	{
 		name: "jwt",
