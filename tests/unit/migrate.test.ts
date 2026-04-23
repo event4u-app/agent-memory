@@ -41,9 +41,9 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(result.applied).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
 		expect(result.skipped).toEqual([]);
-		expect(inserted).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(inserted).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
 	});
 
 	it("is idempotent — skips every migration already recorded", async () => {
@@ -53,13 +53,14 @@ describe("runMigrations — sql option", () => {
 			"SELECT name FROM memory_migrations": [
 				{ name: "001_initial" },
 				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
 			],
 		});
 
 		const result = await runMigrations({ sql });
 
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
 	});
 
 	it("applies only the missing migrations when some already ran", async () => {
@@ -71,7 +72,7 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["002_promotion_metadata"]);
+		expect(result.applied).toEqual(["002_promotion_metadata", "003_memory_events"]);
 		expect(result.skipped).toEqual(["001_initial"]);
 	});
 
@@ -101,7 +102,11 @@ describe("runMigrations — databaseUrl option", () => {
 				return Promise.resolve([{ exists: true }]);
 			}
 			if (text.includes("SELECT name FROM memory_migrations")) {
-				return Promise.resolve([{ name: "001_initial" }, { name: "002_promotion_metadata" }]);
+				return Promise.resolve([
+					{ name: "001_initial" },
+					{ name: "002_promotion_metadata" },
+					{ name: "003_memory_events" },
+				]);
 			}
 			return Promise.resolve([]);
 		}) as unknown as postgres.Sql;
@@ -121,7 +126,7 @@ describe("runMigrations — databaseUrl option", () => {
 		);
 		expect(endSpy).toHaveBeenCalledTimes(1);
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
 	});
 
 	it("closes the dedicated connection even when a migration fails", async () => {

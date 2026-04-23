@@ -4,10 +4,12 @@ import { logger } from "../utils/logger.js";
 import { closeDb, getDb } from "./connection.js";
 import { up as up001 } from "./migrations/001_initial.js";
 import { up as up002 } from "./migrations/002_promotion_metadata.js";
+import { up as up003 } from "./migrations/003_memory_events.js";
 
 const MIGRATIONS = [
 	{ name: "001_initial", up: up001 },
 	{ name: "002_promotion_metadata", up: up002 },
+	{ name: "003_memory_events", up: up003 },
 ] as const;
 
 export interface MigrationResult {
