@@ -187,6 +187,8 @@ the full matrix.
 | `EMBEDDING_PROVIDER` | `bm25-only` | `openai`, `gemini`, `voyage`, `local`, or `bm25-only` — see [Embeddings](#embeddings) below. |
 | `MEMORY_TRUST_THRESHOLD_DEFAULT` | `0.6` | Minimum `trust_score` surfaced by retrieval. Lower to see low-trust entries during debugging. |
 | `MEMORY_TOKEN_BUDGET` | `2000` | Default progressive-disclosure budget per retrieval call. |
+| `MEMORY_ENTROPY_THRESHOLD` | `4.5` | Shannon-entropy cutoff (bits/char) for the residual `HIGH_ENTROPY_DETECTED` heuristic. Calibrated against the corpus in `tests/fixtures/entropy-corpus/` — see [`docs/security/entropy-calibration.md`](docs/security/entropy-calibration.md). |
+| `MEMORY_ENTROPY_MIN_LENGTH` | `20` | Minimum quoted-string length (chars) before the entropy heuristic fires. |
 | `MEMORY_AUTO_MIGRATE` | `true` (Docker image) | Container entrypoint runs `memory migrate` on startup. Set to `false` for ephemeral CLI containers or externally managed schemas. Host installs run `memory migrate` manually. |
 
 A ready-to-copy template lives in [`.env.example`](.env.example).

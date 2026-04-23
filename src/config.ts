@@ -77,5 +77,19 @@ export const config = {
 	security: {
 		/** Ingress secret policy — reject (default) or redact. See MEMORY_SECRET_POLICY. */
 		secretPolicy: resolveSecretPolicy(env.MEMORY_SECRET_POLICY),
+		/**
+		 * Shannon-entropy threshold for the quoted-string heuristic (bits per char).
+		 * Strings at or below this value pass; strings above are flagged as
+		 * `HIGH_ENTROPY_DETECTED`. Default 4.5 is calibrated against the corpus
+		 * in `tests/fixtures/entropy-corpus/` — see
+		 * `docs/security/entropy-calibration.md` for the precision/recall
+		 * matrix and the reasoning that picked this dial.
+		 */
+		entropyThreshold: parseFloatSafe(env.MEMORY_ENTROPY_THRESHOLD, 4.5, 0, 8),
+		/**
+		 * Minimum length (chars) of the quoted inner content before the entropy
+		 * heuristic fires. Shorter strings are ignored regardless of entropy.
+		 */
+		entropyMinLength: parseIntSafe(env.MEMORY_ENTROPY_MIN_LENGTH, 20, 1, 1024),
 	},
 } as const;

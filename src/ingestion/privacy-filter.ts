@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { config } from "../config.js";
 
 /**
  * Pre-storage privacy filter.
@@ -40,9 +41,10 @@ const PHONE_RE = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4
 // .env lines: KEY=value
 const ENV_LINE_RE = /^[A-Z][A-Z0-9_]*\s*=\s*.+$/gm;
 
-// High-entropy string detection (potential secrets)
-const HIGH_ENTROPY_THRESHOLD = 4.0;
-const HIGH_ENTROPY_MIN_LENGTH = 20;
+// High-entropy string detection (potential secrets).
+// Threshold + min-length are resolved via `config.security` so the ingestion
+// pipeline and the ingress guard share a single source of truth — see
+// `scripts/eval-entropy-threshold.ts` for the calibration that picked them.
 
 // --- Filter Functions ---
 
@@ -102,9 +104,11 @@ export function shannonEntropy(str: string): number {
 
 /** Detect and redact high-entropy strings (potential leaked secrets) */
 export function stripHighEntropyStrings(text: string): string {
+	const minLength = config.security.entropyMinLength;
+	const threshold = config.security.entropyThreshold;
 	return text.replace(/['"][A-Za-z0-9+/=_-]{20,}['"]/g, (match) => {
 		const inner = match.slice(1, -1);
-		if (inner.length >= HIGH_ENTROPY_MIN_LENGTH && shannonEntropy(inner) > HIGH_ENTROPY_THRESHOLD) {
+		if (inner.length >= minLength && shannonEntropy(inner) > threshold) {
 			return `"[REDACTED:high-entropy]"`;
 		}
 		return match;

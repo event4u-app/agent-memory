@@ -42,6 +42,8 @@
     "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
     "docs:secrets": "tsx scripts/generate-secret-patterns-doc.ts",
     "docs:secrets:check": "npm run docs:secrets && git diff --exit-code docs/secret-safety.md",
+    "entropy:eval": "tsx scripts/eval-entropy-threshold.ts",
+    "entropy:eval:check": "npm run entropy:eval && git diff --exit-code docs/security/entropy-calibration.md",
     "check:portability": "AGENT_CONFIG_BLOCKLIST=\"FormRequest,Eloquent,artisan,Blade,Livewire\" python3 node_modules/@event4u/agent-config/scripts/check_portability.py --root .",
     "check:neutral-docs": "tsx scripts/check-neutral-docs.ts",
     "check:mcp-tools": "tsx scripts/check-mcp-tools.ts",

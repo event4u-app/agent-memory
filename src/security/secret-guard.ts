@@ -1,3 +1,4 @@
+import { config } from "../config.js";
 import { shannonEntropy } from "../ingestion/privacy-filter.js";
 import { SECRET_PATTERNS } from "./secret-patterns.js";
 import type { SecretPolicy } from "./secret-policy.js";
@@ -17,15 +18,30 @@ import {
  */
 
 const HIGH_ENTROPY_RE = /['"][A-Za-z0-9+/=_-]{20,}['"]/g;
-const HIGH_ENTROPY_THRESHOLD = 4.0;
-const HIGH_ENTROPY_MIN_LENGTH = 20;
+
+/**
+ * Overrides for the entropy heuristic. Only the eval script and tests should
+ * pass these — production callers rely on `config.security.entropy*`.
+ */
+export interface EntropyOptions {
+	threshold?: number;
+	minLength?: number;
+}
 
 /**
  * Scan a single string for secrets. Returns an empty array when clean.
  * `field` is attached to each detection when provided so agents can see which
  * input triggered the violation.
+ *
+ * `entropyOptions` lets calibration tooling (see
+ * `scripts/eval-entropy-threshold.ts`) sweep thresholds without touching the
+ * process config. Production ingress never passes it.
  */
-export function scanForSecrets(text: string | undefined | null, field?: string): SecretDetection[] {
+export function scanForSecrets(
+	text: string | undefined | null,
+	field?: string,
+	entropyOptions?: EntropyOptions,
+): SecretDetection[] {
 	if (!text) return [];
 	const detections: SecretDetection[] = [];
 
@@ -44,11 +60,13 @@ export function scanForSecrets(text: string | undefined | null, field?: string):
 		});
 	}
 
+	const threshold = entropyOptions?.threshold ?? config.security.entropyThreshold;
+	const minLength = entropyOptions?.minLength ?? config.security.entropyMinLength;
 	const highEntropyRanges: { start: number; end: number }[] = [];
 	for (const m of text.matchAll(HIGH_ENTROPY_RE)) {
 		const inner = m[0].slice(1, -1);
-		if (inner.length < HIGH_ENTROPY_MIN_LENGTH) continue;
-		if (shannonEntropy(inner) <= HIGH_ENTROPY_THRESHOLD) continue;
+		if (inner.length < minLength) continue;
+		if (shannonEntropy(inner) <= threshold) continue;
 		const start = m.index ?? 0;
 		highEntropyRanges.push({ start, end: start + m[0].length });
 	}
