@@ -515,7 +515,7 @@ dass keine neue Lücke in den Code­pfad gerutscht ist.
   - Auf einem Setup mit deaktivierter Logger-Redaction:
     rot, exit-Code ≠ 0.
 
-### IV3 · Contract-Golden-Test „no-secret-in-output" · [Must]
+### IV3 · Contract-Golden-Test „no-secret-in-output" · [Must] · ✅ shipped
 
 - **Warum:** Jede neue MCP-Tool- oder CLI-Response darf nie ein
   un­re­di­giertes Secret enthalten. Ein einzelner Test, der jede
