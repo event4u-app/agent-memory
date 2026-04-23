@@ -771,6 +771,13 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Release text points readers at the new entry points;
   CHANGELOG in sync; rename mapping visible to anyone hitting a
   stale external link.
+- **Status (2026-04-23):** Shipped. `CHANGELOG.md` `[Unreleased] —
+  1.1.0` section carries Added / Changed / Fixed / Renamed, test
+  count updated to 267, drift-guard surface documented, `REPO_ROOT`
+  clarification added. Draft GitHub release text parked at
+  `agents/drafts/release-notes-1.1.0.md` — paste-ready when P7-1
+  pushes the tag; mirrors the CHANGELOG one-to-one with the rename
+  mapping surfaced in its own table.
 
 ### P7-3 · Draft announcement [Could]
 

@@ -88,9 +88,13 @@ date + version header at tag time (P7-1).
 - `docker-compose.yml` and sidecar example services default to
   `memory serve` instead of `tail -f /dev/null` — the container now
   actively manages its own lifecycle (P3-4b).
-- Test count: 246 → 251 (added `runMigrations()` + `isMainModule`
-  unit coverage).
+- Test count: 246 → 267 (added `runMigrations()` + `isMainModule`
+  unit coverage in Phase 3, +16 promotion-contract tests in P5-3).
 - CLI command count: 14 → 16 (added `migrate`, `serve`).
+- `REPO_ROOT` semantics in the Docker image clarified — defaults to
+  `/workspace` inside the container (see `examples/laravel-sidecar/`
+  and `examples/with-agent-config/`), no longer inherited from the
+  host's `process.cwd()` when the image boots via `memory serve`.
 
 ### Fixed
 
