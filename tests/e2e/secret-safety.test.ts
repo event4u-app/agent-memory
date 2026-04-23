@@ -124,6 +124,59 @@ describe("MCP ingress — memory_propose", () => {
 	});
 });
 
+describe("MCP ingress — memory_observe / memory_observe_failure", () => {
+	beforeEach(() => {
+		process.env.MEMORY_SECRET_POLICY = "reject";
+	});
+
+	function observeCtx() {
+		return {
+			observationRepo: {
+				create: vi.fn().mockResolvedValue({ id: "obs-should-never-see-this" }),
+			},
+		} as unknown as McpContext;
+	}
+
+	for (const c of CANARIES) {
+		it(`memory_observe rejects ${c.pattern}; observationRepo.create never called`, async () => {
+			const ctx = observeCtx();
+			const result = await handleToolCall(
+				"memory_observe",
+				{ sessionId: "s1", content: `agent output: ${c.value}`, source: "tool-use" },
+				ctx,
+			);
+			expect(result.isError, `${c.pattern} expected isError=true`).toBe(true);
+			const text = (result.content[0] as { text: string }).text;
+			expect(JSON.parse(text).code).toBe("INGRESS_POLICY_VIOLATION");
+			expect(text).not.toContain(c.value);
+			expect(
+				(ctx.observationRepo as unknown as { create: ReturnType<typeof vi.fn> }).create,
+			).not.toHaveBeenCalled();
+		});
+
+		it(`memory_observe_failure rejects ${c.pattern} in stderr`, async () => {
+			const ctx = observeCtx();
+			const result = await handleToolCall(
+				"memory_observe_failure",
+				{
+					sessionId: "s1",
+					toolName: "bash",
+					errorMessage: "command failed",
+					stderr: `Authorization: Bearer ${c.value}`,
+				},
+				ctx,
+			);
+			expect(result.isError, `${c.pattern} expected isError=true`).toBe(true);
+			const text = (result.content[0] as { text: string }).text;
+			expect(JSON.parse(text).code).toBe("INGRESS_POLICY_VIOLATION");
+			expect(text).not.toContain(c.value);
+			expect(
+				(ctx.observationRepo as unknown as { create: ReturnType<typeof vi.fn> }).create,
+			).not.toHaveBeenCalled();
+		});
+	}
+});
+
 describe("embedding boundary — EmbeddingFallbackChain.embed", () => {
 	function fakeProvider(): EmbeddingProvider & { embed: ReturnType<typeof vi.fn> } {
 		return {

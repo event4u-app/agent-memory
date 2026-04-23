@@ -296,7 +296,7 @@ Realität der Provider-Landschaft.
     Doc-Block; CI-Drift-Guard analog zu II1 offen (Nightly-Artefakt
     folgt separat, Doc-Diff ist das Minimum-Gate).
 
-### II3 · Canary-Token-Tests · [Must]
+### II3 · Canary-Token-Tests · [Must] · ✅ shipped
 
 - **Warum:** Die einzige verlässliche Aussage „unser Guard ist dicht"
   kommt aus einem Test, der aktiv versucht, ein Secret durch­zu­schleu­

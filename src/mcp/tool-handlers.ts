@@ -28,7 +28,7 @@ import {
 	redactDetailEntry,
 	redactEntriesForRetrieval,
 } from "../security/retrieval-redaction.js";
-import { SecretViolationError } from "../security/secret-guard.js";
+import { enforceNoSecrets, SecretViolationError } from "../security/secret-guard.js";
 import type { SecretViolation } from "../security/secret-violation.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
@@ -68,6 +68,21 @@ export async function handleToolCall(
 	args: Args,
 	ctx: McpContext,
 ): Promise<CallToolResult> {
+	try {
+		return await dispatchTool(name, args, ctx);
+	} catch (error) {
+		// Top-level ingress-policy catch — any handler that invokes
+		// `enforceNoSecrets` (propose, observe, observe_failure, future ingress
+		// paths) surfaces as a structured INGRESS_POLICY_VIOLATION result
+		// without leaking the raw value. Other errors propagate unchanged.
+		if (error instanceof SecretViolationError) {
+			return secretViolationResult(error.violation);
+		}
+		throw error;
+	}
+}
+
+async function dispatchTool(name: string, args: Args, ctx: McpContext): Promise<CallToolResult> {
 	switch (name) {
 		case "memory_retrieve":
 			return handleRetrieve(args, ctx);
@@ -387,7 +402,13 @@ async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallTool
 }
 
 async function handleObserve(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const filtered = applyPrivacyFilter(args.content as string);
+	const raw = args.content as string;
+	// Reject-by-default (roadmap principle): any SECRET_DETECTED / HIGH_ENTROPY
+	// hit throws SecretViolationError, which the top-level handleToolCall
+	// turns into INGRESS_POLICY_VIOLATION. PII (email/phone/paths/.env lines)
+	// is still redacted downstream via applyPrivacyFilter.
+	enforceNoSecrets({ content: raw }, config.security.secretPolicy);
+	const filtered = applyPrivacyFilter(raw);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
 		filtered,
@@ -404,7 +425,18 @@ async function handleObserveFailure(args: Args, ctx: McpContext): Promise<CallTo
 	];
 	if (args.stderr) parts.push(`stderr=${String(args.stderr)}`);
 	if (args.stack) parts.push(`stack=${String(args.stack)}`);
-	const content = applyPrivacyFilter(parts.join("\n"));
+	const joined = parts.join("\n");
+	// Same reject-by-default gate as handleObserve — stack traces and stderr
+	// are a well-known leak vector for tokens pasted into error messages.
+	enforceNoSecrets(
+		{
+			errorMessage: args.errorMessage as string | undefined,
+			stderr: args.stderr as string | undefined,
+			stack: args.stack as string | undefined,
+		},
+		config.security.secretPolicy,
+	);
+	const content = applyPrivacyFilter(joined);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
 		content,
