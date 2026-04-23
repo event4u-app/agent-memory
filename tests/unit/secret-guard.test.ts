@@ -31,9 +31,14 @@ describe("scanForSecrets — pattern coverage", () => {
 		expect(d.map((x) => x.pattern)).toContain("connection_string");
 	});
 
-	it("detects PRIVATE KEY blocks", () => {
+	it("detects PEM PRIVATE KEY blocks", () => {
 		const k = "-----BEGIN RSA PRIVATE KEY-----\nABCDEF\n-----END RSA PRIVATE KEY-----";
-		expect(scanForSecrets(k).map((x) => x.pattern)).toContain("private_key");
+		expect(scanForSecrets(k).map((x) => x.pattern)).toContain("private_key_pem");
+	});
+
+	it("detects OPENSSH PRIVATE KEY blocks", () => {
+		const k = "-----BEGIN OPENSSH PRIVATE KEY-----\nABCDEF\n-----END OPENSSH PRIVATE KEY-----";
+		expect(scanForSecrets(k).map((x) => x.pattern)).toContain("openssh_private_key");
 	});
 
 	it("detects generic api_key= / token= assignments", () => {
