@@ -12,6 +12,7 @@
 #   cli-commands    (P6-3)  README CLI list vs src/cli/index.ts
 #   neutral-docs    (P6-4)  pure-knowledge docs stay stack-agnostic
 #   changelog       (P6-6)  package.json version has a CHANGELOG section
+#   secret-patterns (II1)   docs/secret-safety.md vs secret-patterns.ts
 #
 # Runs on every pull request + on push to main. Fast (~2 min total) —
 # these are static checks, no Docker, no Postgres.
@@ -146,3 +147,30 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run check:changelog
+
+  secret-patterns:
+    name: Secret-pattern doc drift (II1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Regenerate pattern catalog table
+        run: npm run docs:secrets
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/secret-safety.md; then
+            echo ""
+            echo "::error::docs/secret-safety.md is out of sync with src/security/secret-patterns.ts."
+            echo "::error::Run \`npm run docs:secrets\` locally and commit the diff."
+            echo "::error::See roadmap task II1 in agents/roadmaps/secret-safety.md."
+            exit 1
+          fi

@@ -230,7 +230,11 @@ Ziel: die Pattern-Batterie härten, damit I1/I3 nicht leer laufen.
 Ein Guard, der nur bekannte Muster kennt, skaliert nicht mit der
 Realität der Provider-Landschaft.
 
-### II1 · Erweiterte Patterns · [Must]
+### II1 · Erweiterte Patterns · [Must] · ✅ shipped
+
+> Delivered on `feat/improve-user-setup`:
+> - catalog + refactor + 43 pattern tests — `59a768b`
+> - docs generator + CI drift-guard — pending commit
 
 - **Warum:** Heute sieben Pattern-Klassen. Moderne Stacks bringen
   mindestens 15 Provider mit eigenen Token-Formaten. Ohne diese

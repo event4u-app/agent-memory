@@ -40,6 +40,8 @@
     "mcp:start": "tsx src/mcp/server.ts",
     "docs:cli": "tsx scripts/generate-cli-docs.ts",
     "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
+    "docs:secrets": "tsx scripts/generate-secret-patterns-doc.ts",
+    "docs:secrets:check": "npm run docs:secrets && git diff --exit-code docs/secret-safety.md",
     "check:portability": "AGENT_CONFIG_BLOCKLIST=\"FormRequest,Eloquent,artisan,Blade,Livewire\" python3 node_modules/@event4u/agent-config/scripts/check_portability.py --root .",
     "check:neutral-docs": "tsx scripts/check-neutral-docs.ts",
     "check:mcp-tools": "tsx scripts/check-mcp-tools.ts",
