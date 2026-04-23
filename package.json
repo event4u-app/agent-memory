@@ -31,6 +31,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:contract": "vitest run tests/contract",
     "lint": "biome check src/ tests/",
     "lint:fix": "biome check --write src/ tests/",
     "typecheck": "tsc --noEmit",

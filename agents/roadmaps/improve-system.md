@@ -594,6 +594,19 @@ first so the integration reads as "these two can combine", not
   intentional shape change requires either a fixture update (additive)
   or a `contract_version` bump (breaking). Documented in
   `agents/adrs/0003-contract-version-bumps.md` (new).
+- **Status (2026-04-23):** Shipped. Three new JSON schemas
+  (`propose-v1`, `promote-v1`, `deprecate-v1`) alongside the existing
+  `retrieval-v1` / `health-v1` schemas. Five new golden fixtures
+  (`golden-propose`, `golden-promote-validated`,
+  `golden-promote-rejected`, `golden-deprecate`,
+  `golden-deprecate-with-successor`). New test file
+  `tests/contract/promotion-contract.test.ts` adds 16 tests that
+  validate fixtures against schemas AND assert the live TypeScript
+  types (`ProposeResult`, `PromoteResult`, `DeprecateResult`) from
+  `src/trust/promotion.service.ts` conform — catches drift at
+  typecheck + runtime. `npm run test:contract` added; existing CI
+  `npm test` already covers it. ADR-0003 documents additive vs.
+  breaking policy and the deprecation window.
 
 ### P5-4 · `docs/compatibility-matrix.md` [Should]
 

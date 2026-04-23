@@ -1,0 +1,8 @@
+{
+	"id": "01HTEST00000000000000000002",
+	"status": "rejected",
+	"trust_score": 0.6,
+	"reason": "Duplicate of existing semantic entry 01HEXISTING000000000000000 (same type + overlapping scope)",
+	"rejection_reason": "duplicate",
+	"existing_id": "01HEXISTING000000000000000"
+}

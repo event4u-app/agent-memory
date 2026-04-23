@@ -1,0 +1,6 @@
+{
+	"id": "01HTEST00000000000000000001",
+	"status": "invalidated",
+	"reason": "Rule replaced by ADR-0007 (superseded_by=01HTEST00000000000000000099)",
+	"superseded_by": "01HTEST00000000000000000099"
+}
