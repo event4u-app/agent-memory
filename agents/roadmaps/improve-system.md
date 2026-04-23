@@ -543,6 +543,21 @@ fits the 1.1.0 cycle.
   website (GitHub Pages later, or repo URL), security features
   enabled (Dependabot alerts, code scanning).
 - **Done:** "About" box populated; topics set; Dependabot on.
+- **Status (2026-04-23):** Checklist locked for manual execution in
+  https://github.com/event4u-app/agent-memory/settings (REST API
+  attempt returned 404 under the agent token — admin action
+  required). Copy-paste values:
+  - **Description:** Persistent, trust-scored project memory for AI
+    coding agents — MCP server + CLI, backed by PostgreSQL +
+    pgvector.
+  - **Website:** https://github.com/event4u-app/agent-memory
+  - **Topics:** `mcp`, `agent-memory`, `postgres`, `pgvector`,
+    `trust-scoring`, `ai-agents`, `llm-memory`, `typescript`
+  - **Security:** Settings → Code security and analysis → enable
+    Dependabot alerts + Dependabot security updates + secret
+    scanning + push protection.
+  - **Releases page:** after P7-1 tags 1.1.0, paste
+    `agents/drafts/release-notes-1.1.0.md` as the release body.
 
 ---
 
