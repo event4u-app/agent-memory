@@ -23,9 +23,18 @@ import { isMainModule } from "../utils/is-main-module.js";
 import { registerLifecycleHandlers } from "./lifecycle.js";
 import { registerToolHandlers } from "./tools.js";
 
-const BACKEND_VERSION = "0.1.0";
+export const BACKEND_VERSION = "0.1.0";
 
-export async function startMcpServer(): Promise<void> {
+/**
+ * Build a fully-wired MCP `Server` plus the ctx object used by the
+ * lifecycle + tool handlers. Extracted from `startMcpServer` so the
+ * SSE transport (A4 · runtime-trust) can reuse the exact same wiring
+ * — one Server instance per connection, zero drift between transports.
+ */
+export function buildMcpServer(): {
+	server: Server;
+	close: () => Promise<void>;
+} {
 	const sql = getDb();
 
 	const entryRepo = new MemoryEntryRepository(sql);
@@ -86,6 +95,16 @@ export async function startMcpServer(): Promise<void> {
 	registerToolHandlers(server, ctx);
 	registerLifecycleHandlers(server, ctx);
 
+	return {
+		server,
+		close: async () => {
+			await server.close();
+		},
+	};
+}
+
+export async function startMcpServer(): Promise<void> {
+	const { server } = buildMcpServer();
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 	console.error("agent-memory MCP server running on stdio");

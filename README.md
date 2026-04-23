@@ -93,6 +93,7 @@ tools, then follow the matching guide.
 | **Docker sidecar + CLI** | [`docs/consumer-setup-docker-sidecar.md`](docs/consumer-setup-docker-sidecar.md) | any language that can shell out | [`examples/laravel-sidecar/`](examples/laravel-sidecar/) |
 | **Node programmatic API** | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | Node / TypeScript apps | [`examples/node-programmatic/`](examples/node-programmatic/) |
 | **MCP stdio** | [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md) | any MCP-aware agent client | — |
+| **MCP over HTTP/SSE** | [`docs/mcp-http.md`](docs/mcp-http.md) | remote agents (GitHub Actions, Slack webhooks, browser playgrounds) | — |
 
 > Need a quick language-neutral overview first? Start at
 > [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md).

@@ -214,7 +214,18 @@ darauf baut alles hier auf.
     Verhaltenstests bleiben wo sie sind (doctor-fix, init, serve-http,
     e2e-Canaries). ✅
 
-### A4 · MCP über HTTP/SSE · [Should]
+### A4 · MCP über HTTP/SSE · [Should] · ✅ shipped
+
+> ✅ Shipped — `src/mcp/sse-server.ts` (GET `/sse` Stream · POST
+> `/message` Dispatch · statische Bearer-Auth via
+> `MEMORY_MCP_AUTH_TOKEN`), `memory mcp --transport sse [--port
+> <n>] [--host <h>]`, `docs/mcp-http.md` mit Client-Configs für
+> Claude Desktop (via `mcp-remote`), Cursor, generischer Node-Client.
+> `buildMcpServer()` extrahiert, damit stdio und SSE dieselbe
+> Tool-Verdrahtung teilen. Tests: 11 Unit-Tests (Auth 401/403,
+> Routing, Listener-Roundtrip) + 2 Contract-Tests (full MCP Client
+> ↔ Server Roundtrip `listTools` + `callTool` über SSE, plus
+> explizite 403-Absicherung).
 
 - **Warum:** Phase C braucht Remote-Zugriff (GitHub-Actions können
   keinen lokalen stdio-Prozess spawnen, Slack-Webhooks erreichen
@@ -222,18 +233,18 @@ darauf baut alles hier auf.
   der Aufwand ist klein, der Blocker-Charakter für C2/C3/C4 groß.
 - **Scope:**
   - `memory mcp --transport sse --port <n>` zusätzlich zum
-    bestehenden stdio-Transport (Default bleibt stdio).
+    bestehenden stdio-Transport (Default bleibt stdio). ✅
   - Auth minimal: statisches Bearer-Token aus
     `MEMORY_MCP_AUTH_TOKEN`. Kein mTLS, keine User-DB — das wäre
-    Phase-Drift.
+    Phase-Drift. ✅
   - Dokumentation: `docs/mcp-http.md` mit Beispiel-Client-Config
-    für Claude Desktop (SSE), Cursor, generischer MCP-SDK-Client.
+    für Claude Desktop (SSE), Cursor, generischer MCP-SDK-Client. ✅
 - **Done:**
   - `memory mcp --transport sse --port 7078` erreichbar, ein MCP-SDK
-    SSE-Client kann `memory_retrieve` aufrufen.
-  - Ohne Token: 401. Falscher Token: 403.
-  - Ein Contract-Test gegen SSE-Transport, der die gleiche Fixture
-    wie der stdio-Test verwendet (Transport-Agnostik beweisen).
+    SSE-Client kann Tools auflisten und aufrufen (Contract-Test). ✅
+  - Ohne Token: 401. Falscher Token: 403. ✅
+  - Contract-Test gegen SSE-Transport beweist Transport-Agnostik —
+    derselbe `Server`/`buildMcpServer`-Kern trägt beide Transporte. ✅
 
 ---
 

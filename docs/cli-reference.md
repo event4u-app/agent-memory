@@ -346,11 +346,19 @@ memory invalidate [options]
 
 ### `mcp`
 
-Start the MCP stdio server (for agent clients)
+Start the MCP server (stdio by default; --transport sse exposes HTTP/SSE)
 
 ```bash
-memory mcp
+memory mcp [options]
 ```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--transport <kind>` | no | `stdio` | Transport: stdio (default) | sse (HTTP listener with bearer auth) |
+| `--port <n>` | no | — | SSE port (only when --transport=sse; default 7078) |
+| `--host <host>` | no | `0.0.0.0` | SSE bind host (only when --transport=sse; default 0.0.0.0) |
 
 ### `migrate`
 
