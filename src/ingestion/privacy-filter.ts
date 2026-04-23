@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { config } from "../config.js";
+import { matchAllowList } from "../security/allowlist.js";
 
 /**
  * Pre-storage privacy filter.
@@ -109,6 +110,10 @@ export function stripHighEntropyStrings(text: string): string {
 	return text.replace(/['"][A-Za-z0-9+/=_-]{20,}['"]/g, (match) => {
 		const inner = match.slice(1, -1);
 		if (inner.length >= minLength && shannonEntropy(inner) > threshold) {
+			// Mirror of the allow-list check in `secret-guard.ts` —
+			// the two must agree so redaction and rejection see the
+			// same set of benign shapes.
+			if (matchAllowList(inner) !== null) return match;
 			return `"[REDACTED:high-entropy]"`;
 		}
 		return match;

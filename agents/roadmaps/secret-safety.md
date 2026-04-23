@@ -321,25 +321,38 @@ Realität der Provider-Landschaft.
   - PR-Gate: wenn ein Ingress-Pfad ohne entsprechenden
     Canary-Test hinzugefügt wird, CI rot (IV4 greift).
 
-### II4 · Allow-List für Non-Secrets · [Should]
+### II4 · Allow-List für Non-Secrets · [Should] · ✅ shipped
 
 - **Warum:** Fehlalarme erziehen Agents, den Filter zu umgehen.
   Commit-SHAs, UUIDs, Base64-encoded Content-Hashes sind legitim,
   dürfen aber Entropy-Heuristik triggern.
 - **Scope:**
   - Allow-List in `src/security/allowlist.ts` mit klar benannten
-    Mustern (`GIT_SHA_40`, `GIT_SHA_7`, `UUID_V4`, `SEMVER`,
-    `NPM_PACKAGE_HASH`).
-  - Match passiert **nach** Pattern-Detection: wenn ein Treffer
-    von einem Allow-List-Pattern vollständig abgedeckt ist und
-    die Entry-Klasse nicht „Secret-wahrscheinlich" ist (z. B.
-    `architecture_decision` eher als `credential_note`), wird er
-    fallen gelassen.
-  - Dokumentation mit Code-Beispielen, welche Formate erlaubt sind.
+    Mustern (`GIT_SHA_40`, `UUID_V4`, `SEMVER`, `SRI_HASH` — npm
+    integrity / Subresource-Integrity-Format deckt die
+    ursprünglich geplante `NPM_PACKAGE_HASH`-Variante ab; `GIT_SHA_7`
+    unterschritt die 20-Zeichen-Mindestlänge und wurde gestrichen).
+  - Match passiert **nach** Pattern-Detection und ausschließlich
+    gegen den residualen `HIGH_ENTROPY_DETECTED`-Treffer: wenn der
+    quote-innere String vollständig von einem Allow-List-Pattern
+    gedeckt ist, wird dieses einzelne Detection-Item fallen gelassen.
+    Catalog-Matches werden nie neutralisiert.
+  - Dokumentation in `docs/security/entropy-calibration.md` listet
+    jedes Muster mit Begründung; Unit-Tests in
+    `tests/unit/allowlist.test.ts` belegen Entropy + Matching +
+    Negative-Case pro Eintrag.
 - **Done:**
-  - Tests: 100 % der Entropy-Corpus-Non-Secrets passieren, sobald
-    Allow-List aktiv ist; 0 % der echten Secrets rutschen durch
-    (Regression gegen II3).
+  - Corpus-Regression (`tests/unit/entropy-corpus.test.ts`) grün:
+    alle 106 Non-Secrets passieren die Residual-Heuristik bei 4.5;
+    FPs im Eval-Matrix von 3 → 0.
+  - Strukturell nicht-entscheidbare Fälle (Base64 von kurzem
+    ASCII-Plaintext) sind in
+    `tests/fixtures/entropy-corpus/residual-fps.txt` dokumentiert
+    und werden weiter blockiert — explizite „Known-Limitation"
+    statt schmutzigem Allow-Listing.
+  - Allow-List-Wiring in `secret-guard.ts` (Ingress-Guard) und
+    `privacy-filter.ts` (Storage-Filter) sind identisch; die Mirror-
+    Implementierung trägt einen Kommentarverweis zwischen beiden.
 
 ---
 

@@ -18,10 +18,28 @@ the dial.
   tokens live in `tests/e2e/canaries.ts` instead). The
   `agent_memory_canary` marker is embedded where the length budget
   allows, so any leak into production logs is trivially searchable.
+- `tests/fixtures/entropy-corpus/residual-fps.txt` — documented
+  structural limitations. Base64 of short ASCII plaintext is
+  indistinguishable from a real base64-encoded secret without
+  decoding (which the guard refuses to do at ingress). These stay
+  rejected; the file exists so any accidental silencing trips the
+  `entropy-corpus` regression test.
 
 Strings that also match a named catalog pattern are excluded from the
 residual measurement — the eval only reports on lines the catalog
 *cannot* catch on its own.
+
+## Allow-list (II4)
+
+`src/security/allowlist.ts` holds a small named allow-list (GIT_SHA_40,
+UUID_V4, SEMVER, SRI_HASH) that suppresses residual-heuristic matches
+when the entire quoted inner content is covered. Every entry requires a
+regression test in `tests/unit/allowlist.test.ts`. Catalog-matched
+strings are never affected.
+
+With the allow-list active, the calibration matrix below is computed
+*after* allow-list filtering, which is why 4.5 now reports 0 false
+positives instead of the 3 seen in the pre-II4 data.
 
 ## Methodology
 
@@ -42,21 +60,22 @@ with the catalog and corpus.
 
 ### Why the default landed at `4.5`
 
-- `3.5` trips on every Git SHA-40 (entropy ≈ 4.0 across the 16-char hex
-  alphabet) and most UUIDs. 66 false positives out of 108 is unusable;
-  agents would disable the guard.
-- `4.0` (the previous default) still misfires on SHA-256 hashes and long
-  base64 filenames — 15 false positives, half of them legitimate
-  lockfile content.
-- `4.5` keeps 96 % precision with 74 % recall on *residual* secrets
-  (catalog-shaped tokens are caught upstream and excluded from this
-  measurement). False positives drop to 3, all on long mixed-case +
-  digit fragments that a reviewer would flag anyway.
-- `5.0` sacrifices half the recall for one extra FP removal.
+Post-II4 (allow-list active) numbers. The pre-II4 matrix had 15 FPs at
+4.0 and 3 FPs at 4.5; the allow-list removes the named-shape FPs, which
+is why 4.5 now runs at 100 % precision on the corpus.
+
+- `3.5` still trips on long snake_case identifiers and base64 bundle
+  filenames that aren't named shapes — 31 FPs, unusable.
+- `4.0` (the previous default) misfires on long mixed-case tokens that
+  resemble secrets — 10 FPs after allow-list.
+- `4.5` clears every FP on the residual corpus and retains 74 % recall
+  on non-catalog secrets. This is the default.
+- `5.0` sacrifices half the recall for no additional precision gain.
 
 F1 is the deciding metric with a tiebreaker on FPs — operators pay for
 every false positive in agent friction. The catalog is the primary
-defense; this heuristic is a backstop.
+defense; this heuristic is a backstop; the allow-list keeps the
+backstop from crying wolf on Git SHAs, UUIDs, and SRI hashes.
 
 <!-- GEN:ENTROPY-CALIBRATION:START -->
 
@@ -66,10 +85,10 @@ defense; this heuristic is a backstop.
 
 | Threshold | TP | FN | FP | TN | Precision | Recall | F1 |
 |-----------|----|----|----|----|-----------|--------|----|
-| 3.5 | 82 | 19 | 66 | 42 | 0.554 | 0.812 | 0.659 |
-| 4.0 | 79 | 22 | 15 | 93 | 0.840 | 0.782 | 0.810 |
-| 4.5 | 75 | 26 | 3 | 105 | 0.962 | 0.743 | 0.838 |
-| 5.0 | 51 | 50 | 1 | 107 | 0.981 | 0.505 | 0.667 |
+| 3.5 | 82 | 19 | 31 | 75 | 0.726 | 0.812 | 0.766 |
+| 4.0 | 79 | 22 | 10 | 96 | 0.888 | 0.782 | 0.832 |
+| 4.5 | 75 | 26 | 0 | 106 | 1.000 | 0.743 | 0.852 |
+| 5.0 | 51 | 50 | 0 | 106 | 1.000 | 0.505 | 0.671 |
 
 <!-- GEN:ENTROPY-CALIBRATION:END -->
 

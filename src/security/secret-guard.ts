@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { shannonEntropy } from "../ingestion/privacy-filter.js";
+import { matchAllowList } from "./allowlist.js";
 import { SECRET_PATTERNS } from "./secret-patterns.js";
 import type { SecretPolicy } from "./secret-policy.js";
 import {
@@ -67,6 +68,11 @@ export function scanForSecrets(
 		const inner = m[0].slice(1, -1);
 		if (inner.length < minLength) continue;
 		if (shannonEntropy(inner) <= threshold) continue;
+		// Named benign shapes (Git SHAs, UUIDs, semver, SRI hashes) are
+		// dropped here — see `allowlist.ts` for the full list and the
+		// reasoning per entry. Anchored match on the quoted inner only;
+		// partial overlap is never enough.
+		if (matchAllowList(inner) !== null) continue;
 		const start = m.index ?? 0;
 		highEntropyRanges.push({ start, end: start + m[0].length });
 	}
