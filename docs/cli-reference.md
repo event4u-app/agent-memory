@@ -308,6 +308,21 @@ memory ingest [options]
 | `--knowledge-class <class>` | no | `semi_stable` | Knowledge class (evergreen|semi_stable|volatile) |
 | `--created-by <actor>` | no | `cli:ingest` | Caller identifier |
 
+### `init`
+
+Bootstrap a consumer project: docker-compose.agent-memory.yml, .env.agent-memory, .gitignore marker
+
+```bash
+memory init [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--yes` | no | off | Non-interactive mode (assume yes to prompts) |
+| `--force` | no | off | Overwrite existing files instead of skipping |
+
 ### `invalidate`
 
 Mark entries as stale or rejected (soft/hard or git-diff sweep)
