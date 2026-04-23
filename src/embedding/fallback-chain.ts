@@ -4,8 +4,10 @@
  * persistent failure. If all fail, returns [] (vector search skipped).
  */
 
+import { config } from "../config.js";
 import { CircuitBreaker, CircuitOpenError, withRetry } from "../infra/index.js";
 import { logger } from "../utils/logger.js";
+import { secureEmbeddingInput } from "./boundary.js";
 import type { EmbeddingProvider, EmbeddingProviderName, EmbeddingResult } from "./types.js";
 
 export interface FallbackChainOptions {
@@ -41,8 +43,13 @@ export class EmbeddingFallbackChain {
 	/**
 	 * Try each provider until one succeeds. Inactive providers (bm25-only)
 	 * short-circuit to an empty vector and stop the chain.
+	 *
+	 * Applies the secret-ingress boundary once up-front: `reject` throws
+	 * `SecretViolationError` before any provider sees the text; `redact`
+	 * scrubs the text and logs an audit warning.
 	 */
 	async embed(text: string): Promise<EmbeddingResult> {
+		const safeText = secureEmbeddingInput(text, config.security.secretPolicy);
 		for (const provider of this.providers) {
 			if (!provider.isActive) {
 				return { vector: [], provider: provider.name };
@@ -51,7 +58,7 @@ export class EmbeddingFallbackChain {
 			if (!breaker) continue;
 			try {
 				const vector = await breaker.execute(() =>
-					withRetry(() => provider.embed(text), {
+					withRetry(() => provider.embed(safeText), {
 						attempts: this.opts.retryAttempts ?? 3,
 						baseDelayMs: this.opts.retryBaseDelayMs ?? 100,
 						name: `embedding:${provider.name}`,
