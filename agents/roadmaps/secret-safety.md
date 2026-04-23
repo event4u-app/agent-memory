@@ -101,11 +101,14 @@ grep-Verifikation im Worktree am Tag dieses Files.
 
 ## Phase I — Universal Ingress Enforcement
 
+> ✅ **Shipped** — I1 (`ebb2cef`), I2 (`468c2d2`), I3 (`e542459`),
+> I4 (`8fc00a7`). Full suite 316/316 green.
+
 Ziel: keine Eintrittsstelle zum Memory-Store bleibt ungefiltert. Ein
 Secret darf nicht einmal kurzzeitig in der DB, im Embedding-Cache
 oder im Log stehen — die Abwehr passiert vor jedem Side-Effect.
 
-### I1 · Propose-Pfad schließen (MCP + CLI) · [Must, Foundation]
+### I1 · Propose-Pfad schließen (MCP + CLI) · [Must, Foundation] · ✅ shipped
 
 - **Warum:** Heute die Haupt-Lücke (L1). `memory_propose` und CLI-
   `propose` sind die High-Volume-Ingress-Pfade für Agent-Nutzung.
@@ -134,7 +137,7 @@ oder im Log stehen — die Abwehr passiert vor jedem Side-Effect.
     `pipeline.ts`) wird umgebaut: erst `enforceNoSecrets`, dann
     PII-/Env-/Entropy-Redaction für die zulässigen Klassen.
 
-### I2 · Logger-Redaction · [Must, Foundation]
+### I2 · Logger-Redaction · [Must, Foundation] · ✅ shipped
 
 - **Warum:** L2. Selbst mit I1 bleibt das Risiko, dass ein
   un­ge­filterter Raw-Input via `logger.info({ entry })` in stdout
@@ -161,7 +164,7 @@ oder im Log stehen — die Abwehr passiert vor jedem Side-Effect.
   - Manuell: `LOG_LEVEL=debug npm run mcp:start` und ein
     `memory_propose` mit Test-Token → Log-Stream sauber.
 
-### I3 · Embedding-Call-Boundary · [Must]
+### I3 · Embedding-Call-Boundary · [Must] · ✅ shipped
 
 - **Warum:** L3. Setzt I1 voraus (sonst schützt die Boundary nur den
   Scanner-Pfad). Belt-and-suspenders: selbst wenn irgendwann ein
@@ -186,7 +189,7 @@ oder im Log stehen — die Abwehr passiert vor jedem Side-Effect.
     durchgerutschten" Entry, ruft Embedding-Pfad direkt auf → wirft,
     protokolliert Audit-Event.
 
-### I4 · Reject-by-Default + Error-Schema · [Must, Foundation]
+### I4 · Reject-by-Default + Error-Schema · [Must, Foundation] · ✅ shipped
 
 - **Warum:** L6. Ohne strukturierten Fehler kann ein Agent nicht
   systematisch reagieren. Die ganze Idee — „zwingt den Agent zum
