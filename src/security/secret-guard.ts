@@ -106,6 +106,31 @@ export function redactSecretsInText(text: string): string {
 }
 
 /**
+ * Audit-path redaction marker. Distinct from `redactSecretsInText` (log path,
+ * keeps pattern name) and the retrieval marker (`[REDACTED:retrieve]`, III2)
+ * so an operator reading a stored DB value can tell *where* the redaction
+ * happened. Also distinct from the ingest-redact policy which uses per-
+ * pattern markers at ingress time.
+ *
+ * Scope mirrors `redactSecretsInText` — only `SECRET_DETECTED` patterns.
+ */
+export const SECRET_AUDIT_MARKER = "[REDACTED:secret]";
+
+export function redactSecretsForAudit(text: string): { text: string; patterns: Set<string> } {
+	let result = text;
+	const patterns = new Set<string>();
+	for (const { name, code, regex } of SECRET_PATTERNS) {
+		if (code !== "SECRET_DETECTED") continue;
+		regex.lastIndex = 0;
+		if (!regex.test(result)) continue;
+		patterns.add(name);
+		regex.lastIndex = 0;
+		result = result.replace(regex, SECRET_AUDIT_MARKER);
+	}
+	return { text: result, patterns };
+}
+
+/**
  * Scan a structured record (fieldName → text). Each field is scanned
  * independently so detections report their originating field.
  */

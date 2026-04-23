@@ -361,7 +361,7 @@ Realität der Provider-Landschaft.
 Ziel: zusätzliche Schutzschichten für die Fälle, die Phase I / II
 nicht abdecken — Alt-Bestände, Re-Export, seitliche Leak-Kanäle.
 
-### III1 · DB-Legacy-Scan · [Must]
+### III1 · DB-Legacy-Scan · [Must] · ✅ shipped
 
 - **Warum:** Jedes Setup, das vor dieser Roadmap existierte, kann
   Secrets in alten Entries tragen. Ohne Scan bleibt der Altbestand

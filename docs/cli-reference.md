@@ -234,6 +234,14 @@ It lists every command, argument, flag, default, and required-ness
 the real CLI accepts. If this section and the code disagree, the code
 wins — the CI drift guard will fail the build.
 
+### `audit`
+
+Run audits across memory stores (subcommands)
+
+```bash
+memory audit
+```
+
 ### `diagnose`
 
 Identify issues: stale entries, low-trust entries

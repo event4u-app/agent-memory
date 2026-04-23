@@ -193,6 +193,66 @@ export class MemoryEntryRepository {
 		return result.count > 0;
 	}
 
+	/**
+	 * Stream every entry regardless of status in stable, batch-sized pages.
+	 * Uses keyset pagination on `id` (UUID v4, monotonic enough for a read-
+	 * only sweep) so callers iterating large tables do not load the whole
+	 * set into memory. Used by `memory audit secrets` (III1).
+	 */
+	async *iterateAll(batchSize = 500): AsyncGenerator<MemoryEntry[]> {
+		let cursor: string | null = null;
+		while (true) {
+			const rows: postgres.Row[] = cursor
+				? await this.sql`
+					SELECT * FROM memory_entries
+					WHERE id > ${cursor}
+					ORDER BY id ASC
+					LIMIT ${batchSize}
+				`
+				: await this.sql`
+					SELECT * FROM memory_entries
+					ORDER BY id ASC
+					LIMIT ${batchSize}
+				`;
+			if (rows.length === 0) return;
+			yield rows.map((r) => this.mapRow(r));
+			if (rows.length < batchSize) return;
+			cursor = rows[rows.length - 1]!.id as string;
+		}
+	}
+
+	/**
+	 * Atomically rewrite redacted content fields for a single entry. Used by
+	 * `memory audit secrets --fix --mode=redact` after the audit core has
+	 * computed the patch and the caller has re-embedded `embeddingText`
+	 * via the I3 boundary. Undefined values stay untouched.
+	 */
+	async updateRedactedFields(
+		id: string,
+		patch: {
+			title?: string;
+			summary?: string;
+			details?: string;
+			embeddingText?: string;
+			embedding?: number[];
+		},
+	): Promise<void> {
+		await this.sql`
+			UPDATE memory_entries
+			SET
+				title          = COALESCE(${patch.title ?? null}, title),
+				summary        = COALESCE(${patch.summary ?? null}, summary),
+				details        = COALESCE(${patch.details ?? null}, details),
+				embedding_text = COALESCE(${patch.embeddingText ?? null}, embedding_text),
+				embedding      = COALESCE(
+					${patch.embedding ? JSON.stringify(patch.embedding) : null}::vector,
+					embedding
+				),
+				updated_at     = NOW()
+			WHERE id = ${id}
+		`;
+	}
+
 	async count(status?: TrustStatus): Promise<number> {
 		if (status) {
 			const [row] = await this.sql`
