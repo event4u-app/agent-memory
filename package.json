@@ -40,7 +40,7 @@
     "docs:cli": "tsx scripts/generate-cli-docs.ts",
     "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
     "check:portability": "AGENT_CONFIG_BLOCKLIST=\"FormRequest,Eloquent,artisan,Blade,Livewire\" python3 node_modules/@event4u/agent-config/scripts/check_portability.py --root .",
-    "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
+    "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md CHANGELOG.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
     "prepare": "npm run build",
     "postinstall": "bash scripts/postinstall.sh"
   },

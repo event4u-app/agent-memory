@@ -448,6 +448,12 @@ a separate package that ships agent behaviour (skills, rules, commands)
 Use `agent-memory` with any agent that speaks MCP or any codebase that
 can shell out to the CLI.
 
+## Changelog
+
+Release history, rename mappings, and upgrade notes live in
+[`CHANGELOG.md`](CHANGELOG.md) (Keep-a-Changelog format). Start there
+when upgrading across minor versions.
+
 ## License
 
 MIT

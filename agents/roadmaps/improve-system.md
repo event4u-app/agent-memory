@@ -479,6 +479,12 @@ fits the 1.1.0 cycle.
 - **Done:** File present; linked from README; rename mapping listed;
   CI check verifies the version in `package.json` has a corresponding
   `CHANGELOG.md` section (added in P6-6).
+- **Status (2026-04-23):** `CHANGELOG.md` shipped on
+  `feat/improve-system` (Keep-a-Changelog 1.1.0 format). Retroactive
+  `[1.0.0]` entry covers PR #2 phases; `[Unreleased] — 1.1.0` section
+  lists everything from Phase 0-3 + explicit "Renamed" subsection
+  with P1-2 and P1-4 mappings. Linked from README §Changelog. CI
+  version/CHANGELOG sync check remains open (P6-6).
 
 ### P4-2 · `CONTRIBUTING.md` [Should]
 

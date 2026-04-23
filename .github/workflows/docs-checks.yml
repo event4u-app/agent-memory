@@ -84,6 +84,7 @@ jobs:
             --config lychee.toml
             README.md
             AGENTS.md
+            CHANGELOG.md
             docs
             examples
             agents/roadmaps/archive/improve-setup.md
