@@ -432,12 +432,16 @@ Runtime dependencies only:
 
 | `agent-memory` | Node | Postgres | Docker |
 |---|---|---|---|
-| 0.1.x | ≥ 20 | 15+ with pgvector | 24+ with Compose v2 |
+| 1.1.x (unreleased) | ≥ 20 | 15+ with pgvector | 24+ with Compose v2 |
 
 Every `retrieve()` and `health()` response carries `contract_version: 1`.
 Callers pinned to v1 MAY continue on a v2 response if they ignore unknown
 fields; breaking renames bump the major. See the
 [retrieval contract spec](agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md).
+
+For the full cross-axis matrix (runtime, contract, companion-package
+pairings, breaking changes per release) see
+[`docs/compatibility-matrix.md`](docs/compatibility-matrix.md).
 
 ### Optional companion — `@event4u/agent-config`
 
@@ -447,6 +451,11 @@ a separate package that ships agent behaviour (skills, rules, commands)
 — and both were designed to combine, but neither depends on the other.
 Use `agent-memory` with any agent that speaks MCP or any codebase that
 can shell out to the CLI.
+
+See [`docs/integration-agent-config.md`](docs/integration-agent-config.md)
+for how the two packages combine, or
+[`examples/with-agent-config/`](examples/with-agent-config/) for a
+smoke-tested reference setup.
 
 ## Changelog
 

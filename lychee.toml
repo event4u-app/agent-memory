@@ -29,6 +29,9 @@ include_verbatim = false
 exclude = [
 	# GitHub releases / tags pages occasionally 403 from CI IPs
 	"https://github\\.com/.*/releases$",
+	# npmjs.com package pages return 403 to headless clients but resolve
+	# fine in a browser; cited from docs/compatibility-matrix.md.
+	"^https://www\\.npmjs\\.com/package/",
 	# Anchors inside the same file — lychee can't always resolve them
 	# through multi-level markdown tables of contents.
 	"^#",

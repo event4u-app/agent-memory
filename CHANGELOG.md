@@ -56,6 +56,14 @@ date + version header at tag time (P7-1).
 - `.github/ISSUE_TEMPLATE/` + `.github/PULL_REQUEST_TEMPLATE.md` —
   bug reports require `memory doctor` JSON + version; PRs require
   the six-check verification pipeline and a changelog entry (P4-4).
+- `docs/integration-agent-config.md` — product-pairing guide with
+  division-of-labour diagram, hydration mechanics, contract surfaces,
+  and what you lose by using only one package (P5-1).
+- `examples/with-agent-config/` — smoke-tested reference setup
+  proving both packages resolve and cooperate (P5-2).
+- `docs/compatibility-matrix.md` — full runtime × contract ×
+  companion-package matrix, plus per-axis breaking-change log and
+  release-level upgrade notes (P5-4).
 - Four drift-prevention guards covering new Phase 0–5 surfaces, all
   wired into `.github/workflows/docs-checks.yml`:
   - `npm run check:mcp-tools` — README's `### MCP tools (N)` table

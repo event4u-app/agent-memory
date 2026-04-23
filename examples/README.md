@@ -11,6 +11,9 @@ for the full contract.
 |---|---|
 | `consumer-docker-compose.yml` | Minimal Postgres + pgvector service for local dev |
 | `consumer-ci.yml` | GitHub Actions workflow: Postgres service + `memory status` / `memory health` smoke test |
+| [`laravel-sidecar/`](laravel-sidecar/) | Full Docker-sidecar example with a PHP / Laravel host app |
+| [`node-programmatic/`](node-programmatic/) | Node / TypeScript embedded usage — `runMigrations()` + programmatic retrieval |
+| [`with-agent-config/`](with-agent-config/) | Paired setup with [`@event4u/agent-config`](https://github.com/event4u-app/agent-config); smoke-tested (P5-2) |
 
 ## Using these
 
@@ -26,9 +29,10 @@ and pin versions as needed. The contract these examples target:
 
 ## Compatibility matrix
 
-See the top-level [`README.md`](../README.md#compatibility) for the full
-version matrix. Short version:
+See [`docs/compatibility-matrix.md`](../docs/compatibility-matrix.md)
+for the full version matrix across runtime, contract, and companion
+axes. Short version:
 
 | `agent-memory` | `agent-config` | Node | Postgres |
 |---|---|---|---|
-| 0.1.x | ≥ 0.1 (main) | ≥ 20 | 15+ with pgvector |
+| 1.0.x / 1.1.x | `main` (pre-1.0) | ≥ 20 | 15+ with pgvector |

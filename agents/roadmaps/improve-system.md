@@ -564,6 +564,12 @@ first so the integration reads as "these two can combine", not
   notes. Symlink mechanics (`.augment/` hydration via postinstall).
 - **Done:** Doc exists; README has a "With `agent-config`" subsection
   (one paragraph) that links here and ends the matter.
+- **Status (2026-04-23):** Shipped. `docs/integration-agent-config.md`
+  covers what each package does, the division-of-labour diagram,
+  `postinstall` hydration mechanics, retrieval contract v1 surfaces
+  (with links to every schema), what you lose by using only one
+  package, and upgrade notes. README's "Optional companion" section
+  links here and to `examples/with-agent-config/`.
 
 ### P5-2 · `examples/with-agent-config/` reference setup [Should]
 
@@ -575,6 +581,15 @@ first so the integration reads as "these two can combine", not
   both `.augment/skills/` and `memory *` commands.
 - **Done:** `docker compose up -d` followed by a scripted smoke
   test proves both pieces work together.
+- **Status (2026-04-23):** Shipped. New directory with
+  `package.json` (depends on both packages via github: specs),
+  `docker-compose.yml` (postgres + published image), `.env.example`,
+  and `smoke-test.sh` — asserts `.augment/skills/` has at least one
+  `SKILL.md` symlink (agent-config hydration worked), the
+  `agent-memory` container responds to `memory health` with
+  `status: ok | degraded`, and the response carries
+  `contract_version: 1`. Linked from `examples/README.md` and the
+  README's Optional-companion section.
 
 ### P5-3 · Retrieval contract schema fixtures [Must]
 
@@ -617,6 +632,11 @@ first so the integration reads as "these two can combine", not
   version. Include a "breaking change" column with dates.
 - **Done:** Doc exists; P1-7 links to it; one entry per supported
   pairing.
+- **Status (2026-04-23):** Shipped. `docs/compatibility-matrix.md`
+  carries three tables (runtime requirements, contract versions,
+  companion pairings) plus a per-axis breaking-change log and
+  upgrade-notes section per release step. Linked from the top-level
+  README Compatibility section and from `examples/README.md`.
 
 ---
 
