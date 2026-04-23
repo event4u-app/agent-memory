@@ -46,7 +46,12 @@ export interface DoctorFix {
 
 // Known migrations expected in memory_migrations; kept in sync with
 // src/db/migrate.ts MIGRATIONS array. If you add one there, add it here.
-const EXPECTED_MIGRATIONS = ["001_initial", "002_promotion_metadata", "003_memory_events"] as const;
+const EXPECTED_MIGRATIONS = [
+	"001_initial",
+	"002_promotion_metadata",
+	"003_memory_events",
+	"004_memory_events_trust_extension",
+] as const;
 
 async function checkEnv(): Promise<DoctorCheck> {
 	const explicit = process.env.DATABASE_URL;
