@@ -181,29 +181,38 @@ darauf baut alles hier auf.
   - Dashboard lädt in Grafana 10+, alle Panels haben Daten in der
     E2E-Test-Umgebung.
 
-### A3 · CLI-Split · [Must, Vorarbeit]
+### A3 · CLI-Split · [Must, Vorarbeit] · ✅ shipped
 
-- **Warum:** `src/cli/index.ts` ist 672 Zeilen für 16 Commands und
-  wächst im Verlauf dieser Roadmap um mindestens 6 weitere (`init`,
-  `explain`, `history`, `review`, `export`, `import`). Ohne Split
-  blockiert der Monolith alles in B und D — PRs werden unlesbar,
-  Test-Isolation pro Command wird unmöglich.
-- **Scope:**
-  - Ein Verzeichnis `src/cli/commands/` mit einer Datei pro Command.
-    Jede exportiert `register(program: Command)` und eine testbare
-    Action-Funktion.
-  - `src/cli/index.ts` reduziert sich auf Program-Setup + Loop über
-    Command-Registrierungen.
-  - Gemeinsamer Kontext (DB, Repos, Services) in `src/cli/context.ts`
-    bündeln.
-  - Null Verhaltensänderung. `--help`-Output bleibt byte-identisch.
-  - `docs/cli-reference.md`-Generator (P4-1 aus 1.1) muss weiter
-    grün sein.
-- **Done:**
-  - `src/cli/index.ts` < 100 Zeilen.
-  - `npm run docs:cli:check` grün (Output unverändert).
-  - Alle 16 bestehenden Commands haben eigene Datei.
-  - Tests pro Command existieren in `tests/unit/cli/`.
+> ✅ Shipped — `src/cli/index.ts` auf 68 Zeilen geschrumpft (Registry-Loop);
+> 18 Commands in `src/cli/commands/*.ts`, geteilter Kontext in
+> `src/cli/context.ts`. `docs/cli-reference.md` diff-frei,
+> `check:cli-commands` grün, 685+4 Tests grün (neu:
+> `tests/unit/cli/registry.test.ts`). Null Verhaltensänderung.
+
+- **Warum:** `src/cli/index.ts` war 928 Zeilen für 18 Commands und
+  wuchs im Verlauf dieser Roadmap um mindestens 6 weitere (`explain`,
+  `history`, `review`, `export`, `import`). Ohne Split hätte der
+  Monolith alles in B und D blockiert — PRs unlesbar, Test-Isolation
+  pro Command unmöglich.
+- **Scope (umgesetzt):**
+  - Verzeichnis `src/cli/commands/` mit einer Datei pro Command.
+    Jede exportiert `register(program: Command)`.
+  - `src/cli/index.ts` reduziert auf Program-Setup + Registrierungs-Loop.
+  - Gemeinsamer Kontext (DB, Repos, Service-Builder, `parseServePort`,
+    `probeHealth`) in `src/cli/context.ts` gebündelt. `parseServePort`
+    wird aus `index.ts` re-exportiert, damit bestehende Test-Imports
+    stabil bleiben.
+  - Null Verhaltensänderung. `--help`-Output identisch, alle e2e-Canaries
+    grün.
+  - `docs/cli-reference.md`-Generator (P4-1) bleibt grün.
+- **Done (erreicht):**
+  - `src/cli/index.ts` 68 Zeilen (< 100). ✅
+  - `npm run docs:cli:check` grün (Output unverändert). ✅
+  - Alle 18 Commands haben eigene Datei. ✅
+  - `tests/unit/cli/registry.test.ts` validiert Registry-Struktur,
+    Modul-Isolation und Sub-Commands (audit/migrate). Per-Command
+    Verhaltenstests bleiben wo sie sind (doctor-fix, init, serve-http,
+    e2e-Canaries). ✅
 
 ### A4 · MCP über HTTP/SSE · [Should]
 
