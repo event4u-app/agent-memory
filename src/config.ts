@@ -1,4 +1,5 @@
 import { env } from "node:process";
+import { resolveSecretPolicy } from "./security/secret-policy.js";
 import { DEFAULT_DECAY_CONFIG, type DecayConfig, mergeDecayConfig } from "./trust/decay.js";
 
 function parseIntSafe(
@@ -72,5 +73,9 @@ export const config = {
 	log: {
 		level: env.LOG_LEVEL ?? "info",
 		format: (env.LOG_FORMAT ?? "json") as "json" | "pretty",
+	},
+	security: {
+		/** Ingress secret policy — reject (default) or redact. See MEMORY_SECRET_POLICY. */
+		secretPolicy: resolveSecretPolicy(env.MEMORY_SECRET_POLICY),
 	},
 } as const;
