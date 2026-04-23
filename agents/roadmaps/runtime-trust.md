@@ -100,7 +100,15 @@ anfühlt. Grundlage ist der in `1.1.0` gelandete Supervisor-Loop
 (`memory serve`, [ADR-0002](../adrs/0002-memory-serve-surface.md)) —
 darauf baut alles hier auf.
 
-### A1 · Runtime-Surface komplettieren · [Must]
+### A1 · Runtime-Surface komplettieren · [Must] · ✅ shipped
+
+> ✅ Shipped — HTTP `/health` + `/ready` (`028ff8a`), `memory migrate up|status`
+> (`ce8b8cc`), `memory init` (`7268b26`), `memory doctor --fix` (`02c3f9a`).
+> 669+ tests green; E2E-Smoke der Done-Kriterien in Commit-Messages dokumentiert.
+> `memory migrate down` bewusst zurückgestellt — niemand hat `down`-Migrationen
+> heute, daher würde der Command nur einen "not-implemented"-Fehler emittieren.
+> Rollback-Werkzeug wandert in einen eigenen Task, sobald erster echter
+> Rollback-Bedarf entsteht.
 
 - **Warum:** `memory serve` ist ein Supervisor-Loop mit Auto-Migrate
   (1.1.0) — technisch ausreichend, emotional noch Tool-artig. Ein
