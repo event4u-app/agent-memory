@@ -534,7 +534,7 @@ dass keine neue Lücke in den Code­pfad gerutscht ist.
   - Volle Matrix grün.
   - PR, der ein neues Tool ohne Matrix-Entry hinzufügt, wird rot.
 
-### IV4 · Ingress-Pfad-Inventar als Drift-Guard · [Should]
+### IV4 · Ingress-Pfad-Inventar als Drift-Guard · [Should] · ✅ shipped
 
 - **Warum:** Die Wurzel-Schwachstelle von 1.1 war, dass Ingress-Pfade
   implizit bestanden (CLI + MCP), aber nur einige den Filter

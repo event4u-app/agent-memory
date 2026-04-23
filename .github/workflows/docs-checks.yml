@@ -188,6 +188,18 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check:embedding-boundary
 
+  ingress-guards:
+    name: Ingress-guard inventory (IV4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:ingress-guards
+
   entropy-eval:
     name: Entropy calibration drift (II2)
     runs-on: ubuntu-latest
