@@ -102,10 +102,15 @@ tools, then follow the matching guide.
 
 ## Installation
 
-### As a dependency
+### As a dev dependency (recommended)
+
+`agent-memory` is primarily a **development-time** tool — it stores what an
+AI coding agent learns about *your* repository, and its surface area (CLI,
+MCP server, Postgres sidecar) is scoped to engineers and their agents.
+Install it as a dev dependency so it stays out of production bundles:
 
 ```bash
-npm install @event4u/agent-memory
+npm install --save-dev @event4u/agent-memory
 ```
 
 You must also provide Postgres with pgvector. Easiest path — copy the bundled
@@ -119,6 +124,19 @@ docker compose up -d postgres
 
 See [`examples/`](examples/) for ready-to-copy `docker-compose.yml` and
 GitHub Actions snippets.
+
+### Using it in production
+
+Production use is supported but not the default target. If you ship
+agent-memory as part of a running service (e.g. a backend that queries its
+own memory at runtime), install it as a regular dependency instead:
+
+```bash
+npm install @event4u/agent-memory
+```
+
+Everything documented in this README applies the same way — only the
+dependency scope changes.
 
 ### From source (development)
 
@@ -227,8 +245,8 @@ Works for any project regardless of language. Assumes you ran
 
 ### Option B — Installed npm binary
 
-After `npm install -g @event4u/agent-memory` (or `npm install` in a
-Node-based project), run the MCP server directly:
+After `npm install -g @event4u/agent-memory` (or `npm install --save-dev`
+in a Node-based project), run the MCP server directly:
 
 ```json
 {
