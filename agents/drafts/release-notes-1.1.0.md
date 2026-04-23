@@ -120,4 +120,4 @@ the tag. CI runs the same pipeline on the tagged commit.
 - Full changelog — [`CHANGELOG.md`](../../CHANGELOG.md)
 - Companion-package integration — [`docs/integration-agent-config.md`](../../docs/integration-agent-config.md)
 - Compatibility matrix — [`docs/compatibility-matrix.md`](../../docs/compatibility-matrix.md)
-- Roadmap that drove this release — [`agents/roadmaps/improve-system.md`](../roadmaps/improve-system.md)
+- Roadmap that drove this release — [`agents/roadmaps/archive/improve-system.md`](../roadmaps/archive/improve-system.md)
