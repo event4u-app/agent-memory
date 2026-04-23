@@ -143,7 +143,19 @@ darauf baut alles hier auf.
   - `memory doctor --fix` repariert eine bewusst kaputtgemachte
     Installation (keine Migration applied) und endet mit exit 0.
 
-### A2 · SLO + Instrumentierung · [Must]
+### A2 · SLO + Instrumentierung · [Must] · ✅ shipped
+
+> ✅ Shipped — `src/observability/metrics.ts` exportiert die vier
+> Pflicht-Metriken; `/metrics` ist in `memory serve` hinter
+> `MEMORY_METRICS_ENABLED=true` + `MEMORY_HTTP_PORT` freigeschaltet.
+> `docs/operations.md` dokumentiert SLO-Tabelle + Messmethode,
+> `docs/operations/grafana-dashboard.json` liefert das Startdashboard.
+> Instrumentiert sind `RetrievalEngine.retrieve()` (Histogramm),
+> `EmbeddingFallbackChain.embed()` (Fallback-Hops mit `from`/`to`),
+> `MemoryEntryRepository.transitionStatus()` (Trust-Transitionen, deckt
+> Poison-Cascade mit ab). `db_pool_saturation` ist als Gauge verdrahtet;
+> Sampling durch den Supervisor folgt sobald `postgres.js` einen
+> stabilen Pool-API freigibt. 685 Tests grün (+11).
 
 - **Warum:** Sobald `memory retrieve` in CI-Policies (C2) oder
   PR-Checks (C3) in den kritischen Pfad kommt, brauchen Operatoren
