@@ -10,11 +10,13 @@
  */
 
 import type postgres from "postgres";
+import { config } from "../config.js";
 import type {
 	CreateEntryInput,
 	MemoryEntryRepository,
 } from "../db/repositories/memory-entry.repository.js";
 import { purgeArchived, runArchival } from "../quality/archival.js";
+import { enforceNoSecrets } from "../security/secret-guard.js";
 import type { MemoryEntry, MemoryType } from "../types.js";
 import { MIN_FUTURE_SCENARIOS } from "../types.js";
 import { logger } from "../utils/logger.js";
@@ -114,6 +116,34 @@ export class PromotionService {
 	 * Callers must provide a `source` (incident/PR/ADR ref) and initial confidence.
 	 */
 	async propose(input: ProposeInput): Promise<ProposeResult> {
+		// Service-layer secret gate — belt-and-suspenders behind CLI/MCP. Throws
+		// `SecretViolationError` under reject policy so no DB write occurs. Under
+		// redact policy the violation is surfaced via audit log and the write
+		// proceeds with whatever the caller already sanitized.
+		const violation = enforceNoSecrets(
+			{
+				title: input.title,
+				summary: input.summary,
+				details: input.details ?? undefined,
+				embeddingText: input.embeddingText,
+			},
+			config.security.secretPolicy,
+		);
+		if (violation) {
+			logger.warn(
+				{
+					policy: violation.policy,
+					detections: violation.detections.map((d) => ({
+						code: d.code,
+						pattern: d.pattern,
+						field: d.field,
+					})),
+					source: input.source,
+				},
+				"secret-guard: ingress violation during propose",
+			);
+		}
+
 		const entry = await this.entryRepo.create({
 			...input,
 			promotionMetadata: {

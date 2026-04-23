@@ -23,6 +23,8 @@ import {
 } from "../retrieval/contract.js";
 import { RetrievalEngine } from "../retrieval/engine.js";
 import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import { SecretViolationError } from "../security/secret-guard.js";
+import { SECRET_VIOLATION_EXIT_CODE } from "../security/secret-violation.js";
 import { PoisonService } from "../trust/poison.service.js";
 import { PromotionService } from "../trust/promotion.service.js";
 import { QuarantineService } from "../trust/quarantine.service.js";
@@ -407,6 +409,11 @@ program
 			await closeDb();
 			process.exit(0);
 		} catch (error) {
+			if (error instanceof SecretViolationError) {
+				console.error(JSON.stringify(error.violation, null, 2));
+				await closeDb();
+				process.exit(SECRET_VIOLATION_EXIT_CODE);
+			}
 			const message = error instanceof Error ? error.message : String(error);
 			console.error(JSON.stringify({ error: message }, null, 2));
 			await closeDb();

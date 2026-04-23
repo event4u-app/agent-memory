@@ -23,6 +23,8 @@ import {
 	toContractEntry,
 } from "../retrieval/contract.js";
 import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import { SecretViolationError } from "../security/secret-guard.js";
+import type { SecretViolation } from "../security/secret-violation.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
 
@@ -33,6 +35,17 @@ function ok(data: unknown): CallToolResult {
 function err(message: string): CallToolResult {
 	return {
 		content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+		isError: true,
+	};
+}
+
+/**
+ * Structured ingress-policy error surface. MCP clients key off `code =
+ * INGRESS_POLICY_VIOLATION` and parse the violation body to rephrase input.
+ */
+function secretViolationResult(violation: SecretViolation): CallToolResult {
+	return {
+		content: [{ type: "text", text: JSON.stringify(violation, null, 2) }],
 		isError: true,
 	};
 }
@@ -103,22 +116,29 @@ export async function handleToolCall(
 }
 
 async function handlePropose(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const result = await ctx.promotionService.propose({
-		type: args.type as MemoryType,
-		title: args.title as string,
-		summary: args.summary as string,
-		details: args.details as string | undefined,
-		scope: args.scope as import("../types.js").MemoryScope,
-		impactLevel: args.impactLevel as ImpactLevel,
-		knowledgeClass: args.knowledgeClass as KnowledgeClass,
-		embeddingText: args.embeddingText as string,
-		createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
-		source: args.source as string,
-		confidence: args.confidence as number,
-		futureScenarios: args.futureScenarios as string[] | undefined,
-		gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
-	});
-	return ok(result);
+	try {
+		const result = await ctx.promotionService.propose({
+			type: args.type as MemoryType,
+			title: args.title as string,
+			summary: args.summary as string,
+			details: args.details as string | undefined,
+			scope: args.scope as import("../types.js").MemoryScope,
+			impactLevel: args.impactLevel as ImpactLevel,
+			knowledgeClass: args.knowledgeClass as KnowledgeClass,
+			embeddingText: args.embeddingText as string,
+			createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
+			source: args.source as string,
+			confidence: args.confidence as number,
+			futureScenarios: args.futureScenarios as string[] | undefined,
+			gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
+		});
+		return ok(result);
+	} catch (error) {
+		if (error instanceof SecretViolationError) {
+			return secretViolationResult(error.violation);
+		}
+		throw error;
+	}
 }
 
 async function handlePromote(args: Args, ctx: McpContext): Promise<CallToolResult> {
