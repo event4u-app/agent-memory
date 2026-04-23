@@ -28,7 +28,7 @@ import {
 	redactDetailEntry,
 	redactEntriesForRetrieval,
 } from "../security/retrieval-redaction.js";
-import { enforceNoSecrets, SecretViolationError } from "../security/secret-guard.js";
+import { enforceNoSecretsWithAudit, SecretViolationError } from "../security/secret-guard.js";
 import type { SecretViolation } from "../security/secret-violation.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
@@ -151,6 +151,8 @@ async function handlePropose(args: Args, ctx: McpContext): Promise<CallToolResul
 			confidence: args.confidence as number,
 			futureScenarios: args.futureScenarios as string[] | undefined,
 			gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
+			actor: "agent:mcp",
+			ingressPath: "mcp_propose",
 		});
 		return ok(result);
 	} catch (error) {
@@ -375,7 +377,31 @@ async function handleDiagnose(args: Args, ctx: McpContext): Promise<CallToolResu
 		await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' LIMIT ${max}`;
 	const lowTrust =
 		await ctx.sql`SELECT id, title, trust_score FROM memory_entries WHERE trust_status = 'validated' AND trust_score < 0.4 LIMIT ${max}`;
-	return ok({ staleEntries: stale, lowTrustEntries: lowTrust });
+	// Secret-safety event counts for the last 24h (IV1 done-criteria).
+	// Surfaces reject/redact pressure and legacy-scan / retrieve-boundary hits.
+	// Rendered as an object keyed by event_type so operators can diff counts
+	// over time without array-index coupling.
+	const SECRET_EVENT_WINDOW_MINUTES = 24 * 60;
+	const eventCounts = ctx.eventRepo
+		? await ctx.eventRepo.countByTypeSince(SECRET_EVENT_WINDOW_MINUTES, [
+				"secret_rejected",
+				"secret_redacted",
+				"secret_detected_on_retrieve",
+				"secret_detected_on_legacy_scan",
+			])
+		: [];
+	const secretEventsLast24h: Record<string, number> = {
+		secret_rejected: 0,
+		secret_redacted: 0,
+		secret_detected_on_retrieve: 0,
+		secret_detected_on_legacy_scan: 0,
+	};
+	for (const r of eventCounts) secretEventsLast24h[r.eventType] = r.count;
+	return ok({
+		staleEntries: stale,
+		lowTrustEntries: lowTrust,
+		secretEventsLast24h,
+	});
 }
 
 async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallToolResult> {
@@ -407,7 +433,12 @@ async function handleObserve(args: Args, ctx: McpContext): Promise<CallToolResul
 	// hit throws SecretViolationError, which the top-level handleToolCall
 	// turns into INGRESS_POLICY_VIOLATION. PII (email/phone/paths/.env lines)
 	// is still redacted downstream via applyPrivacyFilter.
-	enforceNoSecrets({ content: raw }, config.security.secretPolicy);
+	await enforceNoSecretsWithAudit(
+		{ content: raw },
+		config.security.secretPolicy,
+		{ actor: "agent:mcp", ingressPath: "mcp_observe" },
+		ctx.eventRepo,
+	);
 	const filtered = applyPrivacyFilter(raw);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
@@ -428,13 +459,15 @@ async function handleObserveFailure(args: Args, ctx: McpContext): Promise<CallTo
 	const joined = parts.join("\n");
 	// Same reject-by-default gate as handleObserve — stack traces and stderr
 	// are a well-known leak vector for tokens pasted into error messages.
-	enforceNoSecrets(
+	await enforceNoSecretsWithAudit(
 		{
 			errorMessage: args.errorMessage as string | undefined,
 			stderr: args.stderr as string | undefined,
 			stack: args.stack as string | undefined,
 		},
 		config.security.secretPolicy,
+		{ actor: "agent:mcp", ingressPath: "mcp_observe_failure" },
+		ctx.eventRepo,
 	);
 	const content = applyPrivacyFilter(joined);
 	const obs = await ctx.observationRepo.create(

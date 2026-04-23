@@ -472,7 +472,7 @@ Ziel: der Schutz ist auditierbar. Ein Operator kann jederzeit
 nachweisen, was der Store erkannt hat, was er abgewiesen hat und
 dass keine neue Lücke in den Code­pfad gerutscht ist.
 
-### IV1 · Audit-Events für jede Redaction · [Must]
+### IV1 · Audit-Events für jede Redaction · [Must] · ✅ shipped
 
 - **Warum:** Ohne Event-Trail kann niemand später rekonstruieren,
   dass ein Agent um 03:17 Uhr einen Token-Leak versucht hat. Das

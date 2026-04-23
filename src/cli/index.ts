@@ -8,6 +8,7 @@ import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
+import { MemoryEventRepository } from "../db/repositories/memory-event.repository.js";
 import { buildEmbeddingChain } from "../embedding/index.js";
 import { hardInvalidate, softInvalidate } from "../invalidation/invalidation-flows.js";
 import { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
@@ -415,6 +416,8 @@ program
 				confidence: Number.parseFloat(options.confidence),
 				futureScenarios: options.scenario.length > 0 ? options.scenario : undefined,
 				gateCleanAtProposal,
+				actor: "user:cli",
+				ingressPath: "cli_propose",
 			});
 			console.log(JSON.stringify(result, null, 2));
 			await closeDb();
@@ -659,8 +662,9 @@ function buildQuarantineService(): QuarantineService {
 function buildPromotionService(): PromotionService {
 	const sql = getDb();
 	const entryRepo = new MemoryEntryRepository(sql);
+	const eventRepo = new MemoryEventRepository(sql);
 	const quarantine = buildQuarantineService();
-	return new PromotionService(sql, entryRepo, quarantine);
+	return new PromotionService(sql, entryRepo, quarantine, eventRepo);
 }
 
 function parseLevel(input: string): DisclosureLevel {

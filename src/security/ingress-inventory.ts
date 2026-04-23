@@ -20,7 +20,10 @@
  * call (or vice versa) fails `npm run check:ingress-guards`.
  */
 
-export type IngressGuardSymbol = "enforceNoSecrets" | "secureEmbeddingInput";
+export type IngressGuardSymbol =
+	| "enforceNoSecrets"
+	| "enforceNoSecretsWithAudit"
+	| "secureEmbeddingInput";
 
 export interface IngressPath {
 	/** Path relative to repo root, UNIX slashes. */
@@ -50,25 +53,25 @@ export const INGRESS_INVENTORY: readonly IngressPath[] = [
 		file: "src/trust/promotion.service.ts",
 		symbol: "PromotionService.propose",
 		surface: "mcp_propose",
-		guard: "enforceNoSecrets",
+		guard: "enforceNoSecretsWithAudit",
 		rationale:
-			"Service-layer gate for MCP memory_propose AND CLI `memory propose` — belt-and-suspenders behind both entry points.",
+			"Service-layer gate for MCP memory_propose AND CLI `memory propose` — belt-and-suspenders behind both entry points, emits secret_rejected/secret_redacted audit events (IV1).",
 	},
 	{
 		file: "src/mcp/tool-handlers.ts",
 		symbol: "handleObserve",
 		surface: "mcp_observe",
-		guard: "enforceNoSecrets",
+		guard: "enforceNoSecretsWithAudit",
 		rationale:
-			"memory_observe accepts free-form agent output; reject-by-default prevents silent redaction of SECRET_DETECTED hits.",
+			"memory_observe accepts free-form agent output; reject-by-default prevents silent redaction of SECRET_DETECTED hits. Emits audit events (IV1).",
 	},
 	{
 		file: "src/mcp/tool-handlers.ts",
 		symbol: "handleObserveFailure",
 		surface: "mcp_observe_failure",
-		guard: "enforceNoSecrets",
+		guard: "enforceNoSecretsWithAudit",
 		rationale:
-			"memory_observe_failure accepts stderr/stack traces — a well-known leak vector for tokens pasted into error messages.",
+			"memory_observe_failure accepts stderr/stack traces — a well-known leak vector for tokens pasted into error messages. Emits audit events (IV1).",
 	},
 	{
 		file: "src/embedding/fallback-chain.ts",

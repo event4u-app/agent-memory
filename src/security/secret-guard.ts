@@ -1,5 +1,10 @@
 import { config } from "../config.js";
+import type {
+	MemoryEventRepository,
+	SecretEventType,
+} from "../db/repositories/memory-event.repository.js";
 import { shannonEntropy } from "../ingestion/privacy-filter.js";
+import { logger } from "../utils/logger.js";
 import { matchAllowList } from "./allowlist.js";
 import { SECRET_PATTERNS } from "./secret-patterns.js";
 import type { SecretPolicy } from "./secret-policy.js";
@@ -173,4 +178,100 @@ export function enforceNoSecrets(
 		throw new SecretViolationError(violation);
 	}
 	return violation;
+}
+
+/**
+ * Context identifying which ingress path produced an event.
+ * `ingressPath` matches the `surface` tag from `src/security/ingress-inventory.ts`
+ * (mcp_propose, mcp_observe, cli_propose, service_propose, …).
+ */
+export interface SecretEventContext {
+	actor: string;
+	ingressPath: string;
+	entryId?: string | null;
+}
+
+/**
+ * Build the audit metadata for a violation. Scope is deliberately narrow —
+ * pattern names, ingress_path, policy, and (optional) field names. Offsets,
+ * raw values, and hashes are all excluded: the roadmap IV1 scope line
+ * "Nie der Secret-Inhalt oder ein Hash davon" is enforced here.
+ */
+function auditMetadata(
+	violation: SecretViolation,
+	ctx: SecretEventContext,
+): Record<string, unknown> {
+	const patterns = Array.from(new Set(violation.detections.map((d) => d.pattern)));
+	const fields = Array.from(
+		new Set(violation.detections.map((d) => d.field).filter((f): f is string => Boolean(f))),
+	);
+	const meta: Record<string, unknown> = {
+		ingress_path: ctx.ingressPath,
+		policy: violation.policy,
+		patterns,
+	};
+	if (fields.length > 0) meta.fields = fields;
+	return meta;
+}
+
+async function safeRecord(
+	recorder: MemoryEventRepository | undefined,
+	input: {
+		entryId?: string | null;
+		actor: string;
+		eventType: SecretEventType;
+		metadata?: Record<string, unknown>;
+	},
+): Promise<void> {
+	if (!recorder) return;
+	try {
+		await recorder.record(input);
+	} catch (err) {
+		// Audit write failure is a monitoring concern — do not mask the
+		// successful reject/redact by throwing a different error here.
+		logger.error(
+			{ err: err instanceof Error ? err.message : String(err), eventType: input.eventType },
+			"secret-guard: audit event write failed",
+		);
+	}
+}
+
+/**
+ * `enforceNoSecrets` + persistent audit emission. When `recorder` is undefined
+ * the behavior is identical to `enforceNoSecrets` — that keeps unit tests that
+ * don't care about events simple while every production ingress wires the
+ * real repository (see `src/security/ingress-inventory.ts`).
+ *
+ * Reject path → emits `secret_rejected` then re-throws.
+ * Redact path → emits `secret_redacted` then returns the violation.
+ * Clean path → no event.
+ */
+export async function enforceNoSecretsWithAudit(
+	fields: Record<string, string | undefined | null>,
+	policy: SecretPolicy,
+	ctx: SecretEventContext,
+	recorder: MemoryEventRepository | undefined,
+): Promise<SecretViolation | null> {
+	try {
+		const violation = enforceNoSecrets(fields, policy);
+		if (violation) {
+			await safeRecord(recorder, {
+				entryId: ctx.entryId ?? null,
+				actor: ctx.actor,
+				eventType: "secret_redacted",
+				metadata: auditMetadata(violation, ctx),
+			});
+		}
+		return violation;
+	} catch (err) {
+		if (err instanceof SecretViolationError) {
+			await safeRecord(recorder, {
+				entryId: ctx.entryId ?? null,
+				actor: ctx.actor,
+				eventType: "secret_rejected",
+				metadata: auditMetadata(err.violation, ctx),
+			});
+		}
+		throw err;
+	}
 }

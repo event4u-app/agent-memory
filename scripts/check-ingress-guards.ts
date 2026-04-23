@@ -22,7 +22,11 @@ import {
 } from "../src/security/ingress-inventory.js";
 
 const ROOT = path.resolve(process.cwd(), "src");
-const GUARDS: IngressGuardSymbol[] = ["enforceNoSecrets", "secureEmbeddingInput"];
+const GUARDS: IngressGuardSymbol[] = [
+	"enforceNoSecrets",
+	"enforceNoSecretsWithAudit",
+	"secureEmbeddingInput",
+];
 
 interface Issue {
 	kind: "missing-call" | "undeclared-ingress" | "missing-file";
