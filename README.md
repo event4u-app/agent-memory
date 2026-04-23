@@ -454,6 +454,18 @@ Release history, rename mappings, and upgrade notes live in
 [`CHANGELOG.md`](CHANGELOG.md) (Keep-a-Changelog format). Start there
 when upgrading across minor versions.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for dev setup, coding
+conventions, commit format (Conventional Commits), and the full
+verification pipeline that CI runs.
+
+## Security
+
+Report vulnerabilities via GitHub's [private advisory form](https://github.com/event4u-app/agent-memory/security/advisories/new),
+not public issues. Supported versions and disclosure policy are in
+[`SECURITY.md`](SECURITY.md).
+
 ## License
 
 MIT
