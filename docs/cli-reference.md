@@ -269,6 +269,7 @@ memory doctor [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--json` | no | off | Emit JSON only (no human summary on stderr) |
+| `--fix` | no | off | Auto-repair pgvector + pending migrations, then re-diagnose |
 
 ### `health`
 

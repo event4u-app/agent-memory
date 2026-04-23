@@ -32,6 +32,16 @@ export interface DoctorReport {
 	status: "healthy" | "warnings" | "unhealthy";
 	checks: DoctorCheck[];
 	summary: { ok: number; warn: number; fail: number; skip: number };
+	fixes?: DoctorFix[];
+}
+
+export type FixStatus = "applied" | "skipped" | "failed";
+
+export interface DoctorFix {
+	target: string;
+	status: FixStatus;
+	message: string;
+	detail?: Record<string, unknown>;
 }
 
 // Known migrations expected in memory_migrations; kept in sync with
@@ -308,7 +318,7 @@ function checkIngressInventory(): DoctorCheck {
 	};
 }
 
-export async function runDoctor(): Promise<DoctorReport> {
+async function collectChecks(): Promise<DoctorCheck[]> {
 	const checks: DoctorCheck[] = [];
 	checks.push(await checkEnv());
 	const sql = getDb();
@@ -339,12 +349,88 @@ export async function runDoctor(): Promise<DoctorReport> {
 	checks.push(checkLoggerRedaction());
 	checks.push(checkEmbeddingBoundary());
 	checks.push(checkIngressInventory());
+	return checks;
+}
 
+function summarize(checks: DoctorCheck[]): DoctorReport {
 	const summary = { ok: 0, warn: 0, fail: 0, skip: 0 };
 	for (const c of checks) summary[c.status]++;
 	const status: DoctorReport["status"] =
 		summary.fail > 0 ? "unhealthy" : summary.warn > 0 ? "warnings" : "healthy";
 	return { status, checks, summary };
+}
+
+// Auto-repair for the two checks the roadmap (A1) calls out — missing
+// pgvector and unapplied migrations. Everything else stays a read-only
+// diagnosis. Fixes requiring a reachable DB skip when db.connect fails.
+export async function runRepairs(checks: DoctorCheck[]): Promise<DoctorFix[]> {
+	const fixes: DoctorFix[] = [];
+	const byName = new Map(checks.map((c) => [c.name, c] as const));
+	const connect = byName.get("db.connect");
+	if (connect?.status !== "ok") {
+		return [
+			{
+				target: "db.connect",
+				status: "skipped",
+				message: "Cannot repair without a reachable database.",
+			},
+		];
+	}
+
+	const pgv = byName.get("db.pgvector");
+	if (pgv?.status === "fail") {
+		const sql = getDb();
+		try {
+			await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+			fixes.push({
+				target: "db.pgvector",
+				status: "applied",
+				message: "CREATE EXTENSION IF NOT EXISTS vector",
+			});
+		} catch (err) {
+			fixes.push({
+				target: "db.pgvector",
+				status: "failed",
+				message: err instanceof Error ? err.message : String(err),
+			});
+		} finally {
+			await closeDb();
+		}
+	}
+
+	const mig = byName.get("db.migrations");
+	if (mig?.status === "fail") {
+		try {
+			const { runMigrations } = await import("../db/migrate.js");
+			const result = await runMigrations();
+			fixes.push({
+				target: "db.migrations",
+				status: "applied",
+				message: `Applied ${result.applied.length} migration(s).`,
+				detail: { applied: result.applied, skipped: result.skipped },
+			});
+		} catch (err) {
+			fixes.push({
+				target: "db.migrations",
+				status: "failed",
+				message: err instanceof Error ? err.message : String(err),
+			});
+		} finally {
+			await closeDb();
+		}
+	}
+
+	return fixes;
+}
+
+export async function runDoctor(options: { fix?: boolean } = {}): Promise<DoctorReport> {
+	const first = await collectChecks();
+	if (!options.fix) return summarize(first);
+	const fixes = await runRepairs(first);
+	const attempted = fixes.some((f) => f.status === "applied" || f.status === "failed");
+	if (!attempted) return { ...summarize(first), fixes };
+	const second = await collectChecks();
+	return { ...summarize(second), fixes };
 }
 
 export function renderHuman(report: DoctorReport): string {
@@ -358,5 +444,12 @@ export function renderHuman(report: DoctorReport): string {
 	lines.push(
 		`  ${report.summary.ok} ok · ${report.summary.warn} warn · ${report.summary.fail} fail · ${report.summary.skip} skipped`,
 	);
+	if (report.fixes && report.fixes.length > 0) {
+		const fixIcon = { applied: "🔧", skipped: "⏭️ ", failed: "❌" } as const;
+		lines.push("", "repairs:");
+		for (const f of report.fixes) {
+			lines.push(`${fixIcon[f.status]}  ${f.target.padEnd(width)} ${f.message}`);
+		}
+	}
 	return lines.join("\n");
 }
