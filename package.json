@@ -49,6 +49,7 @@
     "check:mcp-tools": "tsx scripts/check-mcp-tools.ts",
     "check:cli-commands": "tsx scripts/check-cli-commands.ts",
     "check:changelog": "tsx scripts/check-changelog.ts",
+    "check:embedding-boundary": "tsx scripts/check-embedding-boundary.ts",
     "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md CHANGELOG.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
     "prepare": "npm run build",
     "postinstall": "bash scripts/postinstall.sh"

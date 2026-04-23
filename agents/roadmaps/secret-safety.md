@@ -445,7 +445,7 @@ nicht abdecken — Alt-Bestände, Re-Export, seitliche Leak-Kanäle.
   - Import eines Exports, der `redaction: { applied: false }`
     behauptet, wird abgelehnt, wenn Pattern-Scan neue Secrets findet.
 
-### III4 · Provider-Boundary-Drift-Guard · [Must]
+### III4 · Provider-Boundary-Drift-Guard · [Must] · ✅ shipped
 
 - **Warum:** I3 schützt zur Laufzeit. Der Drift-Guard stellt sicher,
   dass I3 auch in sechs Monaten noch der einzige Pfad zu Providern

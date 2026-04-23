@@ -176,6 +176,18 @@ jobs:
             exit 1
           fi
 
+  embedding-boundary:
+    name: Provider-boundary drift guard (III4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:embedding-boundary
+
   entropy-eval:
     name: Entropy calibration drift (II2)
     runs-on: ubuntu-latest
