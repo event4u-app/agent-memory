@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { isMainModule } from "../utils/is-main-module.js";
 import { logger } from "../utils/logger.js";
 import { closeDb, getDb } from "./connection.js";
 import { up as up001 } from "./migrations/001_initial.js";
@@ -90,8 +90,10 @@ async function executeMigrations(db: postgres.Sql): Promise<MigrationResult> {
 }
 
 // Direct-script invocation: `tsx src/db/migrate.ts` or `npm run db:migrate`.
-// Owns the connection: open default, run, close.
-if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+// Owns the connection: open default, run, close. isMainModule resolves
+// symlinks so the compiled entrypoint still triggers when called through
+// a `bin` alias.
+if (isMainModule(import.meta.url)) {
 	runMigrations()
 		.then(async () => {
 			await closeDb();

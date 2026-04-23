@@ -450,6 +450,15 @@ the prior draft.
 - **Done:** A second, independent cold-start run (by user or
   reviewer) completes without referring to the repo source; transcript
   archived.
+- **Status (2026-04-23):** First cold-start pass complete against a
+  locally-built image in `/tmp/agent-memory-cold-start`. Three blocker
+  bugs found and fixed on `feat/improve-system` — (1) symlink-aware
+  `isMainModule` helper (CLI/migrate/MCP entry detection failed under
+  `/usr/local/bin/memory` symlink); (2) `memory serve` event-loop
+  keep-alive (`setInterval` so Node doesn't exit on unsettled top-level
+  await); (3) stale compose `command:` override caught during P3-7.
+  Transcript: `agents/analysis/cold-start-transcript.md`. Remaining
+  exit criterion: second independent run by reviewer post-merge.
 
 ---
 
@@ -763,7 +772,7 @@ larger than a typical patch-release roadmap.
 - [ ] `CHANGELOG.md` updated with every shipped task, rename mapping
       included.
 - [ ] `npm run test:contract` green on `main`.
-- [ ] P3-8 cold-start transcript archived.
+- [x] P3-8 cold-start transcript archived (first pass; needs independent second run).
 - [ ] `package.json` version bumped to `1.1.0`.
 - [ ] Tag `1.1.0` pushed; release notes published.
 - [ ] This file archived to `agents/roadmaps/archive/improve-system.md`

@@ -3,7 +3,6 @@
 // Must happen before any import that touches the logger (config/db).
 process.env.LOG_LEVEL ??= "silent";
 
-import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
@@ -32,6 +31,7 @@ import { FileExistsValidator } from "../trust/validators/file-exists.validator.j
 import { SymbolExistsValidator } from "../trust/validators/symbol-exists.validator.js";
 import { TestLinkedValidator } from "../trust/validators/test-linked.validator.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
+import { isMainModule } from "../utils/is-main-module.js";
 
 const BACKEND_VERSION = "0.1.0";
 const HEALTH_TIMEOUT_MS = 2000;
@@ -619,7 +619,15 @@ program
 			logger.error({ err }, "serve: migrations failed — continuing, retry with 'memory migrate'");
 		}
 
+		// Keep the event loop alive. Without an active handle, Node would
+		// detect the unsettled top-level await below and exit immediately
+		// (`Detected unsettled top-level await` warning). A long-period
+		// no-op interval is the cheapest way to park a supervisor process
+		// without a scheduler or network listener.
+		const keepAlive = setInterval(() => {}, 1 << 30);
+
 		const shutdown = async (signal: NodeJS.Signals) => {
+			clearInterval(keepAlive);
 			logger.info({ signal }, "serve: shutting down");
 			try {
 				await closeDb();
@@ -632,8 +640,8 @@ program
 		process.on("SIGINT", () => void shutdown("SIGINT"));
 
 		logger.info("serve: supervisor ready — awaiting SIGTERM");
-		// Park forever. Replace with a heartbeat / scheduler tick in a
-		// later release when in-process timers land (ADR-0002 non-goal).
+		// Park forever. When in-process timers land (ADR-0002 non-goal)
+		// the keepAlive interval becomes the scheduler tick.
 		await new Promise<void>(() => {});
 	});
 
@@ -654,7 +662,9 @@ program
 
 // Only parse argv when invoked as a script. The generator in
 // scripts/generate-cli-docs.ts imports `program` to introspect commands.
-if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+// isMainModule resolves symlinks so `/usr/local/bin/memory` in the
+// Docker image (symlinked to /app/dist/cli/index.js) also triggers.
+if (isMainModule(import.meta.url)) {
 	program.parse();
 }
 

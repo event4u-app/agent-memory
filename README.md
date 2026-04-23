@@ -3,7 +3,7 @@
 Persistent, trust-scored project memory for AI coding agents — MCP server + CLI,
 backed by PostgreSQL + pgvector.
 
-> **Status:** V1 complete · 246 tests passing · Node ≥ 20 · Postgres 15+ with pgvector
+> **Status:** V1 complete · 251 tests passing · Node ≥ 20 · Postgres 15+ with pgvector
 
 ## 60-second quick-start
 
@@ -420,7 +420,7 @@ examples/
 ## Testing
 
 ```bash
-npm test                 # 246 tests, vitest
+npm test                 # 251 tests, vitest
 npm run test:watch       # watch mode
 npm run typecheck        # tsc --noEmit (strict)
 npm run lint             # biome check

@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { closeDb, getDb } from "../db/connection.js";
@@ -19,6 +18,7 @@ import { DiffImpactValidator } from "../trust/validators/diff-impact.validator.j
 import { FileExistsValidator } from "../trust/validators/file-exists.validator.js";
 import { SymbolExistsValidator } from "../trust/validators/symbol-exists.validator.js";
 import { TestLinkedValidator } from "../trust/validators/test-linked.validator.js";
+import { isMainModule } from "../utils/is-main-module.js";
 import { registerLifecycleHandlers } from "./lifecycle.js";
 import { registerToolHandlers } from "./tools.js";
 
@@ -94,10 +94,9 @@ export async function startMcpServer(): Promise<void> {
 	});
 }
 
-const isMainModule =
-	process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];
-
-if (isMainModule) {
+// Resolve symlinks so the compiled server still triggers when invoked
+// through a `bin` alias (see src/utils/is-main-module.ts).
+if (isMainModule(import.meta.url)) {
 	startMcpServer().catch((err) => {
 		console.error("Fatal error:", err);
 		process.exit(1);

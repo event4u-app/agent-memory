@@ -23,7 +23,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 - **Runtime:** Node ≥ 20
 - **Package manager:** npm (lockfile: `package-lock.json`)
 - **Database:** PostgreSQL 15+ with the `pgvector` extension
-- **Testing:** Vitest (unit + integration), 246 tests passing
+- **Testing:** Vitest (unit + integration), 251 tests passing
 - **Lint:** Biome
 - **Protocol:** Model Context Protocol (MCP) v1 via `@modelcontextprotocol/sdk`
 

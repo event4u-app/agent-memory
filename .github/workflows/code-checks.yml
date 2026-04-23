@@ -9,7 +9,7 @@
 # Jobs:
 #   lint       — biome check src/ tests/       (no warnings, no errors)
 #   typecheck  — tsc --noEmit                   (strict mode)
-#   tests      — vitest run                     (unit + contract, 246 tests)
+#   tests      — vitest run                     (unit + contract, 251 tests)
 #
 # Runs on every pull request + on push to main. No Postgres, no
 # Docker — tests/unit/* are pure in-memory Vitest runs.
