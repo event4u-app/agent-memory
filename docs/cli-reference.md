@@ -272,6 +272,26 @@ memory doctor [options]
 | `--json` | no | off | Emit JSON only (no human summary on stderr) |
 | `--fix` | no | off | Auto-repair pgvector + pending migrations, then re-diagnose |
 
+### `explain`
+
+Explain how a memory entry's trust_score was calculated (B1 · runtime-trust)
+
+```bash
+memory explain <id> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<id>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--json` | no | — | Emit explain-v1 JSON envelope instead of human output |
+
 ### `health`
 
 Probe backend health — returns contract v1 envelope as JSON

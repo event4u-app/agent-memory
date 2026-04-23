@@ -143,6 +143,18 @@ export const TOOL_DEFINITIONS: Tool[] = [
 		},
 	},
 	{
+		name: "memory_explain",
+		description:
+			"Explain how a memory entry's trust_score was calculated (B1 · runtime-trust). Returns the explain-v1 envelope with score breakdown, promotion history, contradictions, and decay.",
+		inputSchema: {
+			type: "object" as const,
+			properties: {
+				id: { type: "string", description: "Memory entry id" },
+			},
+			required: ["id"],
+		},
+	},
+	{
 		name: "memory_session_start",
 		description: "Call at session start. Returns relevant context and runs TTL expiry.",
 		inputSchema: {

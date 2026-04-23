@@ -30,6 +30,7 @@ import {
 } from "../security/retrieval-redaction.js";
 import { enforceNoSecretsWithAudit, SecretViolationError } from "../security/secret-guard.js";
 import type { SecretViolation } from "../security/secret-violation.js";
+import { explainEntry } from "../trust/explain.service.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
 
@@ -102,6 +103,8 @@ async function dispatchTool(name: string, args: Args, ctx: McpContext): Promise<
 			return handleHealth(ctx);
 		case "memory_diagnose":
 			return handleDiagnose(args, ctx);
+		case "memory_explain":
+			return handleExplain(args, ctx);
 		case "memory_session_start":
 			return handleSessionStart(args, ctx);
 		case "memory_observe":
@@ -402,6 +405,31 @@ async function handleDiagnose(args: Args, ctx: McpContext): Promise<CallToolResu
 		lowTrustEntries: lowTrust,
 		secretEventsLast24h,
 	});
+}
+
+// B1 · runtime-trust — `memory_explain` emits the same explain-v1 envelope
+// as the CLI's `memory explain <id>`; both paths go through `explainEntry`
+// so CLI and MCP stay bit-for-bit identical (schema:
+// tests/fixtures/retrieval/explain-v1.schema.json).
+async function handleExplain(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const id = args.id as string | undefined;
+	if (!id) return err("id is required");
+	const entry = await ctx.entryRepo.findById(id);
+	if (!entry) return err(`Entry not found: ${id}`);
+	if (!ctx.eventRepo) return err("eventRepo is not wired on this MCP context");
+	const [evidence, events, contradictions] = await Promise.all([
+		ctx.evidenceRepo.findByEntryId(id),
+		ctx.eventRepo.listByEntry(id, 200),
+		ctx.contradictionRepo.findByEntryId(id),
+	]);
+	return ok(
+		explainEntry({
+			entry,
+			evidenceCount: evidence.length,
+			events,
+			contradictions,
+		}),
+	);
 }
 
 async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallToolResult> {

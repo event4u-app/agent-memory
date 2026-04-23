@@ -355,21 +355,21 @@ Nine canonical types cover most project knowledge:
 
 ## Tools & commands
 
-### MCP tools (23)
+### MCP tools (24)
 
 | Category | Tools |
 |---|---|
 | **Retrieval** | `memory_retrieve`, `memory_retrieve_details` |
 | **Ingestion** | `memory_ingest`, `memory_propose`, `memory_promote` |
-| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate` |
+| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate`, `memory_explain` |
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (18)
+### CLI commands (19)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
-`audit` · `migrate` · `init` · `doctor` · `serve` · `mcp`
+`audit` · `explain` · `migrate` · `init` · `doctor` · `serve` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 
@@ -424,7 +424,7 @@ src/
 ├── quality/             # metrics, dedup, contradictions, archival
 ├── embedding/           # provider abstraction + fallback chain
 ├── infra/               # circuit breaker, retry
-├── mcp/                 # MCP server (stdio), 23 tools
+├── mcp/                 # MCP server (stdio), 24 tools
 └── cli/                 # commander-based CLI
 
 docs/

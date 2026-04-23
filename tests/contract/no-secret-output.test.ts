@@ -109,6 +109,7 @@ const MATRIX: Record<string, MatrixEntry> = {
 	memory_verify: { mode: "skip", reason: "id-based admin action" },
 	memory_health: { mode: "skip", reason: "no content input" },
 	memory_diagnose: { mode: "skip", reason: "no free-form content input" },
+	memory_explain: { mode: "skip", reason: "id-based, output derived from stored entry only" },
 	memory_session_start: { mode: "skip", reason: "session metadata only" },
 	memory_session_end: { mode: "skip", reason: "session metadata only" },
 	memory_stop: { mode: "skip", reason: "session metadata only" },

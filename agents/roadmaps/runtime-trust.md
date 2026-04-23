@@ -299,7 +299,7 @@ Vektorstore-Konkurrent hat.
   - [x] Full suite: 713 grün · typecheck clean · lint clean ·
     CLI-Docs regeneriert.
 
-### B1 · `memory explain <id>` · [Must]
+### B1 · `memory explain <id>` · [Must] · ✅ shipped
 
 - **Warum:** Ein `trust_score: 0.73` ist heute eine Black-Box-Zahl.
   Für Adoption in Teams muss jeder Score seinen Weg erklären können —
@@ -321,11 +321,29 @@ Vektorstore-Konkurrent hat.
   - Human-Output (Default) + `--json` für Scripting.
   - MCP-Tool `memory_explain` als exakt-gleicher Wrapper.
 - **Done:**
-  - `memory explain <valid-id>` druckt alle fünf Abschnitte.
-  - `memory explain <valid-id> --json` erfüllt neues JSON-Schema
-    `explain-v1.schema.json` (Golden-Fixture + Contract-Test).
-  - MCP-Tool-Counter erhöht (Guard aus 1.1 greift → CHANGELOG wird
-    erzwungen).
+  - [x] `src/trust/explain.service.ts` berechnet Score-Breakdown
+    (evidence, access-boost, decay, single-evidence-cap), liefert
+    Promotion-History aus `memory_events`, Contradictions und
+    Decay-Prognose. Zentrale Funktion `explainEntry()` — CLI und
+    MCP gehen beide durch diesen Pfad, keine Duplikation.
+  - [x] `memory explain <id>` CLI-Subcommand (`src/cli/commands/explain.ts`).
+    Human-Output: fünf Abschnitte (Entry · Breakdown · why_not_max
+    · History · Contradictions · Decay). `--json` emittiert
+    `explain-v1` Envelope.
+  - [x] `memory_explain` MCP-Tool (tool-definitions + tool-handlers),
+    teilt `explainEntry()` mit der CLI → CLI ≡ MCP bit-genau.
+  - [x] JSON-Schema `tests/fixtures/retrieval/explain-v1.schema.json`
+    + Golden-Fixture `golden-explain.json` + Contract-Test
+    (`tests/contract/explain-contract.test.ts` · 4 assertions:
+    golden validiert · live-Output validiert · mit History +
+    Contradictions validiert · `additionalProperties: false` greift).
+  - [x] 6 Unit-Tests in `tests/unit/explain.service.test.ts` decken
+    alle fünf Abschnitte, Single-Evidence-Cap, past-half-life Decay,
+    Event-Sortierung, Stale-Flag und Contradiction-Mapping ab.
+  - [x] MCP-Tool-Counter 23 → 24 (README, AGENTS.md, no-secret-matrix);
+    CLI-Counter 18 → 19 (README, `check:cli-commands`, registry-Test).
+  - [x] Full suite: 723 grün · typecheck clean · lint clean ·
+    CLI-Docs regeneriert · `docs:cli:check` diff-frei.
 
 ### B2 · `memory history <id>` · [Must]
 
