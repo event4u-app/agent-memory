@@ -56,6 +56,16 @@ date + version header at tag time (P7-1).
 - `.github/ISSUE_TEMPLATE/` + `.github/PULL_REQUEST_TEMPLATE.md` —
   bug reports require `memory doctor` JSON + version; PRs require
   the six-check verification pipeline and a changelog entry (P4-4).
+- Four drift-prevention guards covering new Phase 0–5 surfaces, all
+  wired into `.github/workflows/docs-checks.yml`:
+  - `npm run check:mcp-tools` — README's `### MCP tools (N)` table
+    vs. `src/mcp/tool-definitions.ts` (P6-2).
+  - `npm run check:cli-commands` — README's `### CLI commands (N)`
+    list vs. `program.commands` from `src/cli/index.ts` (P6-3).
+  - `npm run check:neutral-docs` — strict stack-neutrality scan of
+    pure-knowledge docs (glossary, comparisons, tutorial) (P6-4).
+  - `npm run check:changelog` — `package.json` version must have a
+    matching `## [X.Y.Z]` section in `CHANGELOG.md` (P6-6).
 
 ### Changed
 

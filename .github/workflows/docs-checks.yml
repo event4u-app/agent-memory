@@ -8,6 +8,10 @@
 #   cli-doc-drift   (P4-2)  docs/cli-reference.md vs src/cli/index.ts
 #   portability     (P4-3)  README/docs/examples vs foreign-project blocklist
 #   link-check      (P4-4)  every *.md link resolves
+#   mcp-tools       (P6-2)  README MCP-tool table vs src/mcp/tool-definitions.ts
+#   cli-commands    (P6-3)  README CLI list vs src/cli/index.ts
+#   neutral-docs    (P6-4)  pure-knowledge docs stay stack-agnostic
+#   changelog       (P6-6)  package.json version has a CHANGELOG section
 #
 # Runs on every pull request + on push to main. Fast (~2 min total) —
 # these are static checks, no Docker, no Postgres.
@@ -94,3 +98,51 @@ jobs:
           # Raise the rate limit for GitHub anchor checks; lychee falls
           # back to anonymous requests otherwise and hits 60-req/h.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mcp-tools:
+    name: MCP tool-count guard (P6-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:mcp-tools
+
+  cli-commands:
+    name: CLI command-count guard (P6-3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:cli-commands
+
+  neutral-docs:
+    name: Neutral-docs guard (P6-4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:neutral-docs
+
+  changelog:
+    name: CHANGELOG freshness guard (P6-6)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:changelog

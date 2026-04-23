@@ -644,6 +644,12 @@ by Phases 0-5. All guards non-breaking for existing CI.
   Marker pattern, same as P6-1.
 - **Done:** Adding a new MCP tool bumps the README automatically
   or fails CI with a clear message.
+- **Status (2026-04-23):** Shipped. `scripts/check-mcp-tools.ts`
+  imports `TOOL_DEFINITIONS` from `src/mcp/tool-definitions.ts`,
+  parses the README `### MCP tools (N)` heading plus the backtick
+  tool names in the table below, and fails on count drift, missing
+  entries, or stray entries. Wired into `npm run check:mcp-tools`
+  and the `docs-checks.yml` workflow.
 
 ### P6-3 · CLI command-count guard [Must]
 
@@ -653,6 +659,11 @@ by Phases 0-5. All guards non-breaking for existing CI.
   and the name list below it.
 - **Done:** Adding a new CLI subcommand updates the README list
   automatically or fails CI.
+- **Status (2026-04-23):** Shipped. `scripts/check-cli-commands.ts`
+  reads `program.commands` from `src/cli/index.ts` and compares
+  against README's `### CLI commands (N)` heading + the backtick
+  list. Wired into `npm run check:cli-commands` and
+  `docs-checks.yml`.
 
 ### P6-4 · Universality guard extension [Must]
 
@@ -666,6 +677,20 @@ by Phases 0-5. All guards non-breaking for existing CI.
 - **Done:** Scanner treats neutral docs as strict; `examples/*` and
   `docs/consumer-setup-node.md` remain allow-listed for stack
   specifics.
+- **Status (2026-04-23):** Shipped with scope refinement.
+  `scripts/check-neutral-docs.ts` strict-scans the three
+  pure-knowledge docs (`comparisons.md`, `glossary.md`,
+  `tutorial-first-memory.md`) for any stack-specific term (Laravel,
+  Django, Rails, Spring Boot, composer, pip install, etc.). Skips
+  fenced code blocks. The two multi-stack setup guides
+  (`consumer-setup-generic.md`, `consumer-setup-docker-sidecar.md`)
+  are explicitly *not* in the strict list — they are multi-stack
+  showcases with parallel code blocks that name stacks equivalently
+  by design. They remain covered by the broader repo-wide
+  `check:portability` scanner. Wired into `npm run check:neutral-docs`
+  and `docs-checks.yml`. Missing targets (`comparisons.md`,
+  `tutorial-first-memory.md` — P2-3 and P2-5 are Should, not yet
+  shipped) are treated as no-op rather than a failure.
 
 ### P6-5 · Glossary drift guard [Could]
 
@@ -685,6 +710,13 @@ by Phases 0-5. All guards non-breaking for existing CI.
   matching non-`[Unreleased]` section in `CHANGELOG.md`.
 - **Done:** Bumping `package.json` without a CHANGELOG entry fails
   CI.
+- **Status (2026-04-23):** Shipped. `scripts/check-changelog.ts`
+  reads `package.json` version and asserts `## [X.Y.Z]` exists in
+  `CHANGELOG.md`. `0.1.0` is whitelisted as the historical baseline
+  (CHANGELOG introduction postdated it; documented in the 1.0.0
+  section). Wired into `npm run check:changelog` and
+  `docs-checks.yml`. Will start enforcing when P7-1 bumps the
+  version to 1.1.0.
 
 ---
 
