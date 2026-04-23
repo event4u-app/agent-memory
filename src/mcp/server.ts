@@ -37,11 +37,12 @@ export function buildMcpServer(): {
 } {
 	const sql = getDb();
 
-	const entryRepo = new MemoryEntryRepository(sql);
+	// eventRepo first — entryRepo binds it for B4 trust-audit emissions.
+	const eventRepo = new MemoryEventRepository(sql);
+	const entryRepo = new MemoryEntryRepository(sql, eventRepo);
 	const evidenceRepo = new EvidenceRepository(sql);
 	const contradictionRepo = new ContradictionRepository(sql);
 	const observationRepo = new ObservationRepository(sql);
-	const eventRepo = new MemoryEventRepository(sql);
 
 	const repoRoot = process.env.REPO_ROOT ?? process.cwd();
 

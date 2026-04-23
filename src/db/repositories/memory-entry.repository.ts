@@ -14,6 +14,25 @@ import type {
 	TrustStatus,
 } from "../../types.js";
 import { logger } from "../../utils/logger.js";
+import type { MemoryEventRepository, TrustEventType } from "./memory-event.repository.js";
+
+/**
+ * Map a status transition (from,to) to a trust-audit event type (B4).
+ * Returns null for same-status no-ops. Poison / archive / invalidate
+ * are handled by their dedicated services where richer metadata is
+ * available — this mapping covers the lifecycle transitions flowing
+ * through `transitionStatus()`.
+ */
+function statusTransitionToEventType(from: TrustStatus, to: TrustStatus): TrustEventType | null {
+	if (from === to) return null;
+	if (to === "validated") return from === "stale" ? "entry_revived" : "entry_promoted";
+	if (to === "stale") return "entry_stale";
+	if (to === "invalidated") return "entry_invalidated";
+	if (to === "rejected") return "entry_deprecated";
+	if (to === "poisoned") return "entry_quarantined";
+	if (to === "archived") return "entry_archived";
+	return null;
+}
 
 export interface CreateEntryInput {
 	type: MemoryType;
@@ -32,7 +51,29 @@ export interface CreateEntryInput {
 }
 
 export class MemoryEntryRepository {
-	constructor(private readonly sql: postgres.Sql) {}
+	/**
+	 * Optional audit-event recorder for B4 trust-audit emissions. Held
+	 * as a mutable field so wiring can attach it late (MCP context,
+	 * CLI factory) without breaking the dozens of `new MemoryEntryRepository(sql)`
+	 * call sites in tests and short-lived CLI handlers.
+	 */
+	private eventRepo: MemoryEventRepository | undefined;
+
+	constructor(
+		private readonly sql: postgres.Sql,
+		eventRepo?: MemoryEventRepository,
+	) {
+		this.eventRepo = eventRepo;
+	}
+
+	/**
+	 * Late-bind the audit recorder. Used by context factories that
+	 * instantiate repos before the event repo is ready (rare — normally
+	 * pass via constructor).
+	 */
+	setEventRepository(repo: MemoryEventRepository): void {
+		this.eventRepo = repo;
+	}
 
 	async create(input: CreateEntryInput): Promise<MemoryEntry> {
 		const tier = input.consolidationTier ?? "semantic";
@@ -61,7 +102,20 @@ export class MemoryEntryRepository {
     `;
 
 		logger.debug({ id: row?.id, type: input.type }, "Memory entry created in quarantine");
-		return this.mapRow(row!);
+		const entry = this.mapRow(row!);
+		await this.emitEvent({
+			entryId: entry.id,
+			eventType: "entry_proposed",
+			actor: input.createdBy ?? "agent",
+			after: {
+				status: entry.trust.status,
+				score: entry.trust.score,
+				type: entry.type,
+				tier: entry.consolidationTier,
+			},
+			reason: `Proposed as ${entry.type} (${input.impactLevel}/${input.knowledgeClass})`,
+		});
+		return entry;
 	}
 
 	async findById(id: string): Promise<MemoryEntry | null> {
@@ -117,6 +171,23 @@ export class MemoryEntryRepository {
 
 		recordTrustTransition(entry.trust.status, toStatus);
 		logger.info({ id, from: entry.trust.status, to: toStatus, reason }, "Status transitioned");
+
+		// B4 audit emission — memory_status_history remains as the cheap per-transition
+		// row, memory_events carries the structured before/after/reason that
+		// `memory explain` / `memory history` read. Same writer on purpose so the two
+		// tables cannot drift.
+		const eventType = statusTransitionToEventType(entry.trust.status, toStatus);
+		if (eventType) {
+			await this.emitEvent({
+				entryId: id,
+				eventType,
+				actor: triggeredBy,
+				before: { status: entry.trust.status, score: entry.trust.score },
+				after: { status: toStatus, score: entry.trust.score },
+				reason,
+			});
+		}
+
 		return this.mapRow(row!);
 	}
 
@@ -321,10 +392,43 @@ export class MemoryEntryRepository {
           INSERT INTO memory_status_history (memory_entry_id, from_status, to_status, reason, triggered_by)
           VALUES (${row.id}, 'validated', 'stale', 'TTL expired (auto-stale)', 'system:expiry')
         `;
+				await this.emitEvent({
+					entryId: row.id as string,
+					eventType: "entry_stale",
+					actor: "system:expiry",
+					before: { status: "validated" },
+					after: { status: "stale" },
+					reason: "TTL expired (auto-stale)",
+				});
 			}
 			logger.info({ count: result.length }, "Auto-staled expired entries");
 		}
 
 		return result.length;
+	}
+
+	/**
+	 * Fire-and-forget event emission. Swallows recorder errors so audit
+	 * failures never break a legitimate entry write — we prefer a missing
+	 * event row over a dropped status transition. The logger line here is
+	 * the canary operators watch in production.
+	 */
+	private async emitEvent(input: {
+		entryId: string;
+		eventType: TrustEventType;
+		actor: string;
+		before?: Record<string, unknown> | null;
+		after?: Record<string, unknown> | null;
+		reason?: string | null;
+	}): Promise<void> {
+		if (!this.eventRepo) return;
+		try {
+			await this.eventRepo.record(input);
+		} catch (err) {
+			logger.warn(
+				{ err, entryId: input.entryId, eventType: input.eventType },
+				"Failed to record trust-audit event (continuing)",
+			);
+		}
 	}
 }

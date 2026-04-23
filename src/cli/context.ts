@@ -33,7 +33,11 @@ export { closeDb, getDb };
 
 export function buildQuarantineService(): QuarantineService {
 	const sql = getDb();
-	const entryRepo = new MemoryEntryRepository(sql);
+	// B4: entryRepo wires eventRepo for trust-audit emissions. All
+	// transitionStatus() calls inside QuarantineService now write a
+	// memory_events row in addition to memory_status_history.
+	const eventRepo = new MemoryEventRepository(sql);
+	const entryRepo = new MemoryEntryRepository(sql, eventRepo);
 	const evidenceRepo = new EvidenceRepository(sql);
 	const contradictionRepo = new ContradictionRepository(sql);
 	const repoRoot = process.env.REPO_ROOT ?? process.cwd();
@@ -48,8 +52,8 @@ export function buildQuarantineService(): QuarantineService {
 
 export function buildPromotionService(): PromotionService {
 	const sql = getDb();
-	const entryRepo = new MemoryEntryRepository(sql);
 	const eventRepo = new MemoryEventRepository(sql);
+	const entryRepo = new MemoryEntryRepository(sql, eventRepo);
 	const quarantine = buildQuarantineService();
 	return new PromotionService(sql, entryRepo, quarantine, eventRepo);
 }

@@ -41,9 +41,15 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
+		const all = [
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+		];
+		expect(result.applied).toEqual(all);
 		expect(result.skipped).toEqual([]);
-		expect(inserted).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
+		expect(inserted).toEqual(all);
 	});
 
 	it("is idempotent — skips every migration already recorded", async () => {
@@ -54,13 +60,19 @@ describe("runMigrations — sql option", () => {
 				{ name: "001_initial" },
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
 			],
 		});
 
 		const result = await runMigrations({ sql });
 
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
+		expect(result.skipped).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+		]);
 	});
 
 	it("applies only the missing migrations when some already ran", async () => {
@@ -72,7 +84,11 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["002_promotion_metadata", "003_memory_events"]);
+		expect(result.applied).toEqual([
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+		]);
 		expect(result.skipped).toEqual(["001_initial"]);
 	});
 
@@ -106,6 +122,7 @@ describe("runMigrations — databaseUrl option", () => {
 					{ name: "001_initial" },
 					{ name: "002_promotion_metadata" },
 					{ name: "003_memory_events" },
+					{ name: "004_memory_events_trust_extension" },
 				]);
 			}
 			return Promise.resolve([]);
@@ -126,7 +143,12 @@ describe("runMigrations — databaseUrl option", () => {
 		);
 		expect(endSpy).toHaveBeenCalledTimes(1);
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata", "003_memory_events"]);
+		expect(result.skipped).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+		]);
 	});
 
 	it("closes the dedicated connection even when a migration fails", async () => {
@@ -162,6 +184,7 @@ describe("listPendingMigrations", () => {
 			"001_initial",
 			"002_promotion_metadata",
 			"003_memory_events",
+			"004_memory_events_trust_extension",
 		]);
 	});
 
@@ -173,6 +196,7 @@ describe("listPendingMigrations", () => {
 				{ name: "001_initial" },
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
 			],
 		});
 		expect(await listPendingMigrations(sql)).toEqual([]);
@@ -187,6 +211,7 @@ describe("listPendingMigrations", () => {
 		expect(await listPendingMigrations(sql)).toEqual([
 			"002_promotion_metadata",
 			"003_memory_events",
+			"004_memory_events_trust_extension",
 		]);
 	});
 });
@@ -197,8 +222,13 @@ describe("buildMigrationStatus", () => {
 		const sql = mockSql({ "information_schema.tables": [{ exists: false }] });
 		expect(await buildMigrationStatus(sql)).toEqual({
 			applied: [],
-			pending: ["001_initial", "002_promotion_metadata", "003_memory_events"],
-			total: 3,
+			pending: [
+				"001_initial",
+				"002_promotion_metadata",
+				"003_memory_events",
+				"004_memory_events_trust_extension",
+			],
+			total: 4,
 		});
 	});
 
@@ -210,12 +240,18 @@ describe("buildMigrationStatus", () => {
 				{ name: "001_initial" },
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
 			],
 		});
 		expect(await buildMigrationStatus(sql)).toEqual({
-			applied: ["001_initial", "002_promotion_metadata", "003_memory_events"],
+			applied: [
+				"001_initial",
+				"002_promotion_metadata",
+				"003_memory_events",
+				"004_memory_events_trust_extension",
+			],
 			pending: [],
-			total: 3,
+			total: 4,
 		});
 	});
 
@@ -230,7 +266,7 @@ describe("buildMigrationStatus", () => {
 		});
 		const status = await buildMigrationStatus(sql);
 		expect(status.applied).toEqual(["001_initial", "003_memory_events"]);
-		expect(status.pending).toEqual(["002_promotion_metadata"]);
-		expect(status.total).toBe(3);
+		expect(status.pending).toEqual(["002_promotion_metadata", "004_memory_events_trust_extension"]);
+		expect(status.total).toBe(4);
 	});
 });

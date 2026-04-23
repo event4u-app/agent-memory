@@ -255,6 +255,7 @@ memory diagnose [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--max-results <n>` | no | `10` | Max entries per category |
+| `--entry <id>` | no | — | Show trust-audit event-count breakdown for a single entry (B4) |
 
 ### `doctor`
 

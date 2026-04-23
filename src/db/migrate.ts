@@ -5,11 +5,13 @@ import { closeDb, getDb } from "./connection.js";
 import { up as up001 } from "./migrations/001_initial.js";
 import { up as up002 } from "./migrations/002_promotion_metadata.js";
 import { up as up003 } from "./migrations/003_memory_events.js";
+import { up as up004 } from "./migrations/004_memory_events_trust_extension.js";
 
 const MIGRATIONS = [
 	{ name: "001_initial", up: up001 },
 	{ name: "002_promotion_metadata", up: up002 },
 	{ name: "003_memory_events", up: up003 },
+	{ name: "004_memory_events_trust_extension", up: up004 },
 ] as const;
 
 export interface MigrationResult {

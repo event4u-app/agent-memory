@@ -256,7 +256,7 @@ Das ist der eigentliche Moat — MCP, CLI und Postgres sind Primitive,
 Trust-Scoring + Decay + Promotion + Invalidation ist das, was kein
 Vektorstore-Konkurrent hat.
 
-### B4 · Audit-Log-Schema · [Must, Vorarbeit]
+### B4 · Audit-Log-Schema · [Must, Vorarbeit] · ✅ shipped
 
 - **Warum:** `memory history` (B2) und `memory explain` (B1) brauchen
   eine lückenlose Event-Historie pro Entry. Heute gibt es nur den
@@ -274,11 +274,30 @@ Vektorstore-Konkurrent hat.
   - Retention-Policy: Events folgen derselben Archival-Regel wie
     der zugehörige Entry. Kein separates Purge.
 - **Done:**
-  - Migration `006_memory_events.sql` deployed.
-  - Jede Trust-Transition in `tests/unit/trust/` verifiziert das
-    geschriebene Event.
-  - `memory diagnose` (existing command) zeigt Event-Count pro
-    Entry optional.
+  - [x] Migration `004_memory_events_trust_extension.ts` deployed
+    (IV1 shipped 003 mit `memory_events`; B4 erweitert um
+    `before`/`after`/`reason` ohne Tabellen-Rewrite).
+  - [x] `TRUST_EVENT_TYPES` union in
+    `src/db/repositories/memory-event.repository.ts` — 9 Trust-Events
+    (proposed, promoted, quarantined, stale, revived, deprecated,
+    superseded, invalidated, archived). Secret-Events bleiben separat.
+  - [x] `MemoryEntryRepository` bindet `MemoryEventRepository` (ctor
+    + `setEventRepository`) und emittiert auf `create()`,
+    `transitionStatus()`, `enforceExpiry()` — Single choke-point statt
+    Service-by-Service-Hooks. Fehler im Recorder werden geloggt, aber
+    nicht propagiert (Audit-Down darf kein Status-Write killen).
+  - [x] `record()` nimmt optional `before` / `after` / `reason` (≤ 512
+    chars, server-seitig gekappt); `listByEntry()` + neue
+    `countByEntry()` lesen alle B4-Spalten.
+  - [x] `memory diagnose --entry <id>` zeigt Event-Count-Breakdown
+    pro Entry; human/JSON-Output.
+  - [x] 11 neue Unit-Tests (5 in `trust-audit-emission.test.ts`,
+    6 in `memory-event.repository.test.ts`) verifizieren:
+    Event-Emission auf jeder Transition · before/after passthrough ·
+    Reason-Cap · countByEntry-Sortierung · Recorder-Failure-Isolation ·
+    Migration-004-Registry + DDL.
+  - [x] Full suite: 713 grün · typecheck clean · lint clean ·
+    CLI-Docs regeneriert.
 
 ### B1 · `memory explain <id>` · [Must]
 
