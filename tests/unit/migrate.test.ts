@@ -190,3 +190,47 @@ describe("listPendingMigrations", () => {
 		]);
 	});
 });
+
+describe("buildMigrationStatus", () => {
+	it("marks every known migration as pending when the tracking table is absent", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({ "information_schema.tables": [{ exists: false }] });
+		expect(await buildMigrationStatus(sql)).toEqual({
+			applied: [],
+			pending: ["001_initial", "002_promotion_metadata", "003_memory_events"],
+			total: 3,
+		});
+	});
+
+	it("reports every recorded migration as applied", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "001_initial" },
+				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
+			],
+		});
+		expect(await buildMigrationStatus(sql)).toEqual({
+			applied: ["001_initial", "002_promotion_metadata", "003_memory_events"],
+			pending: [],
+			total: 3,
+		});
+	});
+
+	it("splits applied vs. pending and preserves the declared migration order", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "003_memory_events" },
+				{ name: "001_initial" },
+			],
+		});
+		const status = await buildMigrationStatus(sql);
+		expect(status.applied).toEqual(["001_initial", "003_memory_events"]);
+		expect(status.pending).toEqual(["002_promotion_metadata"]);
+		expect(status.total).toBe(3);
+	});
+});

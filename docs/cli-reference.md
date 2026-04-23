@@ -338,7 +338,7 @@ memory mcp
 
 ### `migrate`
 
-Apply pending database migrations (safe to run repeatedly; idempotent)
+Database migrations — `up` (default) applies pending, `status` prints applied/pending as JSON
 
 ```bash
 memory migrate

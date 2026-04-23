@@ -81,6 +81,39 @@ export async function listPendingMigrations(sql?: postgres.Sql): Promise<string[
 	return MIGRATIONS.filter((m) => !appliedSet.has(m.name)).map((m) => m.name);
 }
 
+export interface MigrationStatus {
+	applied: string[];
+	pending: string[];
+	total: number;
+}
+
+/**
+ * JSON-shaped migration status used by `memory migrate status` and reusable
+ * from tests or /ready diagnostics. Emits every known migration in its
+ * declared order with a flag whether the tracking table has seen it.
+ */
+export async function buildMigrationStatus(sql?: postgres.Sql): Promise<MigrationStatus> {
+	const db = sql ?? getDb();
+	const tableExists = await db<{ exists: boolean }[]>`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables
+			WHERE table_name = 'memory_migrations'
+		) AS "exists"
+	`;
+	let appliedSet = new Set<string>();
+	if (tableExists[0]?.exists) {
+		const rows = await db<{ name: string }[]>`SELECT name FROM memory_migrations`;
+		appliedSet = new Set(rows.map((r) => r.name));
+	}
+	const applied: string[] = [];
+	const pending: string[] = [];
+	for (const m of MIGRATIONS) {
+		if (appliedSet.has(m.name)) applied.push(m.name);
+		else pending.push(m.name);
+	}
+	return { applied, pending, total: MIGRATIONS.length };
+}
+
 async function executeMigrations(db: postgres.Sql): Promise<MigrationResult> {
 	const tableExists = await db`
 		SELECT EXISTS (
