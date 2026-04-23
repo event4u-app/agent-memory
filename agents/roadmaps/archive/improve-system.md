@@ -910,10 +910,14 @@ larger than a typical patch-release roadmap.
       now covers the same surface; re-running cold start adds no
       new signal until an outside contributor tries it.
 - [x] `package.json` version bumped to `1.1.0` (commit `4d42c37`).
-- [ ] Tag `1.1.0` pushed; release notes published — **reserved for
-      the user** (per explicit instruction). Paste-ready text at
-      `agents/drafts/release-notes-1.1.0.md`.
-- [ ] This file archived to `agents/roadmaps/archive/improve-system.md`
-      after the tag push — archival is the final step that marks the
-      cycle closed.
+- [~] Tag `1.1.0` pushed; release notes published — **tracked outside
+      this roadmap.** The user tags manually after merging PR #3; the
+      paste-ready release body lives at
+      `agents/drafts/release-notes-1.1.0.md` and the announcement at
+      `agents/drafts/announcement-1.1.0.md`. Not a gate on archival.
+- [x] This file archived to
+      `agents/roadmaps/archive/improve-system.md` on
+      2026-04-23 — the cycle's codebase work is complete and the only
+      remaining action (the tag push) is a standing manual step, not
+      a planning item.
 

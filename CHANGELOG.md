@@ -16,7 +16,7 @@ _No unreleased changes. Next entries land here on merge to `main`._
 ## [1.1.0] — 2026-04-23
 
 Theme: **universality, concept clarity, first-run DX, contract stability**.
-Driven by roadmap `agents/roadmaps/improve-system.md` (47 tasks across
+Driven by roadmap `agents/roadmaps/archive/improve-system.md` (47 tasks across
 8 phases) on branch `feat/improve-system`.
 
 ### Added
