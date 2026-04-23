@@ -153,3 +153,40 @@ describe("runMigrations — databaseUrl option", () => {
 		expect(endSpy).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("listPendingMigrations", () => {
+	it("returns every known migration when the tracking table is absent", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({ "information_schema.tables": [{ exists: false }] });
+		expect(await listPendingMigrations(sql)).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+		]);
+	});
+
+	it("returns an empty list when every migration is recorded", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "001_initial" },
+				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
+			],
+		});
+		expect(await listPendingMigrations(sql)).toEqual([]);
+	});
+
+	it("returns only the still-missing migrations when the table is partial", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [{ name: "001_initial" }],
+		});
+		expect(await listPendingMigrations(sql)).toEqual([
+			"002_promotion_metadata",
+			"003_memory_events",
+		]);
+	});
+});

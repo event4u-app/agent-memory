@@ -60,6 +60,27 @@ export async function runMigrations(opts: RunMigrationsOptions = {}): Promise<Mi
 	return executeMigrations(getDb());
 }
 
+/**
+ * Read-only counterpart to `runMigrations`. Returns the names of migrations
+ * that are known to this build but have not been applied to the database yet.
+ *
+ * Used by `memory serve`'s `/ready` endpoint (A1) and `memory migrate status`
+ * — both must observe migration state without side effects.
+ */
+export async function listPendingMigrations(sql?: postgres.Sql): Promise<string[]> {
+	const db = sql ?? getDb();
+	const tableExists = await db<{ exists: boolean }[]>`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables
+			WHERE table_name = 'memory_migrations'
+		) AS "exists"
+	`;
+	if (!tableExists[0]?.exists) return MIGRATIONS.map((m) => m.name);
+	const applied = await db<{ name: string }[]>`SELECT name FROM memory_migrations`;
+	const appliedSet = new Set(applied.map((r) => r.name));
+	return MIGRATIONS.filter((m) => !appliedSet.has(m.name)).map((m) => m.name);
+}
+
 async function executeMigrations(db: postgres.Sql): Promise<MigrationResult> {
 	const tableExists = await db`
 		SELECT EXISTS (

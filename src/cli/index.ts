@@ -752,8 +752,9 @@ program
 		// Supervisor mode: logs belong on stderr; stdout stays quiet for
 		// operators tailing container output.
 		process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
-		const { runMigrations } = await import("../db/migrate.js");
+		const { runMigrations, listPendingMigrations } = await import("../db/migrate.js");
 		const { logger } = await import("../utils/logger.js");
+		const { startServeHttp } = await import("./serve-http.js");
 
 		try {
 			const result = await runMigrations();
@@ -763,6 +764,26 @@ program
 			);
 		} catch (err) {
 			logger.error({ err }, "serve: migrations failed — continuing, retry with 'memory migrate'");
+		}
+
+		// HTTP surface (A1 · runtime-trust). Opt-in via MEMORY_HTTP_PORT.
+		// Unset / empty → supervisor runs socket-free (pre-A1 behavior).
+		let httpHandle: { close: () => Promise<void> } | null = null;
+		const httpPort = parseServePort(process.env.MEMORY_HTTP_PORT);
+		if (httpPort != null) {
+			try {
+				httpHandle = await startServeHttp({
+					port: httpPort,
+					checkHealth: () => healthCheck(),
+					listPending: () => listPendingMigrations(),
+				});
+				logger.info({ port: httpPort }, "serve: http endpoints listening — /health /ready");
+			} catch (err) {
+				logger.error(
+					{ err, port: httpPort },
+					"serve: http listener failed — continuing without /health /ready",
+				);
+			}
 		}
 
 		// Keep the event loop alive. Without an active handle, Node would
@@ -775,6 +796,13 @@ program
 		const shutdown = async (signal: NodeJS.Signals) => {
 			clearInterval(keepAlive);
 			logger.info({ signal }, "serve: shutting down");
+			if (httpHandle) {
+				try {
+					await httpHandle.close();
+				} catch (err) {
+					logger.warn({ err }, "serve: error closing http listener");
+				}
+			}
 			try {
 				await closeDb();
 			} catch (err) {
@@ -790,6 +818,20 @@ program
 		// the keepAlive interval becomes the scheduler tick.
 		await new Promise<void>(() => {});
 	});
+
+/**
+ * Parse MEMORY_HTTP_PORT into a listening port or null. Empty / unset → null
+ * (HTTP surface disabled). Non-numeric, out-of-range, or zero → null with
+ * the raw value preserved in the log for debugging.
+ */
+export function parseServePort(raw: string | undefined): number | null {
+	if (raw == null) return null;
+	const trimmed = raw.trim();
+	if (trimmed === "") return null;
+	const n = Number.parseInt(trimmed, 10);
+	if (!Number.isFinite(n) || n < 1 || n > 65535) return null;
+	return n;
+}
 
 program
 	.command("mcp")
