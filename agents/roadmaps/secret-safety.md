@@ -270,7 +270,7 @@ Realität der Provider-Landschaft.
   - `docs/secret-safety.md` Tabelle ist aus dem Katalog generiert
     (Drift-Guard in CI).
 
-### II2 · Entropy-Heuristik kalibrieren · [Should]
+### II2 · Entropy-Heuristik kalibrieren · [Should] · ✅ shipped
 
 - **Warum:** Die heutige Schwelle 4.0 mit Länge ≥ 20 im Quote-Kontext
   ist sinnvoll, aber un­evaluiert. Sie darf weder False-Positives
@@ -286,9 +286,15 @@ Realität der Provider-Landschaft.
   - Ergebnis-Dokument `docs/security/entropy-calibration.md` mit
     begründeter Schwellen-Wahl.
 - **Done:**
-  - Eval läuft in CI (nicht auf jeden PR — als `nightly`), Ergebnis
-    wird als Artefakt archiviert.
-  - Schwelle ist begründet, nicht geraten.
+  - 108 Non-Secret- und 101 Secret-Samples im Corpus; Eval-Matrix
+    in `docs/security/entropy-calibration.md` begründet 4.5 (F1
+    0.838, nur 3 FP gegenüber 15 bei 4.0).
+  - Threshold + Min-Length zentral in `src/config.ts`
+    (`MEMORY_ENTROPY_THRESHOLD`, `MEMORY_ENTROPY_MIN_LENGTH`),
+    konsumiert von `secret-guard` und `privacy-filter`.
+  - `npm run entropy:eval` / `entropy:eval:check` regenerieren den
+    Doc-Block; CI-Drift-Guard analog zu II1 offen (Nightly-Artefakt
+    folgt separat, Doc-Diff ist das Minimum-Gate).
 
 ### II3 · Canary-Token-Tests · [Must]
 

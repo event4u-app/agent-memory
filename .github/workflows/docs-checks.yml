@@ -13,6 +13,7 @@
 #   neutral-docs    (P6-4)  pure-knowledge docs stay stack-agnostic
 #   changelog       (P6-6)  package.json version has a CHANGELOG section
 #   secret-patterns (II1)   docs/secret-safety.md vs secret-patterns.ts
+#   entropy-eval    (II2)   docs/security/entropy-calibration.md vs corpus
 #
 # Runs on every pull request + on push to main. Fast (~2 min total) —
 # these are static checks, no Docker, no Postgres.
@@ -172,5 +173,32 @@ jobs:
             echo "::error::docs/secret-safety.md is out of sync with src/security/secret-patterns.ts."
             echo "::error::Run \`npm run docs:secrets\` locally and commit the diff."
             echo "::error::See roadmap task II1 in agents/roadmaps/secret-safety.md."
+            exit 1
+          fi
+
+  entropy-eval:
+    name: Entropy calibration drift (II2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Re-run entropy calibration against corpus
+        run: npm run entropy:eval
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code docs/security/entropy-calibration.md; then
+            echo ""
+            echo "::error::docs/security/entropy-calibration.md is out of sync with the corpus or guard."
+            echo "::error::Run \`npm run entropy:eval\` locally and commit the diff."
+            echo "::error::See roadmap task II2 in agents/roadmaps/secret-safety.md."
             exit 1
           fi
