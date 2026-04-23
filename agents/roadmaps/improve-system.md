@@ -495,6 +495,10 @@ fits the 1.1.0 cycle.
   expectations, conventional-commits reminder, PR workflow, code
   style (Biome), how to run the full verification pipeline.
 - **Done:** File exists; links from README + PR template (P4-4).
+- **Status (2026-04-23):** Shipped. `CONTRIBUTING.md` references
+  README + AGENTS.md for dev setup, documents the full six-command
+  verification pipeline, Conventional Commits format, PR workflow,
+  and scope/privacy expectations. README §Contributing links it.
 
 ### P4-3 · `SECURITY.md` [Must]
 
@@ -505,6 +509,12 @@ fits the 1.1.0 cycle.
   handling guarantees (privacy filter scope, what gets logged,
   what doesn't), non-guarantees.
 - **Done:** File exists; GitHub "Security" tab shows green check.
+- **Status (2026-04-23):** Shipped. Uses GitHub private vulnerability
+  reporting as the primary channel (modern best practice) with a
+  fallback public-issue pattern. Supported versions table covers
+  `1.1.x`, `1.0.x`, `0.x`. Handling guarantees enumerate privacy
+  filter coverage, log redaction (`DATABASE_URL` masking), quarantine
+  and access-scope behaviour. Reporter safe-harbour clause included.
 
 ### P4-4 · Issue + PR templates [Should]
 
@@ -514,6 +524,13 @@ fits the 1.1.0 cycle.
   asks for `memory doctor` JSON + version.
 - **Done:** Templates visible on "New issue" and "New PR" flows;
   bug reports arrive with the required fields pre-filled.
+- **Status (2026-04-23):** Shipped. Three files under
+  `.github/ISSUE_TEMPLATE/` (`bug_report.yml`, `feature_request.yml`,
+  `config.yml` routing security → advisories, questions → discussions)
+  plus `.github/PULL_REQUEST_TEMPLATE.md`. Bug report enforces
+  `memory doctor` JSON + package version via `validations.required`.
+  PR template requires the six-check verification pipeline, changelog
+  line, and security-consideration note.
 
 ### P4-5 · Repo metadata checklist [Must]
 

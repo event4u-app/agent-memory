@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/event4u-app/agent-memory/security/advisories/new
+    about: Report a security issue privately via GitHub advisories. Do not file a public bug report for vulnerabilities — see SECURITY.md.
+  - name: Question or discussion
+    url: https://github.com/event4u-app/agent-memory/discussions
+    about: For usage questions, design discussions, or "is this the right pattern?" use discussions rather than issues.
