@@ -63,7 +63,9 @@ const memories = JSON.parse(stdout);
 ```
 
 This avoids the overhead of keeping a DB connection alive inside your
-app process and matches the CLI contract consumed by `agent-config`.
+app process and matches the stable CLI contract — any consumer (your
+own code, `@event4u/agent-config`, a CI script) sees the same JSON
+output shape.
 
 ### Advanced: repository-level access
 
@@ -132,8 +134,8 @@ compiles cleanly under `"strict": true`.
 
 ## 3 · CLI fallback
 
-For scripts, Composer hooks, or GitHub Actions where import overhead
-isn't worth it:
+For scripts, package-manager hooks (npm, Composer, …), or GitHub
+Actions where import overhead isn't worth it:
 
 ```bash
 # Retrieve
@@ -172,7 +174,8 @@ server. Point your agent client at it:
 }
 ```
 
-Docker sidecar alternative: see [`consumer-setup-php.md`](consumer-setup-php.md)
+Docker sidecar alternative: see
+[`consumer-setup-docker-sidecar.md`](consumer-setup-docker-sidecar.md)
 — the MCP config is language-agnostic.
 
 ## 5 · Migrations in your own app lifecycle

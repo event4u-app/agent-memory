@@ -1,0 +1,13 @@
+{
+  "name": "example-with-agent-config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal reference setup pairing @event4u/agent-config with @event4u/agent-memory — smoke-tested by ./smoke-test.sh.",
+  "scripts": {
+    "smoke": "./smoke-test.sh"
+  },
+  "devDependencies": {
+    "@event4u/agent-config": "github:event4u-app/agent-config#main",
+    "@event4u/agent-memory": "github:event4u-app/agent-memory#main"
+  }
+}

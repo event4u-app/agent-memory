@@ -1,0 +1,6 @@
+{
+	"id": "01HTEST00000000000000000001",
+	"status": "validated",
+	"trust_score": 0.78,
+	"reason": "All gate criteria passed: extraction guard clean, 3-future-decisions met, no duplicates, evidence floor satisfied."
+}

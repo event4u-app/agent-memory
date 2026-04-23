@@ -1,8 +1,12 @@
 # Example — Laravel + agent-memory sidecar
 
-Minimal runnable compose project that demonstrates how a Laravel (or any
-PHP 8.3+) app talks to the `@event4u/agent-memory` sidecar over the
-compose network.
+Minimal runnable compose project that demonstrates how a Laravel app
+talks to the `@event4u/agent-memory` sidecar over the compose network.
+
+This is **one** example of the Docker sidecar pattern. The same pattern
+works for any PHP framework (Symfony, plain PHP, …) or any other
+language — see [`docs/consumer-setup-docker-sidecar.md`](../../docs/consumer-setup-docker-sidecar.md)
+for Python / Go / shell variants of the same integration.
 
 ## 3-step setup
 
@@ -45,9 +49,9 @@ At this point you can:
    Action class or service. Inject `Symfony\Component\Process\Process`
    for testability.
 
-See the [PHP consumer setup guide](../../docs/consumer-setup-php.md)
-for MCP client configuration, CI integration, and the troubleshooting
-table.
+See the [Docker sidecar setup guide](../../docs/consumer-setup-docker-sidecar.md)
+for MCP client configuration, CI integration, examples in other
+languages, and the troubleshooting table.
 
 ## Teardown
 

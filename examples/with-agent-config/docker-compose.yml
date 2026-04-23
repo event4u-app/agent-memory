@@ -1,13 +1,12 @@
-# Example: Laravel app + agent-memory sidecar
+# Example — agent-config (host-side skills) + agent-memory (containerised).
 #
-# From this folder, `docker compose up -d` brings up:
-#   - postgres          (pgvector:pg17)    internal only
-#   - agent-memory      (GHCR image)       internal + healthchecked
+# agent-config is installed into node_modules on the host via npm —
+# its role is to hydrate .augment/skills/ at install time. No service
+# runs for it.
 #
-# The `.:/workspace:ro` mount on agent-memory lets its file/symbol
-# validators verify memory entries against your actual PHP codebase.
-# Consumers add their own php-fpm / octane / workbench service on top
-# with `depends_on: agent-memory: service_healthy`.
+# agent-memory runs as a sidecar: postgres + the published image. The
+# stack matches examples/laravel-sidecar/ so consumers who saw that
+# example recognise the pattern.
 
 services:
   postgres:
@@ -25,13 +24,7 @@ services:
       retries: 5
 
   agent-memory:
-    # Pulls the published image on release. For contributors running
-    # from a local checkout of the monorepo, uncomment the build: block
-    # below to use the in-tree Dockerfile instead.
     image: ghcr.io/event4u-app/agent-memory:latest
-    # build:
-    #   context: ../..
-    #   dockerfile: Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,8 +34,6 @@ services:
       REPO_ROOT: /workspace
     volumes:
       - .:/workspace:ro
-    entrypoint: ["/sbin/tini", "--"]
-    command: ["tail", "-f", "/dev/null"]
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s

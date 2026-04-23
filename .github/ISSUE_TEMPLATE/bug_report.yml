@@ -1,0 +1,112 @@
+name: Bug report
+description: A functional bug in `agent-memory` — something behaves differently from what the docs promise.
+title: "bug: <short summary>"
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. This template asks for the minimum we need
+        to triage. For **security issues**, stop here and follow
+        [`SECURITY.md`](../SECURITY.md) instead — please do not paste
+        exploits into public issues.
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Output of `memory --version` (or the tag/commit you built from).
+      placeholder: "1.1.0 (or feat/improve-system@<commit>)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How are you running `agent-memory`?
+      options:
+        - Docker sidecar (`ghcr.io/event4u-app/agent-memory`)
+        - CLI via `npm install -g`
+        - Programmatic import from Node/TypeScript
+        - DevContainer / Codespaces
+        - Other (describe in "Context")
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`memory doctor` output (required)"
+      description: |
+        Run `memory doctor` in the same environment where the bug happens
+        and paste the full JSON output. Redact `DATABASE_URL` credentials
+        if they appear.
+      render: json
+      placeholder: |
+        {
+          "checks": [ ... ],
+          "summary": { "ok": 4, "warn": 1, "fail": 0, "skipped": 0 }
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Shell commands, MCP tool calls, or code snippet that triggers the
+        bug from a clean state. Prefer commands we can copy-paste; link
+        to a gist or repo if it's more than ~20 lines.
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened? Link to the README / docs line that sets that expectation if you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: |
+        What happened instead — full error output, relevant log lines
+        (stderr is fine; stdout needs to stay JSON-parseable).
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`. Ignore if you only use the Docker image.
+      placeholder: "v20.11.1"
+
+  - type: input
+    id: postgres-version
+    attributes:
+      label: Postgres + pgvector version
+      description: Output of `SELECT version(); SELECT extversion FROM pg_extension WHERE extname='vector';`
+      placeholder: "Postgres 15.5, pgvector 0.7.0"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Anything else — related issues, recent changes on your end, workarounds you've tried.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I confirmed this is not a security issue (if it is, I will follow `SECURITY.md` instead).
+          required: true

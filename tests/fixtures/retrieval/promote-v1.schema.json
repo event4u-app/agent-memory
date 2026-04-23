@@ -1,0 +1,54 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/tests/fixtures/retrieval/promote-v1.schema.json",
+	"title": "Promote Response v1",
+	"description": "Shape-only contract for PromotionService.promote() — runs gate criteria and either validates or rejects with a structured rejection_reason. See src/trust/promotion.service.ts::PromoteResult.",
+	"type": "object",
+	"required": ["id", "status", "trust_score", "reason"],
+	"additionalProperties": true,
+	"properties": {
+		"id": {
+			"type": "string",
+			"minLength": 1
+		},
+		"status": {
+			"type": "string",
+			"enum": ["validated", "rejected"]
+		},
+		"trust_score": {
+			"type": "number",
+			"minimum": 0,
+			"maximum": 1
+		},
+		"reason": {
+			"type": "string",
+			"minLength": 1
+		},
+		"rejection_reason": {
+			"type": "string",
+			"enum": [
+				"allowed_target_types",
+				"future_scenarios",
+				"gate_not_clean",
+				"duplicate",
+				"evidence_floor",
+				"validators",
+				"contradictions"
+			]
+		},
+		"existing_id": {
+			"type": "string",
+			"minLength": 1
+		}
+	},
+	"allOf": [
+		{
+			"if": { "properties": { "status": { "const": "rejected" } }, "required": ["status"] },
+			"then": { "required": ["rejection_reason"] }
+		},
+		{
+			"if": { "properties": { "status": { "const": "validated" } }, "required": ["status"] },
+			"then": { "not": { "required": ["rejection_reason"] } }
+		}
+	]
+}

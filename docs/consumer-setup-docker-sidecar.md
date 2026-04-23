@@ -1,17 +1,22 @@
-# Consumer setup — PHP / Laravel
+# Consumer setup — Docker sidecar (any stack)
 
-End-to-end guide for integrating `@event4u/agent-memory` into a PHP or
-Laravel project. **No Node install required on the host** — everything
-runs as a Docker sidecar next to your app.
+End-to-end guide for running `@event4u/agent-memory` as a Docker sidecar
+next to any application — PHP, Python, Go, Ruby, Java, Node, or a plain
+shell script. **No Node install required on the host** — everything runs
+in the container.
+
+> **Other entry points.**
+> - Language-neutral quick reference → [`consumer-setup-generic.md`](consumer-setup-generic.md)
+> - Node / TypeScript programmatic use → [`consumer-setup-node.md`](consumer-setup-node.md)
 
 ## What you get
 
 - A persistent, trust-scored project memory for any MCP-aware agent
   (Augment, Claude Desktop, Cursor, Cline).
-- A `memory` CLI you can invoke from PHP code, Artisan commands, or
-  CI pipelines via `docker compose exec`.
-- Zero PHP dependencies. The integration is infrastructure, not a
-  Composer package.
+- A `memory` CLI you can invoke from any shell or subprocess API via
+  `docker compose exec` — JSON on stdout, exit codes on failure.
+- Zero host-side dependencies besides Docker. The integration is
+  infrastructure, not a library you link into your app.
 
 ## Prerequisites
 
@@ -25,7 +30,7 @@ Pick one of the two patterns below.
 
 ### Pattern A — standalone sidecar next to your app
 
-Works for any PHP app that doesn't already use `docker compose`.
+Works for any app that doesn't already use `docker compose`.
 
 ```bash
 # In your project root:
@@ -38,14 +43,14 @@ docker compose -f docker-compose.agent-memory.yml exec agent-memory memory healt
 
 ### Pattern B — merge into an existing `docker-compose.yml`
 
-If you already have a compose file (e.g. for `php-fpm`, `nginx`,
-`mysql`), paste the two services below. The `postgres` service uses port
-`5433` on the host to avoid clashing with any existing `5432`.
+If you already have a compose file (e.g. for an app server, reverse
+proxy, database), paste the two services below. The `postgres` service
+uses port `5433` on the host to avoid clashing with any existing `5432`.
 
 ```yaml
 # docker-compose.yml (excerpt)
 services:
-  # ... your existing php-fpm, nginx, mysql, etc.
+  # ... your existing app, web server, database, etc.
 
   agent-memory-postgres:
     image: pgvector/pgvector:pg17
@@ -67,8 +72,9 @@ services:
       DATABASE_URL: postgresql://memory:memory_dev@agent-memory-postgres:5432/agent_memory
       REPO_ROOT: /workspace
     volumes: [ ".:/workspace:ro" ]    # read-only host mount for file validators
-    entrypoint: ["/sbin/tini", "--"]
-    command: ["tail", "-f", "/dev/null"]
+    # Image default: `memory serve` — supervisor loop that runs
+    # migrations on startup (ADR-0002). Opt out with
+    # MEMORY_AUTO_MIGRATE=false. No `command:` override needed.
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s
@@ -110,13 +116,37 @@ path to the directory that contains the compose file.
 Restart the client. You should see the 23 `memory_*` tools in the
 tool picker.
 
-## 3 · Use the CLI from PHP, Artisan, or CI
+## 3 · Use the CLI from any language or shell
 
 The CLI is a thin wrapper around the MCP tools, emits JSON on stdout,
-and is safe to call from anywhere `docker` is available.
+and is safe to call from anywhere `docker` is available. Pick the
+example that matches your host stack — the CLI contract is the same.
+
+**Shell / CI (universal):**
+
+```bash
+docker compose exec -T agent-memory memory health
+docker compose exec -T agent-memory memory status    # → present / absent / misconfigured
+docker compose exec -T agent-memory memory retrieve "how do invoices work?" \
+  --type architecture_decision --limit 5
+```
+
+**Python (any framework — Django, FastAPI, Flask):**
+
+```python
+import json, subprocess
+out = subprocess.run(
+    ["docker", "compose", "exec", "-T", "agent-memory",
+     "memory", "retrieve", "how do invoices work?",
+     "--type", "architecture_decision", "--limit", "5"],
+    capture_output=True, check=True, text=True,
+)
+memories = json.loads(out.stdout)
+```
+
+**PHP (any framework — Symfony, Laravel, plain PHP):**
 
 ```php
-// From any PHP code, e.g. a Laravel service:
 $process = new \Symfony\Component\Process\Process([
     'docker', 'compose', 'exec', '-T', 'agent-memory',
     'memory', 'retrieve', 'how do invoices work?',
@@ -126,15 +156,19 @@ $process->mustRun();
 $memories = json_decode($process->getOutput(), true);
 ```
 
-```bash
-# From an Artisan command or composer script:
-docker compose exec -T agent-memory memory health
-docker compose exec -T agent-memory memory status   # → present / absent / misconfigured
+**Go:**
+
+```go
+cmd := exec.Command("docker", "compose", "exec", "-T", "agent-memory",
+    "memory", "retrieve", "how do invoices work?",
+    "--type", "architecture_decision", "--limit", "5")
+out, err := cmd.Output()
 ```
 
 For CI, see [`examples/consumer-ci.yml`](../examples/consumer-ci.yml)
 — a ready-made GitHub Actions snippet that spins up the stack and runs
-a health check.
+a health check. For a full Laravel runnable example, see
+[`examples/laravel-sidecar/`](../examples/laravel-sidecar/).
 
 ## 4 · Troubleshooting
 
@@ -143,6 +177,7 @@ a health check.
 | `executable file not found in $PATH` on `docker compose exec agent-memory memory …` | Image predates 0.1.0 | `docker compose pull agent-memory` |
 | `healthcheck … status: error` | Postgres not yet migrated | Wait 15s (start_period); check `docker compose logs agent-memory-postgres` |
 | `status: misconfigured` | `DATABASE_URL` env mismatch | Verify the URL hostname matches the Postgres service name inside the compose network |
+| `file-exists` / `symbol-exists` validators fail on paths that exist on the host | `REPO_ROOT` inside the container points at a host path, not the mount target | Leave `REPO_ROOT=/workspace` (the default in `docker-compose.yml`). Set the **host** path on a bind mount, not in the container env. |
 | MCP client can't see tools | Stale client cache | Restart the client; for Claude, quit fully (`⌘Q`) |
 
 Still stuck? Open an issue at

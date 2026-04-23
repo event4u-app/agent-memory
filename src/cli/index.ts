@@ -3,7 +3,6 @@
 // Must happen before any import that touches the logger (config/db).
 process.env.LOG_LEVEL ??= "silent";
 
-import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { closeDb, getDb, healthCheck } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
@@ -32,6 +31,7 @@ import { FileExistsValidator } from "../trust/validators/file-exists.validator.j
 import { SymbolExistsValidator } from "../trust/validators/symbol-exists.validator.js";
 import { TestLinkedValidator } from "../trust/validators/test-linked.validator.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
+import { isMainModule } from "../utils/is-main-module.js";
 
 const BACKEND_VERSION = "0.1.0";
 const HEALTH_TIMEOUT_MS = 2000;
@@ -559,6 +559,24 @@ async function probeHealth(timeoutMs: number): Promise<HealthResponseV1> {
 }
 
 program
+	.command("migrate")
+	.description("Apply pending database migrations (safe to run repeatedly; idempotent)")
+	.action(async () => {
+		try {
+			const { runMigrations } = await import("../db/migrate.js");
+			const result = await runMigrations();
+			console.log(JSON.stringify({ status: "ok", ...result }, null, 2));
+			await closeDb();
+			process.exit(0);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(JSON.stringify({ status: "error", error: message }, null, 2));
+			await closeDb();
+			process.exit(1);
+		}
+	});
+
+program
 	.command("doctor")
 	.description("Diagnose environment: DATABASE_URL, pgvector, migrations, agent-config")
 	.option("--json", "Emit JSON only (no human summary on stderr)", false)
@@ -580,6 +598,54 @@ program
 	});
 
 program
+	.command("serve")
+	.description(
+		"Long-running supervisor for container deployments — runs migrations, then idles until SIGTERM (see ADR-0002)",
+	)
+	.action(async () => {
+		// Supervisor mode: logs belong on stderr; stdout stays quiet for
+		// operators tailing container output.
+		process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
+		const { runMigrations } = await import("../db/migrate.js");
+		const { logger } = await import("../utils/logger.js");
+
+		try {
+			const result = await runMigrations();
+			logger.info(
+				{ applied: result.applied, skipped: result.skipped.length },
+				"serve: migrations up-to-date",
+			);
+		} catch (err) {
+			logger.error({ err }, "serve: migrations failed — continuing, retry with 'memory migrate'");
+		}
+
+		// Keep the event loop alive. Without an active handle, Node would
+		// detect the unsettled top-level await below and exit immediately
+		// (`Detected unsettled top-level await` warning). A long-period
+		// no-op interval is the cheapest way to park a supervisor process
+		// without a scheduler or network listener.
+		const keepAlive = setInterval(() => {}, 1 << 30);
+
+		const shutdown = async (signal: NodeJS.Signals) => {
+			clearInterval(keepAlive);
+			logger.info({ signal }, "serve: shutting down");
+			try {
+				await closeDb();
+			} catch (err) {
+				logger.warn({ err }, "serve: error closing database pool");
+			}
+			process.exit(0);
+		};
+		process.on("SIGTERM", () => void shutdown("SIGTERM"));
+		process.on("SIGINT", () => void shutdown("SIGINT"));
+
+		logger.info("serve: supervisor ready — awaiting SIGTERM");
+		// Park forever. When in-process timers land (ADR-0002 non-goal)
+		// the keepAlive interval becomes the scheduler tick.
+		await new Promise<void>(() => {});
+	});
+
+program
 	.command("mcp")
 	.description("Start the MCP stdio server (for agent clients)")
 	.action(async () => {
@@ -596,7 +662,9 @@ program
 
 // Only parse argv when invoked as a script. The generator in
 // scripts/generate-cli-docs.ts imports `program` to introspect commands.
-if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+// isMainModule resolves symlinks so `/usr/local/bin/memory` in the
+// Docker image (symlinked to /app/dist/cli/index.js) also triggers.
+if (isMainModule(import.meta.url)) {
 	program.parse();
 }
 

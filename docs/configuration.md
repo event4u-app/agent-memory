@@ -82,9 +82,15 @@ Set this in every MCP config entry — the validators need absolute paths.
 
 ## MCP server
 
+The MCP server uses stdio transport exclusively. There is no HTTP
+transport in this release and no environment variables to configure
+for it. An HTTP transport is not on the current roadmap.
+
+## Database migrations
+
 | Variable | Default | Notes |
 |---|---|---|
-| `MCP_PORT` | `3100` | reserved for future HTTP transport; stdio is the default |
+| `MEMORY_AUTO_MIGRATE` | `true` (Docker image) | When `true` the container entrypoint runs `memory migrate` on startup. Idempotent. Set to `false` for ephemeral CLI containers or when migrations are managed externally (e.g. CI job). Has no effect outside the Docker image; host installs run `memory migrate` or `npm run db:migrate` manually. |
 
 ## Decay calibration
 

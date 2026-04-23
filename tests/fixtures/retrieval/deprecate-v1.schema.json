@@ -1,0 +1,26 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/tests/fixtures/retrieval/deprecate-v1.schema.json",
+	"title": "Deprecate Response v1",
+	"description": "Shape-only contract for PromotionService.deprecate() — transitions a validated entry to 'invalidated' with optional successor. See src/trust/promotion.service.ts::DeprecateResult.",
+	"type": "object",
+	"required": ["id", "status", "reason", "superseded_by"],
+	"additionalProperties": true,
+	"properties": {
+		"id": {
+			"type": "string",
+			"minLength": 1
+		},
+		"status": {
+			"type": "string",
+			"const": "invalidated"
+		},
+		"reason": {
+			"type": "string",
+			"minLength": 1
+		},
+		"superseded_by": {
+			"type": ["string", "null"]
+		}
+	}
+}

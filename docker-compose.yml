@@ -44,13 +44,16 @@ services:
     environment:
       DATABASE_URL: postgresql://memory:memory_dev@postgres:5432/agent_memory
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      REPO_ROOT: ${REPO_ROOT:-/workspace}
-    # Keep the container alive so consumers spawn `memory mcp` (or any
-    # CLI command) via `docker compose exec -i agent-memory memory …`.
-    # Running the stdio MCP server as the long-lived process would idle
-    # on stdin without a client and complicate signal forwarding.
-    command: ["tail", "-f", "/dev/null"]
-    entrypoint: ["/sbin/tini", "--"]
+      # Always /workspace inside the container. Consumers set the host
+      # path via a bind-mount (see docs/consumer-setup-docker-sidecar.md),
+      # not by overriding this value — the host path does not exist
+      # inside the container.
+      REPO_ROOT: /workspace
+    # The image's default command is `memory serve` — a supervisor
+    # loop (ADR-0002) that runs migrations on startup and parks on
+    # SIGTERM. Consumers still spawn `memory mcp` (and any other CLI
+    # command) via `docker compose exec -i agent-memory memory …`.
+    # Opt out of auto-migrate with MEMORY_AUTO_MIGRATE=false.
     healthcheck:
       test: ["CMD", "memory", "health"]
       interval: 10s

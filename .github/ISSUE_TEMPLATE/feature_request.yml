@@ -1,0 +1,71 @@
+name: Feature request
+description: Propose new functionality or a change to an existing behaviour.
+title: "feat: <short summary>"
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check the
+        [roadmap](../agents/roadmaps/improve-system.md) and existing
+        issues so we don't duplicate work. For architectural changes,
+        consider opening a discussion first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: |
+        Describe the use case, not the implementation. What does the
+        agent / CLI / MCP client need to do that it currently can't?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        Your idea for the fix. API sketches, CLI flags, or JSON-schema
+        additions are welcome. If this touches the retrieval contract
+        (`contract_version: 1`), note it explicitly — that surface is
+        version-locked.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you've tried, or other designs you rejected and why.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Where does this change live?
+      options:
+        - CLI (`memory …` subcommand, flag, output)
+        - MCP server (new tool, changed tool behaviour)
+        - Retrieval / trust / consolidation internals
+        - Ingestion / privacy filter
+        - Docs / examples
+        - CI / build / release
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: compat
+    attributes:
+      label: Compatibility
+      options:
+        - label: This is additive and does not break the existing retrieval contract.
+        - label: This changes an existing behaviour — I have described the migration path above.
+        - label: I am not sure — please advise.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Links to related discussions, prior art in other tools, supporting benchmarks.

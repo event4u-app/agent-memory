@@ -1,0 +1,24 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/tests/fixtures/retrieval/propose-v1.schema.json",
+	"title": "Propose Response v1",
+	"description": "Shape-only contract for PromotionService.propose() — creates a quarantined entry. See src/trust/promotion.service.ts::ProposeResult.",
+	"type": "object",
+	"required": ["proposal_id", "status", "trust_score"],
+	"additionalProperties": true,
+	"properties": {
+		"proposal_id": {
+			"type": "string",
+			"minLength": 1
+		},
+		"status": {
+			"type": "string",
+			"const": "quarantine"
+		},
+		"trust_score": {
+			"type": "number",
+			"minimum": 0,
+			"maximum": 1
+		}
+	}
+}

@@ -7,13 +7,14 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 - A **TypeScript / Node ≥ 20** library that implements a memory store for AI coding agents
 - A **CLI** (`memory`) for scripts, CI, and IDE agents without MCP support
 - An **MCP server** (stdio transport) exposing 23 tools for memory retrieval, ingestion, and management
-- A **companion** to [`@event4u/agent-config`](https://github.com/event4u-app/agent-config) — optional dependency, governance and behavior
+- **Stack-agnostic** — runs as a Docker sidecar, a Node library, or a standalone CLI; usable from any language that can spawn a subprocess or speak MCP stdio
+- An **optional companion** to [`@event4u/agent-config`](https://github.com/event4u-app/agent-config) — the two packages were designed to combine, neither depends on the other
 
 ## What this repo is NOT
 
 - **Not** a web application, UI, or SaaS service
 - **Not** a dataset or pretrained model
-- **Not** Laravel / PHP / MariaDB — if you see those references, they are stale and should be corrected
+- **Not** tied to any specific host language or framework — PHP, Python, Go, Ruby, Java, Node, and plain shell are all first-class callers
 - **Not** a general-purpose vector database — it is specifically about agent-facing project knowledge with trust scoring, decay, and invalidation
 
 ## Tech Stack
@@ -22,7 +23,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 - **Runtime:** Node ≥ 20
 - **Package manager:** npm (lockfile: `package-lock.json`)
 - **Database:** PostgreSQL 15+ with the `pgvector` extension
-- **Testing:** Vitest (unit + integration), 240 tests passing
+- **Testing:** Vitest (unit + integration), 251 tests passing
 - **Lint:** Biome
 - **Protocol:** Model Context Protocol (MCP) v1 via `@modelcontextprotocol/sdk`
 
@@ -43,6 +44,7 @@ Persistent, trust-scored project memory for AI coding agents — MCP server + CL
 | Commands | `.augment/commands/` (symlinked from vendor) |
 | Architecture ADR | `agents/adrs/0001-agent-memory-architecture.md` |
 | Archived V1 roadmap | `agents/roadmaps/archive/agent-memory-hybrid.md` (V1 complete; pilot items skipped) |
+| Glossary | `docs/glossary.md` (every term, source-of-truth pointer) |
 
 ## Development Setup
 

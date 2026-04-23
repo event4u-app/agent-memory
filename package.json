@@ -1,6 +1,6 @@
 {
   "name": "@event4u/agent-memory",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Persistent, trust-scored project memory for AI coding agents — MCP server + CLI",
   "type": "module",
   "main": "dist/index.js",
@@ -31,6 +31,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:contract": "vitest run tests/contract",
     "lint": "biome check src/ tests/",
     "lint:fix": "biome check --write src/ tests/",
     "typecheck": "tsc --noEmit",
@@ -40,7 +41,11 @@
     "docs:cli": "tsx scripts/generate-cli-docs.ts",
     "docs:cli:check": "npm run docs:cli && git diff --exit-code docs/cli-reference.md",
     "check:portability": "AGENT_CONFIG_BLOCKLIST=\"FormRequest,Eloquent,artisan,Blade,Livewire\" python3 node_modules/@event4u/agent-config/scripts/check_portability.py --root .",
-    "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
+    "check:neutral-docs": "tsx scripts/check-neutral-docs.ts",
+    "check:mcp-tools": "tsx scripts/check-mcp-tools.ts",
+    "check:cli-commands": "tsx scripts/check-cli-commands.ts",
+    "check:changelog": "tsx scripts/check-changelog.ts",
+    "check:links": "docker run --rm --init -v \"$(pwd):/input\" -w /input lycheeverse/lychee:latest --config lychee.toml README.md AGENTS.md CHANGELOG.md docs examples agents/roadmaps/archive/improve-setup.md .github/copilot-instructions.md",
     "prepare": "npm run build",
     "postinstall": "bash scripts/postinstall.sh"
   },

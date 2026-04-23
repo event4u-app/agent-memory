@@ -53,7 +53,7 @@ transport) plus a **CLI** (`memory`), backed by **PostgreSQL + pgvector**.
 
 ## ✅ Testing
 
-- Test framework: **Vitest** (unit + integration, currently 240 tests).
+- Test framework: **Vitest** (unit + integration, currently 251 tests).
 - Run all tests: `npm test`
 - Run a targeted test file: `npx vitest run path/to/file.test.ts`
 - Run tests matching a name: `npx vitest run -t "partial test name"`

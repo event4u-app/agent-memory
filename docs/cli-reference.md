@@ -328,6 +328,14 @@ Start the MCP stdio server (for agent clients)
 memory mcp
 ```
 
+### `migrate`
+
+Apply pending database migrations (safe to run repeatedly; idempotent)
+
+```bash
+memory migrate
+```
+
 ### `poison`
 
 Mark an entry as poisoned — cascade review + rollback report
@@ -445,6 +453,14 @@ memory rollback <id> [options]
 |---|---|---|---|
 | `--reason <text>` | no | `Rolled back via CLI` | Why this entry is being rolled back |
 | `--triggered-by <actor>` | no | `cli:rollback` | Caller identifier |
+
+### `serve`
+
+Long-running supervisor for container deployments — runs migrations, then idles until SIGTERM (see ADR-0002)
+
+```bash
+memory serve
+```
 
 ### `status`
 
