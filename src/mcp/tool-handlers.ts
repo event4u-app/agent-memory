@@ -23,6 +23,11 @@ import {
 	toContractEntry,
 } from "../retrieval/contract.js";
 import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import {
+	type RetrievalWarning,
+	redactDetailEntry,
+	redactEntriesForRetrieval,
+} from "../security/retrieval-redaction.js";
 import { SecretViolationError } from "../security/secret-guard.js";
 import type { SecretViolation } from "../security/secret-violation.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
@@ -189,7 +194,11 @@ async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResu
 		lowTrustMode: (args.lowTrustMode as boolean) ?? false,
 	});
 
-	const contractEntries = result.entries.map((e) => toContractEntry(e));
+	const rawContractEntries = result.entries.map((e) => toContractEntry(e));
+	// III2 · Retrieval-Output-Filter: second-pass secret redaction at the
+	// contract boundary. Catches entries that slipped past ingress (legacy
+	// rows, upgrade windows, temporary detector bugs) without re-querying.
+	const { entries: contractEntries, warnings } = redactEntriesForRetrieval(rawContractEntries);
 	const slices: Record<string, SliceSummary> = {};
 	if (types.length > 0) {
 		for (const t of types) {
@@ -206,6 +215,7 @@ async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResu
 		entries: contractEntries,
 		slices,
 		errors: [],
+		...(warnings.length > 0 ? { warnings } : {}),
 	};
 	return ok({ ...envelope, metadata: result.metadata });
 }
@@ -216,18 +226,28 @@ async function loadActiveEntries(ctx: McpContext): Promise<import("../types.js")
 	return [...validated, ...stale];
 }
 
+/** Body fields that `handleRetrieveDetails` exposes and that must be filtered. */
+const DETAIL_REDACTED_FIELDS = ["title", "summary", "details", "embeddingText"] as const;
+
 async function handleRetrieveDetails(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const ids = args.ids as string[];
-	const entries = [];
+	const entries: Record<string, unknown>[] = [];
+	const warnings: RetrievalWarning[] = [];
 	for (const id of ids) {
 		const entry = await ctx.entryRepo.findById(id);
 		if (entry) {
 			const evidence = await ctx.evidenceRepo.findByEntryId(id);
 			const contradictions = await ctx.contradictionRepo.findByEntryId(id);
-			entries.push({ ...entry, evidence, contradictions });
+			const full = { ...entry, evidence, contradictions } as Record<string, unknown> & {
+				id: string;
+			};
+			// III2 · Retrieval-Output-Filter parity — raw entry shape, flat fields.
+			const { entry: redacted, warning } = redactDetailEntry(full, DETAIL_REDACTED_FIELDS);
+			entries.push(redacted);
+			if (warning) warnings.push(warning);
 		}
 	}
-	return ok(entries);
+	return ok(warnings.length > 0 ? { entries, warnings } : entries);
 }
 
 async function handleIngest(args: Args, ctx: McpContext): Promise<CallToolResult> {

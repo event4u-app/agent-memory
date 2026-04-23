@@ -23,6 +23,7 @@ import {
 } from "../retrieval/contract.js";
 import { RetrievalEngine } from "../retrieval/engine.js";
 import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import { redactEntriesForRetrieval } from "../security/retrieval-redaction.js";
 import { SecretViolationError } from "../security/secret-guard.js";
 import { SECRET_VIOLATION_EXIT_CODE } from "../security/secret-violation.js";
 import { PoisonService } from "../trust/poison.service.js";
@@ -140,7 +141,9 @@ program
 				filters: Object.keys(filters).length > 0 ? filters : undefined,
 				lowTrustMode: !!options.lowTrust,
 			});
-			const contractEntries = result.entries.map((e) => toContractEntry(e));
+			const rawContractEntries = result.entries.map((e) => toContractEntry(e));
+			// III2 · Retrieval-Output-Filter — same safety net as MCP.
+			const { entries: contractEntries, warnings } = redactEntriesForRetrieval(rawContractEntries);
 			const slices: Record<string, SliceSummary> = {};
 			if (typeFilter.length > 0) {
 				for (const t of typeFilter) {
@@ -158,6 +161,7 @@ program
 				entries: contractEntries,
 				slices,
 				errors: [],
+				...(warnings.length > 0 ? { warnings } : {}),
 			};
 			console.log(JSON.stringify({ ...envelope, metadata: result.metadata }, null, 2));
 			await closeDb();

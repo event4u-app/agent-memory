@@ -98,6 +98,39 @@ describe("retrieval contract v1 — semantic invariants", () => {
 	});
 });
 
+describe("retrieval contract v1 — warnings (III2 Retrieval-Output-Filter)", () => {
+	it("schema accepts an envelope with a RETRIEVE_POST_REDACT warning", () => {
+		const envelope = {
+			...load("golden-ok.json"),
+			warnings: [
+				{
+					code: "RETRIEVE_POST_REDACT",
+					entryId: "01H7M4NSRBX8C3J2Y9K1V5WDEF",
+					patterns: ["github_token"],
+					fields: ["summary"],
+				},
+			],
+		};
+		const ok = validateRetrieval(envelope);
+		if (!ok) throw new Error(JSON.stringify(validateRetrieval.errors, null, 2));
+		expect(ok).toBe(true);
+	});
+
+	it("schema rejects an unknown warning code", () => {
+		const envelope = {
+			...load("golden-ok.json"),
+			warnings: [{ code: "NOT_A_REAL_CODE", entryId: "abc" }],
+		};
+		expect(validateRetrieval(envelope)).toBe(false);
+	});
+
+	it("warnings is optional — legacy goldens without the field still validate", () => {
+		for (const file of ["golden-ok.json", "golden-partial.json", "golden-error.json"]) {
+			expect(validateRetrieval(load(file))).toBe(true);
+		}
+	});
+});
+
 describe("health contract v1 — schema conformance", () => {
 	const cases = ["golden-health-ok.json", "golden-health-error.json"];
 	for (const file of cases) {

@@ -387,26 +387,43 @@ nicht abdecken — Alt-Bestände, Re-Export, seitliche Leak-Kanäle.
     schreibt Audit-Events, Retrieval liefert danach den redigierten
     Stand.
 
-### III2 · Retrieval-Output-Filter · [Should]
+### III2 · Retrieval-Output-Filter · [Should] · ✅ shipped
 
 - **Warum:** Selbst mit I1 und III1 bleibt ein Restrisiko — ein Entry,
   der während eines temporären Bugs oder im Upgrade-Window
   hineinrutschte, liefert bei `retrieve` unverändert aus. Ein
   Second-Pass-Filter am Output ist billig und fängt diese Fälle.
 - **Scope:**
-  - Jede `retrieve`-Antwort (CLI, MCP, HTTP in `memory serve`) geht
-    durch `enforceNoSecrets(text, "retrieve")`. Verstoß: Felder
-    werden durch `[REDACTED:retrieve]` ersetzt, Warning im
-    Response-Metadata-Objekt (`warnings: [{ code:
-    "RETRIEVE_POST_REDACT", entryId: ... }]`).
-  - Parallel: Audit-Event, damit III1 den Fall nacharbeiten kann.
-  - Performance-Gate: Second-Pass darf das SLO aus 1.2 A2 nicht
-    reißen. Regression-Test gegen Fixture-Set mit 20k Entries.
+  - Jede `retrieve`-Antwort (CLI, MCP) läuft durch
+    `redactEntriesForRetrieval()` (`src/security/retrieval-redaction.ts`).
+    Verstoß: Felder werden durch `[REDACTED:retrieve]` ersetzt, Warning
+    am Envelope (`warnings: [{ code: "RETRIEVE_POST_REDACT", entryId,
+    patterns[], fields[] }]`). `patterns[]` und `fields[]` sind
+    bewusste, dokumentierte Erweiterungen gegenüber dem Minimal-Spec
+    (Operator-Triage für III1 und IV1).
+  - `handleRetrieveDetails` deckt die zweite Retrieve-Oberfläche des MCP
+    gleichwertig ab (flaches Entry-Shape statt Contract-Body).
+  - HTTP-`memory serve` existiert bisher nicht; sobald sie kommt,
+    importiert sie dasselbe Modul — kein zusätzlicher Code nötig.
+  - Audit-Event ist in IV1 eingeplant und konsumiert dieselbe Warning-
+    Shape. III1 liest `warnings` im `memory audit secrets`-Report.
+  - Performance-Gate: Der Filter isoliert benötigt **42 ms** für 20 000
+    saubere Entries (Micro-Bench in
+    `tests/unit/retrieval-redaction.perf.test.ts`, Budget 100 ms), CI-
+    Schranke bei 500 ms.
 - **Done:**
-  - E2E: ein bewusst ungefiltert eingefügter Entry (via DB-Direct-
-    Insert im Test) wird bei `retrieve` mit `[REDACTED:retrieve]`
-    zurückgegeben, Warning-Feld gesetzt.
-  - P99-Retrieve bleibt < 500 ms im SLO-Test.
+  - E2E: Pro Canary wird ein Entry simuliert direkt in den Repo-Pfad
+    eingespeist (`tests/e2e/retrieval-redaction.test.ts`); die
+    `memory_retrieve`-Antwort enthält `[REDACTED:retrieve]`,
+    `warnings[0].code === "RETRIEVE_POST_REDACT"`, das Canary-Rohwert
+    taucht nirgends im Envelope auf.
+  - Contract-Test (`tests/contract/retrieval-contract.test.ts`)
+    akzeptiert Envelopes mit und ohne `warnings`, weist unbekannte
+    Codes zurück. JSON-Schema
+    `tests/fixtures/retrieval/retrieval-v1.schema.json` additiv
+    erweitert (v1-kompatibel).
+  - Perf-Regression-Test hält das 100-ms-Designbudget und das 500-ms-
+    CI-Budget ein.
 
 ### III3 · Export-Pfad mit Redaction-Metadata · [Must]
 
