@@ -40,6 +40,22 @@ date + version header at tag time (P7-1).
   verification log (P3-8).
 - `src/utils/is-main-module.ts` — symlink-aware module entry detection
   with regression test coverage (P3-8).
+- Contract fixture suite extended to cover `propose()`, `promote()`,
+  and `deprecate()` — three new JSON Schemas + five golden fixtures
+  under `tests/fixtures/retrieval/` plus
+  `tests/contract/promotion-contract.test.ts` (16 tests). Blocks
+  accidental shape drift across minor versions (P5-3).
+- `npm run test:contract` script — runs the contract suite in
+  isolation for fast local iteration (P5-3).
+- `agents/adrs/0003-contract-version-bumps.md` — policy for additive
+  vs. breaking changes to the five cross-package response surfaces,
+  with a deprecation-window rule and approval checklist (P5-3).
+- `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md` — governance
+  baseline for the 1.1.0 release, linked from the README (P4-1,
+  P4-2, P4-3).
+- `.github/ISSUE_TEMPLATE/` + `.github/PULL_REQUEST_TEMPLATE.md` —
+  bug reports require `memory doctor` JSON + version; PRs require
+  the six-check verification pipeline and a changelog entry (P4-4).
 
 ### Changed
 
