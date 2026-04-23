@@ -8,12 +8,16 @@
 //            in src/cli/index.ts so this module stays side-effect-free
 //            and testable.
 
-import { existsSync, lstatSync, readdirSync, readlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import path from "node:path";
 import type postgres from "postgres";
 
 import { config } from "../config.js";
 import { closeDb, getDb } from "../db/connection.js";
+import { INGRESS_INVENTORY } from "../security/ingress-inventory.js";
+import { SECRET_PATTERNS } from "../security/secret-patterns.js";
+import { redactLoggerOptions } from "../utils/logger.js";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -202,6 +206,108 @@ function checkAgentConfig(): DoctorCheck {
 	};
 }
 
+// --- Secret-safety posture checks (roadmap IV2) ----------------------
+// Static posture only — counts of secret events and last `audit
+// secrets` run land here when IV1 (audit-event table) ships.
+
+function checkSecretPolicy(): DoctorCheck {
+	const policy = config.security.secretPolicy;
+	if (policy === "redact") {
+		return {
+			name: "security.secretPolicy",
+			status: "warn",
+			message: "MEMORY_SECRET_POLICY=redact — ingress rejects are disabled. Default is reject.",
+			detail: { policy },
+		};
+	}
+	return {
+		name: "security.secretPolicy",
+		status: "ok",
+		message: "Reject-by-default active (MEMORY_SECRET_POLICY=reject).",
+		detail: { policy },
+	};
+}
+
+function checkPatternCatalog(): DoctorCheck {
+	const catalogPath = path.resolve(process.cwd(), "src/security/secret-patterns.ts");
+	if (!existsSync(catalogPath)) {
+		return {
+			name: "security.patternCatalog",
+			status: "skip",
+			message:
+				"Pattern catalog source not resolvable from cwd — running from an installed package.",
+			detail: { patterns: SECRET_PATTERNS.length },
+		};
+	}
+	const hash = createHash("sha256").update(readFileSync(catalogPath)).digest("hex").slice(0, 12);
+	return {
+		name: "security.patternCatalog",
+		status: "ok",
+		message: `${SECRET_PATTERNS.length} patterns loaded · catalog sha256:${hash}`,
+		detail: { patterns: SECRET_PATTERNS.length, sha256Short: hash },
+	};
+}
+
+function checkLoggerRedaction(): DoctorCheck {
+	const paths = (redactLoggerOptions.redact as { paths: string[] } | undefined)?.paths ?? [];
+	if (paths.length === 0) {
+		return {
+			name: "security.loggerRedaction",
+			status: "fail",
+			message: "Logger redact paths are empty — secrets may leak into log records.",
+		};
+	}
+	return {
+		name: "security.loggerRedaction",
+		status: "ok",
+		message: `Logger redacts ${paths.length} known-secret field paths.`,
+		detail: { pathCount: paths.length },
+	};
+}
+
+function checkEmbeddingBoundary(): DoctorCheck {
+	const boundary = path.resolve(process.cwd(), "src/embedding/boundary.ts");
+	const fallback = path.resolve(process.cwd(), "src/embedding/fallback-chain.ts");
+	if (!existsSync(boundary) || !existsSync(fallback)) {
+		return {
+			name: "security.embeddingBoundary",
+			status: "skip",
+			message: "Boundary sources not resolvable from cwd (running outside the repo).",
+		};
+	}
+	const wired = readFileSync(fallback, "utf8").includes('from "./boundary.js"');
+	if (!wired) {
+		return {
+			name: "security.embeddingBoundary",
+			status: "fail",
+			message:
+				"fallback-chain.ts no longer imports boundary — provider calls may bypass the guard.",
+		};
+	}
+	return {
+		name: "security.embeddingBoundary",
+		status: "ok",
+		message: "Embedding boundary wired · III4 drift-guard enforces no other provider path.",
+	};
+}
+
+function checkIngressInventory(): DoctorCheck {
+	if (INGRESS_INVENTORY.length === 0) {
+		return {
+			name: "security.ingressInventory",
+			status: "fail",
+			message:
+				"Ingress inventory is empty — IV4 drift check will report every guard call as undeclared.",
+		};
+	}
+	return {
+		name: "security.ingressInventory",
+		status: "ok",
+		message: `${INGRESS_INVENTORY.length} ingress paths declared · IV4 drift-guard enforces bidirectional sync.`,
+		detail: { surfaces: INGRESS_INVENTORY.map((p) => p.surface) },
+	};
+}
+
 export async function runDoctor(): Promise<DoctorReport> {
 	const checks: DoctorCheck[] = [];
 	checks.push(await checkEnv());
@@ -228,6 +334,11 @@ export async function runDoctor(): Promise<DoctorReport> {
 		await closeDb();
 	}
 	checks.push(checkAgentConfig());
+	checks.push(checkSecretPolicy());
+	checks.push(checkPatternCatalog());
+	checks.push(checkLoggerRedaction());
+	checks.push(checkEmbeddingBoundary());
+	checks.push(checkIngressInventory());
 
 	const summary = { ok: 0, warn: 0, fail: 0, skip: 0 };
 	for (const c of checks) summary[c.status]++;
@@ -238,11 +349,12 @@ export async function runDoctor(): Promise<DoctorReport> {
 
 export function renderHuman(report: DoctorReport): string {
 	const icon = { ok: "✅", warn: "⚠️ ", fail: "❌", skip: "⏭️ " } as const;
-	const lines = [`memory doctor — ${report.status.toUpperCase()}`, "─".repeat(48)];
+	const width = Math.max(22, ...report.checks.map((c) => c.name.length));
+	const lines = [`memory doctor — ${report.status.toUpperCase()}`, "─".repeat(width + 24)];
 	for (const c of report.checks) {
-		lines.push(`${icon[c.status]}  ${c.name.padEnd(22)} ${c.message}`);
+		lines.push(`${icon[c.status]}  ${c.name.padEnd(width)} ${c.message}`);
 	}
-	lines.push("─".repeat(48));
+	lines.push("─".repeat(width + 24));
 	lines.push(
 		`  ${report.summary.ok} ok · ${report.summary.warn} warn · ${report.summary.fail} fail · ${report.summary.skip} skipped`,
 	);

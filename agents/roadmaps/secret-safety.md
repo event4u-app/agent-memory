@@ -494,7 +494,7 @@ dass keine neue Lücke in den Code­pfad gerutscht ist.
     genau ein Audit-Event der erwarteten Kategorie.
   - `memory diagnose` zeigt Secret-Event-Count der letzten 24 h.
 
-### IV2 · `memory doctor` Posture-Report · [Should]
+### IV2 · `memory doctor` Posture-Report · [Should] · ✅ shipped
 
 - **Warum:** Operatoren wollen eine einzige Antwort auf „sind wir
   dicht?". `memory doctor` existiert bereits als Health-Command —
