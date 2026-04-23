@@ -9,13 +9,15 @@ Version tracking note: the Git tag `1.0.0` was created before `package.json`
 was bumped — the baseline package version on tag `1.0.0` is `0.1.0`. The
 `1.1.0` release (see below) brings `package.json` in line with the Git tag.
 
-## [Unreleased] — 1.1.0
+## [Unreleased]
+
+_No unreleased changes. Next entries land here on merge to `main`._
+
+## [1.1.0] — 2026-04-23
 
 Theme: **universality, concept clarity, first-run DX, contract stability**.
 Driven by roadmap `agents/roadmaps/improve-system.md` (47 tasks across
-8 phases). Sections below list items shipped so far on branch
-`feat/improve-system`; the release entry will be rewritten into a fixed
-date + version header at tag time (P7-1).
+8 phases) on branch `feat/improve-system`.
 
 ### Added
 
@@ -168,5 +170,6 @@ privacy filter. MCP stdio server with 23 tools, CLI with 14 commands,
 240 tests. `package.json` version pinned at `0.1.0` through the
 `1.0.0` tag; `1.1.0` will bump `package.json` to match the Git tag.
 
-[Unreleased]: https://github.com/event4u-app/agent-memory/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/event4u-app/agent-memory/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/event4u-app/agent-memory/releases/tag/1.1.0
 [1.0.0]: https://github.com/event4u-app/agent-memory/releases/tag/1.0.0

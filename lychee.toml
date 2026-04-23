@@ -29,6 +29,12 @@ include_verbatim = false
 exclude = [
 	# GitHub releases / tags pages occasionally 403 from CI IPs
 	"https://github\\.com/.*/releases$",
+	# CHANGELOG anchors for the current / upcoming release — the tag
+	# only exists after P7-1 pushes it, so the compare- and tag-URLs
+	# 404 on the commit that prepares the release. Once the tag is
+	# live these resolve normally.
+	"^https://github\\.com/event4u-app/agent-memory/compare/[0-9]+\\.[0-9]+\\.[0-9]+\\.\\.\\.HEAD$",
+	"^https://github\\.com/event4u-app/agent-memory/releases/tag/[0-9]+\\.[0-9]+\\.[0-9]+$",
 	# npmjs.com package pages return 403 to headless clients but resolve
 	# fine in a browser; cited from docs/compatibility-matrix.md.
 	"^https://www\\.npmjs\\.com/package/",

@@ -1,6 +1,6 @@
 {
   "name": "@event4u/agent-memory",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Persistent, trust-scored project memory for AI coding agents — MCP server + CLI",
   "type": "module",
   "main": "dist/index.js",

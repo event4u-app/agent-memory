@@ -767,6 +767,11 @@ by Phases 0-5. All guards non-breaking for existing CI.
   transcript attached.
 - **Done:** Tag on `main`; GitHub release notes drafted (P7-2);
   `package.json` version bumped to `1.1.0`.
+- **Status (2026-04-23):** Release-ready state committed on
+  `feat/improve-system`. `package.json` bumped to `1.1.0`, CHANGELOG
+  `[Unreleased] — 1.1.0` rewritten to `[1.1.0] — 2026-04-23` with
+  fresh `[Unreleased]` placeholder, compare link and version anchor
+  updated. Tag creation + push reserved for the user.
 
 ### P7-2 · Release notes (`1.1.0`) [Must]
 
