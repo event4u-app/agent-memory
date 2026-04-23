@@ -1,4 +1,5 @@
 import type postgres from "postgres";
+import { recordTrustTransition } from "../../observability/metrics.js";
 import { calculateExpiryDate } from "../../trust/scoring.js";
 import { validateTransition } from "../../trust/transitions.js";
 import type {
@@ -114,6 +115,7 @@ export class MemoryEntryRepository {
       VALUES (${id}, ${entry.trust.status}, ${toStatus}, ${reason}, ${triggeredBy})
     `;
 
+		recordTrustTransition(entry.trust.status, toStatus);
 		logger.info({ id, from: entry.trust.status, to: toStatus, reason }, "Status transitioned");
 		return this.mapRow(row!);
 	}

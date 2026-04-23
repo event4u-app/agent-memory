@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { Bm25OnlyProvider } from "../../src/embedding/bm25-only.provider.js";
 import { EmbeddingFallbackChain } from "../../src/embedding/fallback-chain.js";
 import type { EmbeddingProvider } from "../../src/embedding/types.js";
+import { enableMetrics, resetMetricsForTesting } from "../../src/observability/metrics.js";
 
 class FakeActiveProvider implements EmbeddingProvider {
 	readonly name = "gemini" as const;
@@ -66,5 +67,45 @@ describe("EmbeddingFallbackChain", () => {
 		const primary = new FakeActiveProvider(async () => [1]);
 		const chain = new EmbeddingFallbackChain([primary, new Bm25OnlyProvider()]);
 		expect(chain.primary?.name).toBe("gemini");
+	});
+});
+
+describe("EmbeddingFallbackChain — metrics instrumentation (A2)", () => {
+	afterEach(() => {
+		resetMetricsForTesting();
+	});
+
+	it("records fallback hop from failing provider to next in chain", async () => {
+		const handles = enableMetrics();
+		const failing = new FakeActiveProvider(() => Promise.reject(new Error("down")));
+		const chain = new EmbeddingFallbackChain([failing, new Bm25OnlyProvider()], {
+			retryAttempts: 1,
+			retryBaseDelayMs: 1,
+			circuitFailureThreshold: 1,
+		});
+		await chain.embed("q");
+		const snapshot = await handles.registry
+			.getSingleMetric("agent_memory_embedding_fallback_total")
+			?.get();
+		const hop = snapshot?.values.find(
+			(v) => v.labels.from === "gemini" && v.labels.to === "bm25-only",
+		);
+		expect(hop?.value).toBeGreaterThanOrEqual(1);
+	});
+
+	it("emits 'none' label when last provider in chain fails", async () => {
+		const handles = enableMetrics();
+		const failing = new FakeActiveProvider(() => Promise.reject(new Error("down")));
+		const chain = new EmbeddingFallbackChain([failing], {
+			retryAttempts: 1,
+			retryBaseDelayMs: 1,
+			circuitFailureThreshold: 1,
+		});
+		await chain.embed("q");
+		const snapshot = await handles.registry
+			.getSingleMetric("agent_memory_embedding_fallback_total")
+			?.get();
+		const tail = snapshot?.values.find((v) => v.labels.from === "gemini" && v.labels.to === "none");
+		expect(tail?.value).toBeGreaterThanOrEqual(1);
 	});
 });

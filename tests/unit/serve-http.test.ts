@@ -5,9 +5,14 @@
 // in the listener wiring without requiring a live Postgres connection.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { parseServePort } from "../../src/cli/index.js";
 import { buildHttpHandler, startServeHttp } from "../../src/cli/serve-http.js";
+import {
+	enableMetrics,
+	observeRetrieveDuration,
+	resetMetricsForTesting,
+} from "../../src/observability/metrics.js";
 
 interface CapturedResponse {
 	status: number;
@@ -29,7 +34,9 @@ function mockRes(): { res: ServerResponse; captured: CapturedResponse } {
 		},
 		end(chunk?: string) {
 			captured.status = this.statusCode;
-			if (chunk) captured.body = JSON.parse(chunk);
+			if (!chunk) return;
+			const ct = captured.headers["content-type"] ?? "";
+			captured.body = ct.startsWith("application/json") ? JSON.parse(chunk) : chunk;
 		},
 	} as unknown as ServerResponse;
 	return { res, captured };
@@ -128,10 +135,17 @@ describe("buildHttpHandler — routing", () => {
 		listPending: async () => [] as string[],
 	};
 
+	it("404 on /metrics when metrics are disabled (default)", async () => {
+		const handler = buildHttpHandler({ ...deps, metricsEnabled: false });
+		const { res, captured } = mockRes();
+		await handler(mockReq("/metrics"), res);
+		expect(captured.status).toBe(404);
+	});
+
 	it("404 on unknown path", async () => {
 		const handler = buildHttpHandler(deps);
 		const { res, captured } = mockRes();
-		await handler(mockReq("/metrics"), res);
+		await handler(mockReq("/does-not-exist"), res);
 		expect(captured.status).toBe(404);
 	});
 
@@ -140,6 +154,31 @@ describe("buildHttpHandler — routing", () => {
 		const { res, captured } = mockRes();
 		await handler(mockReq("/health", "POST"), res);
 		expect(captured.status).toBe(405);
+	});
+});
+
+describe("buildHttpHandler — GET /metrics", () => {
+	afterEach(() => {
+		resetMetricsForTesting();
+	});
+
+	it("serves Prometheus exposition when metrics are enabled", async () => {
+		enableMetrics();
+		observeRetrieveDuration(0.017);
+		const handler = buildHttpHandler({
+			checkHealth: async () => ({ ok: true, latencyMs: 1 }),
+			listPending: async () => [],
+			metricsEnabled: true,
+		});
+		const { res, captured } = mockRes();
+		await handler(mockReq("/metrics"), res);
+		expect(captured.status).toBe(200);
+		expect(captured.headers["content-type"]).toMatch(/^text\/plain/);
+		const body = captured.body as string;
+		expect(body).toContain("agent_memory_retrieve_duration_seconds");
+		expect(body).toContain("agent_memory_embedding_fallback_total");
+		expect(body).toContain("agent_memory_trust_transitions_total");
+		expect(body).toContain("agent_memory_db_pool_saturation");
 	});
 });
 

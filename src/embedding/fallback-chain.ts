@@ -6,6 +6,7 @@
 
 import { config } from "../config.js";
 import { CircuitBreaker, CircuitOpenError, withRetry } from "../infra/index.js";
+import { recordEmbeddingFallback } from "../observability/metrics.js";
 import { logger } from "../utils/logger.js";
 import { secureEmbeddingInput } from "./boundary.js";
 import type { EmbeddingProvider, EmbeddingProviderName, EmbeddingResult } from "./types.js";
@@ -50,7 +51,8 @@ export class EmbeddingFallbackChain {
 	 */
 	async embed(text: string): Promise<EmbeddingResult> {
 		const safeText = secureEmbeddingInput(text, config.security.secretPolicy);
-		for (const provider of this.providers) {
+		for (let i = 0; i < this.providers.length; i++) {
+			const provider = this.providers[i]!;
 			if (!provider.isActive) {
 				return { vector: [], provider: provider.name };
 			}
@@ -66,6 +68,8 @@ export class EmbeddingFallbackChain {
 				);
 				return { vector, provider: provider.name };
 			} catch (err) {
+				const next = this.providers[i + 1]?.name ?? "none";
+				recordEmbeddingFallback(provider.name, next);
 				if (err instanceof CircuitOpenError) {
 					logger.debug({ provider: provider.name }, "Circuit open — skipping provider");
 				} else {

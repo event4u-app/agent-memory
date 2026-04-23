@@ -11,6 +11,7 @@
 // request/response pipe without binding a TCP socket.
 
 import http, { type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { getMetrics, metricsEnabled } from "../observability/metrics.js";
 import {
 	BACKEND_FEATURES,
 	CONTRACT_VERSION,
@@ -22,6 +23,12 @@ const BACKEND_VERSION = "0.1.0";
 export interface ServeHttpDeps {
 	checkHealth: () => Promise<{ ok: boolean; latencyMs: number }>;
 	listPending: () => Promise<string[]>;
+	/**
+	 * When true, `/metrics` is exposed in Prometheus text format.
+	 * Default: follow `metricsEnabled()` from the observability registry
+	 * (i.e. opt-in via `MEMORY_METRICS_ENABLED=true` in the serve entrypoint).
+	 */
+	metricsEnabled?: boolean;
 }
 
 export interface ServeHttpOptions extends ServeHttpDeps {
@@ -58,8 +65,25 @@ export function buildHttpHandler(deps: ServeHttpDeps) {
 			await handleReady(res, deps);
 			return;
 		}
+		if (url === "/metrics") {
+			await handleMetrics(res, deps);
+			return;
+		}
 		writeJson(res, 404, { error: "not found" });
 	};
+}
+
+async function handleMetrics(res: ServerResponse, deps: ServeHttpDeps): Promise<void> {
+	const enabled = deps.metricsEnabled ?? metricsEnabled();
+	if (!enabled) {
+		writeJson(res, 404, { error: "metrics disabled" });
+		return;
+	}
+	const { registry } = getMetrics();
+	const body = await registry.metrics();
+	res.statusCode = 200;
+	res.setHeader("content-type", registry.contentType);
+	res.end(body);
 }
 
 export async function startServeHttp(opts: ServeHttpOptions): Promise<ServeHttpHandle> {

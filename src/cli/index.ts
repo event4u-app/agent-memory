@@ -809,7 +809,14 @@ program
 		process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 		const { runMigrations, listPendingMigrations } = await import("../db/migrate.js");
 		const { logger } = await import("../utils/logger.js");
+		const { enableMetrics } = await import("../observability/metrics.js");
 		const { startServeHttp } = await import("./serve-http.js");
+
+		// A2 · runtime-trust. Metrics are opt-in so lean CLI invocations don't
+		// pay the registry cost. Initialising eagerly means the first scrape
+		// returns every declared metric (including zero-value counters).
+		const metricsOn = process.env.MEMORY_METRICS_ENABLED === "true";
+		if (metricsOn) enableMetrics();
 
 		try {
 			const result = await runMigrations();
@@ -831,8 +838,14 @@ program
 					port: httpPort,
 					checkHealth: () => healthCheck(),
 					listPending: () => listPendingMigrations(),
+					metricsEnabled: metricsOn,
 				});
-				logger.info({ port: httpPort }, "serve: http endpoints listening — /health /ready");
+				logger.info(
+					{ port: httpPort, metrics: metricsOn },
+					metricsOn
+						? "serve: http endpoints listening — /health /ready /metrics"
+						: "serve: http endpoints listening — /health /ready",
+				);
 			} catch (err) {
 				logger.error(
 					{ err, port: httpPort },
