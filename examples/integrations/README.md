@@ -22,10 +22,10 @@ directory is real and its `smoke.sh` is wired into CI.
 
 | Snippet | Transport | Status |
 |---|---|---|
-| — | — | _No integrations shipped yet; skeleton-only._ |
+| [`claude-desktop/`](claude-desktop/) | MCP stdio | ✅ Available |
 
 Planned, tracked in [`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md):
-`claude-desktop`, `cursor`, `github-actions`, `docker-sidecar-laravel`
+`cursor`, `github-actions`, `docker-sidecar-laravel`
 (backing in [`../laravel-sidecar/`](../laravel-sidecar/)), `docker-sidecar-django`.
 
 ## Non-goals
@@ -39,8 +39,12 @@ Planned, tracked in [`runtime-trust.md` § D2](../../agents/roadmaps/runtime-tru
 
 ## Contributing a new integration
 
-1. Copy one of the existing snippets as a starting point; keep the same
-   README structure (what · when · copy-paste · smoke).
-2. Add a job to [`.github/workflows/integrations.yml`](../../.github/workflows/integrations.yml)
-   that proves the snippet boots — no "trust me" integrations.
-3. Add a row to the index in [`docs/integrations.md`](../../docs/integrations.md).
+1. Copy `claude-desktop/` as a starting point; keep the same README
+   structure (what · when · copy-paste · smoke).
+2. Ship an executable `smoke.sh` that exits 0 on success. No "trust me"
+   integrations. The workflow at
+   [`.github/workflows/integrations.yml`](../../.github/workflows/integrations.yml)
+   auto-discovers any subdirectory with `README.md` + `smoke.sh` — no
+   CI edit needed.
+3. Flip the row in [`docs/integrations.md`](../../docs/integrations.md)
+   from 🚧 Planned to ✅ Available and mirror it in the table above.
