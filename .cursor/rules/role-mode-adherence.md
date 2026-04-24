@@ -1,0 +1,1 @@
+../../.augment/rules/role-mode-adherence.md
