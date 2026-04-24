@@ -12,6 +12,8 @@ Active roadmaps live one level up in [`agents/roadmaps/`](../).
 |---|---|---|
 | [`agent-memory-hybrid.md`](agent-memory-hybrid.md) | **Archived — V1 complete** | Master roadmap. All implementable items `[x]`; pilot-only items flagged `[-]` (skipped). If a pilot is scheduled, open a new V2 roadmap instead of reopening this one. |
 | [`augment-agent-memory-hybrid-roadmap.md`](augment-agent-memory-hybrid-roadmap.md) | **Superseded** | German-language original, replaced by the agent-agnostic English `agent-memory-hybrid.md` (now also archived, see above). |
+| [`improve-system.md`](improve-system.md) | **Archived — cycle complete** | Universality refactor, concept clarity, first-run DX, contract stability. All `[Must]` tasks shipped (33/34, P3-8 pilot deferred). Tag-push is a separate, user-owned step outside roadmap scope. |
+| [`secret-safety.md`](secret-safety.md) | **Archived — all phases shipped** | Universal Ingress Enforcement, Detection Quality, Defense in Depth, Observability + Proof. All 16 sections `✅ shipped`; drift-guards (`docs:secrets:check`, `entropy:eval:check`) wired into `docs-checks.yml`. Independent track, no tag coupling. |
 
 ### `from-agent-config/` — integration specs authored in agent-config
 

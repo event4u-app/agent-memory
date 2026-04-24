@@ -1,7 +1,7 @@
 # Data Portability — `memory export` & `memory import`
 
 > **Status:** stable · contract `export-v1` · redaction `v1`
-> **Roadmap:** [`runtime-trust.md` · D1](../agents/roadmaps/runtime-trust.md#d1--datenportabilität--must--✅-shipped) · [`secret-safety.md` · III3](../agents/roadmaps/secret-safety.md#iii3--export-pfad-mit-redaction-metadata--must--✅-shipped)
+> **Roadmap:** [`runtime-trust.md` · D1](../agents/roadmaps/runtime-trust.md#d1--datenportabilität--must--✅-shipped) · [`secret-safety.md` · III3](../agents/roadmaps/archive/secret-safety.md#iii3--export-pfad-mit-redaction-metadata--must--✅-shipped)
 > **Contract:** [`tests/fixtures/retrieval/export-v1.schema.json`](../tests/fixtures/retrieval/export-v1.schema.json) · pinned by [`tests/contract/export-v1-contract.test.ts`](../tests/contract/export-v1-contract.test.ts)
 
 ## Why this exists
