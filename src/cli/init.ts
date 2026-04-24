@@ -66,6 +66,42 @@ volumes:
   agent-memory-pgdata:
 `;
 
+export const PROJECT_CONFIG_TEMPLATE = `# agent-memory project config (C1 · runtime-trust).
+#
+# Precedence: CLI flag > ENV > this file > built-in default.
+# Validated against \`schema/agent-memory-config-v1.schema.json\` — an invalid
+# file makes every \`memory\` command exit 1 with a clear error.
+#
+# Uncomment what you want to commit to the repo. Anything you leave out
+# stays controllable via ENV or --flag.
+
+version: 1
+
+# Stable identifier for retrieval filters and PR-integration (C2/C3).
+# repository: acme/checkout
+
+# trust:
+#   threshold: 0.6       # minimum trust score for retrieval (0..1)
+#   threshold_low: 0.3   # lower threshold for low-trust mode
+
+# retrieval:
+#   token_budget: 2000   # progressive-disclosure cap (100..50000)
+
+# embedding:
+#   provider: bm25-only  # local | gemini | openai | voyage | bm25-only
+
+# decay:
+#   profile: default     # default | conservative | aggressive
+
+# C2 policy-engine knobs. Absence = policy disabled.
+# policies:
+#   fail_on_contradicted_critical: true
+#   fail_on_invalidated_adr: true
+#   min_trust_for_type:
+#     architecture_decision: 0.7
+#   block_on_poisoned_referenced: true
+`;
+
 export const ENV_TEMPLATE = `# agent-memory overrides (picked up by \`docker compose --env-file\`).
 # Uncomment the lines you want to change; defaults match the built-in
 # compose service names.
@@ -165,6 +201,7 @@ export async function runInit(options: InitOptions = {}): Promise<InitReport> {
 		),
 	);
 	files.push(await writeIfMissing(join(cwd, ".env.agent-memory"), ENV_TEMPLATE, force));
+	files.push(await writeIfMissing(join(cwd, ".agent-memory.yml"), PROJECT_CONFIG_TEMPLATE, force));
 	files.push(await applyGitignore(join(cwd, ".gitignore")));
 	return { status: "ok", cwd, files };
 }

@@ -1,4 +1,9 @@
 import { env } from "node:process";
+import {
+	loadProjectConfig,
+	type ProjectConfig,
+	ProjectConfigError,
+} from "./config/project-config.js";
 import { resolveSecretPolicy } from "./security/secret-policy.js";
 import { DEFAULT_DECAY_CONFIG, type DecayConfig, mergeDecayConfig } from "./trust/decay.js";
 
@@ -21,6 +26,54 @@ function parseFloatSafe(value: string | undefined, fallback: number, min = 0, ma
 	return Math.max(min, Math.min(max, n));
 }
 
+function clamp(n: number, min: number, max: number): number {
+	return Math.max(min, Math.min(max, n));
+}
+
+// Load `.agent-memory.yml` at module init. Errors are captured (not thrown)
+// so that test environments and libraries that import `config` directly do
+// not crash. The CLI entrypoint calls `assertProjectConfigOk()` before any
+// command runs, which turns the captured error into a clean exit 1.
+let projectConfigResult: { config: ProjectConfig | null; path: string | null; error: Error | null };
+try {
+	const r = loadProjectConfig();
+	projectConfigResult = { config: r.config, path: r.path, error: null };
+} catch (err) {
+	projectConfigResult = {
+		config: null,
+		path: err instanceof ProjectConfigError ? err.filePath : null,
+		error: err as Error,
+	};
+}
+
+const yaml = projectConfigResult.config;
+
+/** Surface the YAML load outcome to the CLI / doctor. */
+export function getProjectConfigStatus(): {
+	path: string | null;
+	loaded: boolean;
+	error: Error | null;
+} {
+	return {
+		path: projectConfigResult.path,
+		loaded: projectConfigResult.config != null,
+		error: projectConfigResult.error,
+	};
+}
+
+/**
+ * Called by the CLI entrypoint before any command runs. Turns a captured
+ * YAML/schema error into `exit 1` with a clear message (C1-Done #2:
+ * „Fehlerhafte YAML → klare Fehlermeldung, exit 1, nicht silent-fallback").
+ */
+export function assertProjectConfigOk(): void {
+	if (projectConfigResult.error) {
+		const e = projectConfigResult.error;
+		process.stderr.write(`agent-memory: ${e.message}\n`);
+		process.exit(1);
+	}
+}
+
 /**
  * Parse decay overrides from `MEMORY_DECAY_OVERRIDES` JSON env var.
  * Invalid JSON falls back to defaults and logs via stderr at startup.
@@ -35,6 +88,14 @@ function parseDecayOverrides(value: string | undefined): DecayConfig {
 	}
 }
 
+// YAML-layer resolvers: fall back to the YAML value when ENV is absent,
+// then to the built-in default. Clamped to the same legal range.
+const yamlProvider = yaml?.embedding?.provider;
+const yamlThreshold = yaml?.trust?.threshold;
+const yamlThresholdLow = yaml?.trust?.threshold_low;
+const yamlTokenBudget = yaml?.retrieval?.token_budget;
+const yamlRepository = yaml?.repository;
+
 export const config = {
 	database: {
 		url: env.DATABASE_URL ?? "postgresql://memory:memory_dev@localhost:5433/agent_memory",
@@ -42,7 +103,7 @@ export const config = {
 			env.DATABASE_URL_TEST ?? "postgresql://memory:memory_dev@localhost:5434/agent_memory_test",
 	},
 	embedding: {
-		provider: (env.EMBEDDING_PROVIDER ?? "bm25-only") as
+		provider: (env.EMBEDDING_PROVIDER ?? yamlProvider ?? "bm25-only") as
 			| "local"
 			| "gemini"
 			| "openai"
@@ -54,12 +115,29 @@ export const config = {
 	},
 	trust: {
 		/** Minimum trust score for retrieval (0.0–1.0) */
-		thresholdDefault: parseFloatSafe(env.MEMORY_TRUST_THRESHOLD_DEFAULT, 0.6, 0, 1),
+		thresholdDefault: parseFloatSafe(
+			env.MEMORY_TRUST_THRESHOLD_DEFAULT,
+			yamlThreshold !== undefined ? clamp(yamlThreshold, 0, 1) : 0.6,
+			0,
+			1,
+		),
 		/** Lower threshold for low-trust mode (0.0–1.0) */
-		thresholdLow: parseFloatSafe(env.MEMORY_TRUST_THRESHOLD_LOW, 0.3, 0, 1),
+		thresholdLow: parseFloatSafe(
+			env.MEMORY_TRUST_THRESHOLD_LOW,
+			yamlThresholdLow !== undefined ? clamp(yamlThresholdLow, 0, 1) : 0.3,
+			0,
+			1,
+		),
 	},
+	/** Repository identifier (YAML-only; no ENV equivalent, ties to C2/C3). */
+	repository: yamlRepository ?? null,
 	/** Max tokens for progressive disclosure (100–50000) */
-	tokenBudget: parseIntSafe(env.MEMORY_TOKEN_BUDGET, 2000, 100, 50000),
+	tokenBudget: parseIntSafe(
+		env.MEMORY_TOKEN_BUDGET,
+		yamlTokenBudget !== undefined ? clamp(yamlTokenBudget, 100, 50000) : 2000,
+		100,
+		50000,
+	),
 	/** Archival: days before auto-archiving invalidated entries */
 	archivalAgeDays: parseIntSafe(env.MEMORY_ARCHIVAL_AGE_DAYS, 30, 1, 365),
 	/** Purge: days before hard-deleting archived entries */
@@ -92,4 +170,9 @@ export const config = {
 		 */
 		entropyMinLength: parseIntSafe(env.MEMORY_ENTROPY_MIN_LENGTH, 20, 1, 1024),
 	},
+	/**
+	 * Raw `policies:` block from `.agent-memory.yml` (C1). Consumed by
+	 * `memory policy check` (C2). Empty object when no YAML is present.
+	 */
+	policies: (yaml?.policies ?? {}) as NonNullable<ProjectConfig["policies"]>,
 } as const;

@@ -365,11 +365,11 @@ Nine canonical types cover most project knowledge:
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_contradictions`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (22)
+### CLI commands (23)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
-`audit` · `explain` · `history` · `review` · `contradictions` ·
+`audit` · `explain` · `history` · `review` · `contradictions` · `policy` ·
 `migrate` · `init` · `doctor` · `serve` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).

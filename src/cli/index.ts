@@ -4,6 +4,7 @@
 process.env.LOG_LEVEL ??= "silent";
 
 import { Command } from "commander";
+import { assertProjectConfigOk } from "../config.js";
 import { isMainModule } from "../utils/is-main-module.js";
 import { register as registerAudit } from "./commands/audit.js";
 import { register as registerContradictions } from "./commands/contradictions.js";
@@ -18,6 +19,7 @@ import { register as registerInvalidate } from "./commands/invalidate.js";
 import { register as registerMcp } from "./commands/mcp.js";
 import { register as registerMigrate } from "./commands/migrate.js";
 import { register as registerPoison } from "./commands/poison.js";
+import { register as registerPolicy } from "./commands/policy.js";
 import { register as registerPromote } from "./commands/promote.js";
 import { register as registerPropose } from "./commands/propose.js";
 import { register as registerRetrieve } from "./commands/retrieve.js";
@@ -59,6 +61,7 @@ registerExplain(program);
 registerHistory(program);
 registerReview(program);
 registerContradictions(program);
+registerPolicy(program);
 registerMigrate(program);
 registerInit(program);
 registerDoctor(program);
@@ -70,6 +73,10 @@ registerMcp(program);
 // isMainModule resolves symlinks so `/usr/local/bin/memory` in the
 // Docker image (symlinked to /app/dist/cli/index.js) also triggers.
 if (isMainModule(import.meta.url)) {
+	// C1 · runtime-trust: bail on invalid `.agent-memory.yml` before any
+	// command runs. Import-time capture in src/config.ts keeps test imports
+	// side-effect-free; the assertion here turns errors into exit 1.
+	assertProjectConfigOk();
 	program.parse();
 }
 

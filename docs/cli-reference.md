@@ -448,6 +448,14 @@ memory poison <id> <reason> [options]
 |---|---|---|---|
 | `--triggered-by <actor>` | no | `cli:poison` | Caller identifier |
 
+### `policy`
+
+Project policy engine (C2) — gate PRs on memory-state violations.
+
+```bash
+memory policy
+```
+
 ### `promote`
 
 Promote a quarantined proposal through gate criteria

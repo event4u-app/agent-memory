@@ -32,13 +32,13 @@ afterEach(async () => {
 });
 
 describe("runInit", () => {
-	it("creates compose, env, and gitignore on a fresh directory", async () => {
+	it("creates compose, env, project-config, and gitignore on a fresh directory", async () => {
 		const cwd = await makeTmp();
 		const report = await runInit({ cwd });
 
 		expect(report.status).toBe("ok");
 		expect(report.cwd).toBe(cwd);
-		expect(report.files.map((f) => f.status)).toEqual(["created", "created", "created"]);
+		expect(report.files.map((f) => f.status)).toEqual(["created", "created", "created", "created"]);
 
 		const compose = await readFile(join(cwd, "docker-compose.agent-memory.yml"), "utf8");
 		expect(compose).toBe(DOCKER_COMPOSE_TEMPLATE);
@@ -47,19 +47,22 @@ describe("runInit", () => {
 		const env = await readFile(join(cwd, ".env.agent-memory"), "utf8");
 		expect(env).toBe(ENV_TEMPLATE);
 
+		const project = await readFile(join(cwd, ".agent-memory.yml"), "utf8");
+		expect(project).toContain("version: 1");
+
 		const ignore = await readFile(join(cwd, ".gitignore"), "utf8");
 		expect(ignore).toContain(GITIGNORE_MARKER_START);
 		expect(ignore).toContain(".env.agent-memory");
 		expect(ignore).toContain(GITIGNORE_MARKER_END);
 	});
 
-	it("is idempotent on a second run (all three files skipped)", async () => {
+	it("is idempotent on a second run (all four files skipped)", async () => {
 		const cwd = await makeTmp();
 		await runInit({ cwd });
 		const second = await runInit({ cwd });
 
-		expect(second.files.map((f) => f.status)).toEqual(["skipped", "skipped", "skipped"]);
-		expect(second.files[2].reason).toBe("marker already present");
+		expect(second.files.map((f) => f.status)).toEqual(["skipped", "skipped", "skipped", "skipped"]);
+		expect(second.files[3].reason).toBe("marker already present");
 	});
 
 	it("overwrites existing files when --force is passed", async () => {
@@ -82,7 +85,7 @@ describe("runInit", () => {
 
 		const report = await runInit({ cwd });
 
-		expect(report.files[2]).toEqual({
+		expect(report.files[3]).toEqual({
 			path: join(cwd, ".gitignore"),
 			status: "updated",
 			reason: "marker appended",

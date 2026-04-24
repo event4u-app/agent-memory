@@ -13,7 +13,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "
 import path from "node:path";
 import type postgres from "postgres";
 
-import { config } from "../config.js";
+import { config, getProjectConfigStatus } from "../config.js";
 import { closeDb, getDb } from "../db/connection.js";
 import { INGRESS_INVENTORY } from "../security/ingress-inventory.js";
 import { SECRET_PATTERNS } from "../security/secret-patterns.js";
@@ -349,12 +349,41 @@ async function collectChecks(): Promise<DoctorCheck[]> {
 		await closeDb();
 	}
 	checks.push(checkAgentConfig());
+	checks.push(checkProjectConfig());
 	checks.push(checkSecretPolicy());
 	checks.push(checkPatternCatalog());
 	checks.push(checkLoggerRedaction());
 	checks.push(checkEmbeddingBoundary());
 	checks.push(checkIngressInventory());
 	return checks;
+}
+
+// C1 · runtime-trust: verifies that `.agent-memory.yml` (if present)
+// parsed and validated against `agent-memory-config-v1`. The import-time
+// load in src/config.ts captured any error; we surface it here.
+function checkProjectConfig(): DoctorCheck {
+	const status = getProjectConfigStatus();
+	if (status.error) {
+		return {
+			name: "project.config",
+			status: "fail",
+			message: status.error.message,
+			detail: { path: status.path },
+		};
+	}
+	if (!status.loaded) {
+		return {
+			name: "project.config",
+			status: "skip",
+			message: ".agent-memory.yml not found (optional).",
+		};
+	}
+	return {
+		name: "project.config",
+		status: "ok",
+		message: "Validated against agent-memory-config-v1.",
+		detail: { path: status.path, repository: config.repository ?? null },
+	};
 }
 
 function summarize(checks: DoctorCheck[]): DoctorReport {
