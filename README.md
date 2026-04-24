@@ -355,21 +355,21 @@ Nine canonical types cover most project knowledge:
 
 ## Tools & commands
 
-### MCP tools (24)
+### MCP tools (25)
 
 | Category | Tools |
 |---|---|
 | **Retrieval** | `memory_retrieve`, `memory_retrieve_details` |
 | **Ingestion** | `memory_ingest`, `memory_propose`, `memory_promote` |
-| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate`, `memory_explain` |
+| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate`, `memory_explain`, `memory_history` |
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (19)
+### CLI commands (20)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
-`audit` · `explain` · `migrate` · `init` · `doctor` · `serve` · `mcp`
+`audit` · `explain` · `history` · `migrate` · `init` · `doctor` · `serve` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 

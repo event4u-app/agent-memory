@@ -155,6 +155,23 @@ export const TOOL_DEFINITIONS: Tool[] = [
 		},
 	},
 	{
+		name: "memory_history",
+		description:
+			"Return the trust-transition timeline for a memory entry (B2 · runtime-trust). Events from memory_events bucketed by UTC day, with actor classification and minimal before/after diff. Conforms to history-v1.",
+		inputSchema: {
+			type: "object" as const,
+			properties: {
+				id: { type: "string", description: "Memory entry id" },
+				since: {
+					type: "string",
+					description: "ISO-8601 timestamp — only events at or after this time",
+				},
+				limit: { type: "number", default: 1000 },
+			},
+			required: ["id"],
+		},
+	},
+	{
 		name: "memory_session_start",
 		description: "Call at session start. Returns relevant context and runs TTL expiry.",
 		inputSchema: {

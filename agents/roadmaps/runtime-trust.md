@@ -345,7 +345,7 @@ Vektorstore-Konkurrent hat.
   - [x] Full suite: 723 grün · typecheck clean · lint clean ·
     CLI-Docs regeneriert · `docs:cli:check` diff-frei.
 
-### B2 · `memory history <id>` · [Must]
+### B2 · `memory history <id>` · [Must] · ✅ shipped
 
 - **Warum:** `explain` zeigt den **aktuellen** Zustand. `history`
   zeigt die Entwicklung — wann ist Trust gestiegen/gefallen, wer
@@ -358,10 +358,43 @@ Vektorstore-Konkurrent hat.
     Event-Type, Before/After-Diff in relevantem Feld.
   - MCP-Tool `memory_history` als Wrapper.
 - **Done:**
-  - `memory history <id>` auf einem Entry mit ≥ 5 Events druckt
-    eine zeitlich sortierte Timeline.
-  - `--json` liefert Array konform zu `history-v1.schema.json`.
-  - Performance-Test: 1000 Events pro Entry in < 100 ms lesbar.
+  - [x] `src/trust/history.service.ts` gruppiert `memory_events`
+    in UTC-Tagesbuckets (chronologisch aufsteigend), extrahiert
+    status/score-Diffs aus `before`/`after`-JSONB, klassifiziert
+    Actor per Präfix (`user:` / `agent:` / `system:` / unknown).
+    Zentrale Funktion `buildHistory()` — CLI und MCP teilen sich
+    diesen Pfad, keine Duplikation.
+  - [x] `memory history <id>` CLI-Subcommand
+    (`src/cli/commands/history.ts`). Human-Output: ASCII-Timeline
+    pro Tag (`── 2026-01-10 ──` · `HH:MM [kind] event_type actor`
+    · Diff-Zeile · Reason). `--json` emittiert `history-v1`-Envelope.
+    `--since <ts>` filtert auf `occurred_at >= ts`.
+  - [x] `MemoryEventRepository.listByEntry()` akzeptiert
+    `{ limit, since }`-Bag zusätzlich zur Legacy-Number-Signatur
+    (B1-Caller bleiben unverändert).
+  - [x] `memory_history` MCP-Tool teilt `buildHistory()` mit der
+    CLI → CLI ≡ MCP bit-genau. `id` required · `since` + `limit`
+    optional.
+  - [x] JSON-Schema `tests/fixtures/retrieval/history-v1.schema.json`
+    + Golden-Fixture `golden-history.json` + Contract-Test
+    (`tests/contract/history-contract.test.ts` · 5 assertions:
+    golden validiert · live `buildHistory()` validiert ·
+    `additionalProperties: false` am Top-Level · `actor_kind`-Enum
+    gesperrt · `day`-Pattern `^YYYY-MM-DD$` erzwungen).
+  - [x] 8 Unit-Tests in `tests/unit/history.service.test.ts` decken
+    Envelope-Shape · Tagesbuckets + aufsteigende Sortierung ·
+    Status/Score-Diff-Extraktion · leerer Diff ·
+    `classifyActor` · `range.since` passthrough ·
+    Nicht-Mutation des Input-Arrays · 1000-Events-Perf (< 100 ms)
+    ab.
+  - [x] `memory_history` in der no-secret-Output-Matrix
+    (skip-begründet: id-basiert, Output leitet sich ausschließlich
+    aus `memory_events` ab).
+  - [x] MCP-Tool-Counter 24 → 25 (README, AGENTS.md);
+    CLI-Counter 19 → 20 (README, `check:cli-commands`, registry-Test);
+    CLI-Docs (`docs/cli-reference.md`) für 20 Commands regeneriert.
+  - [x] Full suite: 736 grün · typecheck clean · lint clean ·
+    `docs:cli:check` diff-frei · `check:cli-commands` grün.
 
 ### B3 · Review-Workflows · [Must]
 

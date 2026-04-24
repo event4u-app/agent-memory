@@ -31,6 +31,7 @@ import {
 import { enforceNoSecretsWithAudit, SecretViolationError } from "../security/secret-guard.js";
 import type { SecretViolation } from "../security/secret-violation.js";
 import { explainEntry } from "../trust/explain.service.js";
+import { buildHistory } from "../trust/history.service.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
 
@@ -105,6 +106,8 @@ async function dispatchTool(name: string, args: Args, ctx: McpContext): Promise<
 			return handleDiagnose(args, ctx);
 		case "memory_explain":
 			return handleExplain(args, ctx);
+		case "memory_history":
+			return handleHistory(args, ctx);
 		case "memory_session_start":
 			return handleSessionStart(args, ctx);
 		case "memory_observe":
@@ -430,6 +433,28 @@ async function handleExplain(args: Args, ctx: McpContext): Promise<CallToolResul
 			contradictions,
 		}),
 	);
+}
+
+// B2 · runtime-trust — `memory_history` reconstructs the trust-transition
+// timeline from memory_events. CLI and MCP share `buildHistory` so the
+// history-v1 envelope is bit-identical across transports.
+const HISTORY_DEFAULT_LIMIT = 1000;
+async function handleHistory(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const id = args.id as string | undefined;
+	if (!id) return err("id is required");
+	if (!ctx.eventRepo) return err("eventRepo is not wired on this MCP context");
+	const limit = (args.limit as number | undefined) ?? HISTORY_DEFAULT_LIMIT;
+	const sinceRaw = args.since as string | undefined;
+	let since: Date | undefined;
+	if (sinceRaw !== undefined) {
+		const parsed = new Date(sinceRaw);
+		if (Number.isNaN(parsed.getTime())) return err(`since: not an ISO-8601 timestamp: ${sinceRaw}`);
+		since = parsed;
+	}
+	const entry = await ctx.entryRepo.findById(id);
+	if (!entry) return err(`Entry not found: ${id}`);
+	const events = await ctx.eventRepo.listByEntry(id, { limit, since });
+	return ok(buildHistory({ entry, events, since: since ?? null }));
 }
 
 async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallToolResult> {

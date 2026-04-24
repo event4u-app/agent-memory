@@ -306,6 +306,27 @@ memory health [options]
 |---|---|---|---|
 | `--timeout <ms>` | no | `2000` | Timeout in ms |
 
+### `history`
+
+Print the trust-transition timeline for a memory entry (B2 · runtime-trust)
+
+```bash
+memory history <id> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<id>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--json` | no | — | Emit history-v1 JSON envelope instead of human output |
+| `--since <ts>` | no | — | ISO-8601 timestamp — only events at or after this time |
+
 ### `ingest`
 
 Create a memory entry in quarantine (one-shot; parity with mcp.memory_ingest)

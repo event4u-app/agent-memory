@@ -140,8 +140,23 @@ export class MemoryEventRepository {
 		return expected.map((t) => ({ eventType: t, count: found.get(t) ?? 0 }));
 	}
 
-	async listByEntry(entryId: string, limit = 100): Promise<MemoryEvent[]> {
-		const rows = await this.sql`
+	async listByEntry(
+		entryId: string,
+		limitOrOptions: number | { limit?: number; since?: Date } = 100,
+	): Promise<MemoryEvent[]> {
+		// Legacy callers pass a bare number; B2 callers pass an options
+		// bag so the `since` cursor ships without a second overload.
+		const { limit = 100, since } =
+			typeof limitOrOptions === "number" ? { limit: limitOrOptions } : limitOrOptions;
+		const rows = since
+			? await this.sql`
+      SELECT id, entry_id, occurred_at, actor, event_type, metadata, before, after, reason
+      FROM memory_events
+      WHERE entry_id = ${entryId} AND occurred_at >= ${since}
+      ORDER BY occurred_at DESC
+      LIMIT ${limit}
+    `
+			: await this.sql`
       SELECT id, entry_id, occurred_at, actor, event_type, metadata, before, after, reason
       FROM memory_events
       WHERE entry_id = ${entryId}

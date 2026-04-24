@@ -110,6 +110,7 @@ const MATRIX: Record<string, MatrixEntry> = {
 	memory_health: { mode: "skip", reason: "no content input" },
 	memory_diagnose: { mode: "skip", reason: "no free-form content input" },
 	memory_explain: { mode: "skip", reason: "id-based, output derived from stored entry only" },
+	memory_history: { mode: "skip", reason: "id-based, output derived from memory_events only" },
 	memory_session_start: { mode: "skip", reason: "session metadata only" },
 	memory_session_end: { mode: "skip", reason: "session metadata only" },
 	memory_stop: { mode: "skip", reason: "session metadata only" },
