@@ -729,7 +729,16 @@ Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
     Provenance `imported_from:mem0`.
   - Migrations-Doku nennt Grenzen, keine Marketing-Versprechen.
 
-### D5 · Deprecation-Playbook · [Must]
+### D5 · Deprecation-Playbook · [Must] · ✅ shipped
+
+> ✅ Shipped — `docs/deprecation-policy.md` (operational playbook on top of
+> ADR-0003), `scripts/check-deprecation-changelog.ts` drift-guard (scans
+> `tests/fixtures/retrieval/*-v*.schema.json` + `schema/*.schema.json` for
+> `deprecated: true`, requires filename stem in top `## [...]` block of
+> `CHANGELOG.md`), cross-linked from `docs/compatibility-matrix.md`, wired
+> into `.github/workflows/docs-checks.yml` as the `deprecation-changelog`
+> job, regression covered by `tests/unit/check-deprecation-changelog.test.ts`
+> (5 tests, clean + missing + stale + older-block scenarios).
 
 - **Warum:** Mit dieser Roadmap kommen mehrere `*-v1.schema.json`
   dazu (explain, history, review-weekly, export, config). Ohne klare

@@ -27,6 +27,9 @@ Breaking changes to the contract (renames, type narrowing, removed
 fields) require a major version bump on `agent-memory` and follow the
 deprecation window in
 [`agents/adrs/0003-contract-version-bumps.md`](../agents/adrs/0003-contract-version-bumps.md).
+Day-to-day mechanics of deprecating a field (schema marker, CHANGELOG
+discipline, drift guard) live in
+[`docs/deprecation-policy.md`](deprecation-policy.md).
 
 ## Companion-package pairings
 
