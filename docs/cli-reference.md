@@ -242,6 +242,23 @@ Run audits across memory stores (subcommands)
 memory audit
 ```
 
+### `contradictions`
+
+List unresolved memory contradictions (B3 · runtime-trust)
+
+```bash
+memory contradictions [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--repository <repo>` | no | — | Filter to entries whose scope.repository matches |
+| `--since <ts>` | no | — | ISO-8601 timestamp — only contradictions created at or after |
+| `--limit <n>` | no | `50` | Max rows to return |
+| `--json` | no | — | Emit JSON list instead of human output |
+
 ### `diagnose`
 
 Identify issues: stale entries, low-trust entries
@@ -506,6 +523,22 @@ memory retrieve <query> [options]
 | `--low-trust` | no | — | Include low-trust entries (lower threshold, marked) |
 | `--type <type>` | no | — | Filter by memory type (repeatable) |
 | `--repository <id>` | no | — | Filter by repository |
+
+### `review`
+
+Triage open memory cases: accept/defer/skip (B3 · runtime-trust)
+
+```bash
+memory review [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--weekly` | no | — | Non-interactive digest of open cases |
+| `--format <fmt>` | no | `json` | Output format for --weekly: json | slack-block-kit |
+| `--actor <actor>` | no | `human:review-cli` | Audit actor for accept/defer/skip writes |
 
 ### `rollback`
 

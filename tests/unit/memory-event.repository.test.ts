@@ -178,6 +178,9 @@ describe("MemoryEventRepository — B4 trust audit", () => {
 			"entry_superseded",
 			"entry_invalidated",
 			"entry_archived",
+			"review_accepted",
+			"review_deferred",
+			"review_skipped",
 		]);
 	});
 

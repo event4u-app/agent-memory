@@ -396,7 +396,7 @@ Vektorstore-Konkurrent hat.
   - [x] Full suite: 736 grün · typecheck clean · lint clean ·
     `docs:cli:check` diff-frei · `check:cli-commands` grün.
 
-### B3 · Review-Workflows · [Must]
+### B3 · Review-Workflows · [Must] · ✅ shipped
 
 - **Warum:** Heute fließt Decay und Invalidation passiv. Niemand
   *schaut sich* die Ergebnisse an, außer beim akuten Retrieval. Ein
@@ -415,11 +415,56 @@ Vektorstore-Konkurrent hat.
     implizit erreichbar ist.
   - MCP-Tool-Parität: `memory_review`, `memory_contradictions`.
 - **Done:**
-  - `memory review` auf einem Setup mit ≥ 3 Fällen läuft
-    interaktiv durch, persistiert Accept-Entscheidungen.
-  - `memory review --weekly --format json` konform zu
-    `review-weekly-v1.schema.json`.
-  - `memory contradictions --repository X` listet nur Fälle aus X.
+  - [x] `src/quality/review.service.ts` — reine `buildReviewDigest()`
+    emittiert den `review-weekly-v1`-Envelope (summary + cases).
+    Case-Kinds: `stale_high_value` · `contradiction` ·
+    `poison_candidate`, jeder mit stabilem `case_id`-Präfix
+    (`stale:` · `contradiction:` · `poison:`) für den Defer-Filter.
+  - [x] `src/quality/review-fetchers.ts` — `fetchStaleHighValue`
+    (impact ∈ {high, critical} · trust_status = stale),
+    `fetchPoisonCandidates` (trust_score < 0.4 · ≥ 2 Invalidations
+    in 30 d), `fetchContradictions` (optional `repository` / `since`)
+    teilen SQL zwischen CLI + MCP.
+  - [x] `src/quality/review-actions.ts` — `applyReviewAction()`
+    persistiert Accept/Defer/Skip als `review_accepted` /
+    `review_deferred` / `review_skipped`-Events (auf
+    `TRUST_EVENT_TYPES` erweitert). Accept-Defaults: stale → archiviert,
+    poison → poisoned, contradiction → keep_both (destruktive
+    Strategien bleiben hinter `memory_resolve_contradiction`).
+  - [x] `MemoryEventRepository.listCaseIdsByTypeSince()` — filtert
+    deferrte Fälle für 7 d (DEFER_WINDOW_MINUTES) aus dem Digest.
+  - [x] `memory review` CLI (`src/cli/commands/review.ts`): Default
+    = interaktiver Accept/Defer/Skip-Loop über stdin. `--weekly`
+    = nicht-interaktiver Digest (`--format json|slack-block-kit`).
+  - [x] `memory contradictions` CLI (`src/cli/commands/contradictions.ts`)
+    — Drill-down mit `--repository`, `--since`, `--limit`, `--json`.
+  - [x] `memory_review` + `memory_contradictions` MCP-Tools teilen
+    Fetcher + `buildReviewDigest` mit CLI (`memory_review` liefert
+    das Digest; Accept/Defer/Skip bleiben CLI-Only, da MCP kein TTY).
+  - [x] `src/quality/review-slack.ts` → Slack-Block-Kit-Payload
+    (Header + Summary-Section + eine Section pro Case, unter
+    Slack-Cap) — Fundament für C4.
+  - [x] JSON-Schema `tests/fixtures/retrieval/review-weekly-v1.schema.json`
+    (oneOf über die drei Case-Kinds, `additionalProperties: false`
+    auf Envelope + jedem Case) + Golden
+    `golden-review-weekly.json`.
+  - [x] 6 Unit-Tests (`tests/unit/review.service.test.ts`) decken
+    Envelope-Shape · case_id-Präfixe · Defer-Filter +
+    `summary.deferred`-Counter · `days_since_validation`-Integer-Runden ·
+    leerer Digest · Hint-Qualität ab.
+  - [x] 5 Contract-Tests (`tests/contract/review-weekly-contract.test.ts`):
+    golden validiert · live `buildReviewDigest` validiert · leerer
+    Digest validiert · unknown Top-Level-Field wird abgelehnt ·
+    unknown Case-Field wird abgelehnt.
+  - [x] `memory_contradictions` in der no-secret-Output-Matrix
+    (skip-begründet: filter-basiert, Output leitet sich ausschließlich
+    aus `memory_contradictions` ab); `memory_review`-Matrix-Eintrag
+    bleibt (admin-op, id-basiert).
+  - [x] MCP-Tool-Counter 25 → 26 (README, AGENTS.md);
+    CLI-Counter 20 → 22 (README, `check:cli-commands`, registry-Test);
+    CLI-Docs (`docs/cli-reference.md`) für 22 Commands regeneriert.
+  - [x] Full suite: 747 grün · typecheck clean · lint clean ·
+    `docs:cli:check` diff-frei · `check:cli-commands` grün.
 
 ---
 

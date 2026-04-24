@@ -289,10 +289,41 @@ export const TOOL_DEFINITIONS: Tool[] = [
 	{
 		name: "memory_review",
 		description:
-			"List questionable entries for human review: low trust, stale, contradictions, duplicates.",
+			"Return a review-weekly-v1 digest of open maintenance cases: stale high-value entries, unresolved contradictions, and poison candidates (B3 · runtime-trust). Deferred cases are suppressed for 7 days.",
 		inputSchema: {
 			type: "object" as const,
-			properties: { maxResults: { type: "number", default: 10 } },
+			properties: {
+				maxResults: {
+					type: "number",
+					default: 25,
+					description: "Max cases per kind before defer-filter",
+				},
+				format: {
+					type: "string",
+					enum: ["json", "slack-block-kit"],
+					default: "json",
+					description: "Output format",
+				},
+			},
+		},
+	},
+	{
+		name: "memory_contradictions",
+		description:
+			"List unresolved memory contradictions with optional repository / since filters (B3 · runtime-trust).",
+		inputSchema: {
+			type: "object" as const,
+			properties: {
+				repository: {
+					type: "string",
+					description: "Filter to entries whose scope.repository matches",
+				},
+				since: {
+					type: "string",
+					description: "ISO-8601 timestamp — only contradictions created at or after",
+				},
+				limit: { type: "number", default: 50 },
+			},
 		},
 	},
 	{

@@ -1,7 +1,7 @@
 // A3 · runtime-trust — registry smoke test for the split CLI.
 //
 // Each command lives in its own module exporting `register(program)`.
-// This test asserts: (1) the main program registers all 20 commands
+// This test asserts: (1) the main program registers all 22 commands
 // with the expected names, (2) each command module is independently
 // importable without side effects on `program`, and (3) the top-level
 // --help output lists every command.
@@ -29,6 +29,8 @@ const EXPECTED_COMMANDS = [
 	"audit",
 	"explain",
 	"history",
+	"review",
+	"contradictions",
 	"migrate",
 	"init",
 	"doctor",
@@ -59,6 +61,8 @@ describe("cli registry", () => {
 			import("../../../src/cli/commands/audit.js"),
 			import("../../../src/cli/commands/explain.js"),
 			import("../../../src/cli/commands/history.js"),
+			import("../../../src/cli/commands/review.js"),
+			import("../../../src/cli/commands/contradictions.js"),
 			import("../../../src/cli/commands/migrate.js"),
 			import("../../../src/cli/commands/init.js"),
 			import("../../../src/cli/commands/doctor.js"),

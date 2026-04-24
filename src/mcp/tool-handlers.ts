@@ -7,12 +7,17 @@ import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
 import { hardInvalidate, softInvalidate } from "../invalidation/invalidation-flows.js";
 import { RollbackService } from "../invalidation/rollback.js";
 import {
-	listUnresolved,
 	type ResolutionStrategy,
 	resolveContradiction,
 } from "../quality/contradiction-resolution.js";
-import { findDuplicates, mergeDuplicates } from "../quality/dedup.js";
-import { calculateMetrics } from "../quality/metrics.js";
+import { mergeDuplicates } from "../quality/dedup.js";
+import { buildReviewDigest } from "../quality/review.service.js";
+import {
+	fetchContradictions,
+	fetchPoisonCandidates,
+	fetchStaleHighValue,
+} from "../quality/review-fetchers.js";
+import { toSlackBlockKit } from "../quality/review-slack.js";
 import {
 	BACKEND_FEATURES,
 	CONTRACT_VERSION,
@@ -124,6 +129,8 @@ async function dispatchTool(name: string, args: Args, ctx: McpContext): Promise<
 			return handleAudit(args, ctx);
 		case "memory_review":
 			return handleReview(args, ctx);
+		case "memory_contradictions":
+			return handleContradictions(args, ctx);
 		case "memory_resolve_contradiction":
 			return handleResolveContradiction(args, ctx);
 		case "memory_merge_duplicates":
@@ -618,21 +625,59 @@ async function handleAudit(args: Args, ctx: McpContext): Promise<CallToolResult>
 	});
 }
 
+// B3 · runtime-trust — `memory_review` returns a review-weekly-v1
+// digest. MCP has no interactive TTY, so accept/defer/skip live only on
+// the CLI; clients orchestrate writes via the per-action tools
+// (memory_resolve_contradiction, memory_deprecate, …).
+const REVIEW_CASES_PER_KIND = 25;
 async function handleReview(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const max = (args.maxResults as number) ?? 10;
-	const metrics = await calculateMetrics(ctx.sql);
-	const unresolved = await listUnresolved(ctx.sql);
-	const duplicates = await findDuplicates(ctx.sql);
-	const stale =
-		await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' ORDER BY impact_level LIMIT ${max}`;
-	const lowTrust =
-		await ctx.sql`SELECT id, title, trust_score FROM memory_entries WHERE trust_status = 'validated' AND trust_score < 0.4 ORDER BY trust_score LIMIT ${max}`;
+	const format = (args.format as string | undefined) ?? "json";
+	if (format !== "json" && format !== "slack-block-kit") {
+		return err(`unknown format: ${format} (expected json|slack-block-kit)`);
+	}
+	const limit = (args.maxResults as number | undefined) ?? REVIEW_CASES_PER_KIND;
+	const [stale, contradictions, poison, deferredIds] = await Promise.all([
+		fetchStaleHighValue(ctx.sql, limit),
+		fetchContradictions(ctx.sql, { limit }),
+		fetchPoisonCandidates(ctx.sql, limit),
+		ctx.eventRepo
+			? ctx.eventRepo.listCaseIdsByTypeSince("review_deferred", 7 * 24 * 60)
+			: Promise.resolve([]),
+	]);
+	const digest = buildReviewDigest({
+		staleHighValue: stale,
+		contradictions,
+		poisonCandidates: poison,
+		deferredCaseIds: new Set(deferredIds),
+	});
+	if (format === "slack-block-kit") return ok(toSlackBlockKit(digest));
+	return ok(digest);
+}
+
+// B3 · runtime-trust — `memory_contradictions` drill-down tool. Mirrors
+// the `memory contradictions [--repository] [--since]` CLI so agents
+// over MCP can narrow scope without pulling the whole review digest.
+async function handleContradictions(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const repository = args.repository as string | undefined;
+	const sinceRaw = args.since as string | undefined;
+	const limit = (args.limit as number | undefined) ?? 50;
+	let since: Date | undefined;
+	if (sinceRaw !== undefined) {
+		const parsed = new Date(sinceRaw);
+		if (Number.isNaN(parsed.getTime())) return err(`since: not an ISO-8601 timestamp: ${sinceRaw}`);
+		since = parsed;
+	}
+	const rows = await fetchContradictions(ctx.sql, { repository, since, limit });
 	return ok({
-		metrics,
-		unresolvedContradictions: unresolved.slice(0, max),
-		duplicates: duplicates.slice(0, max),
-		staleEntries: stale,
-		lowTrustEntries: lowTrust,
+		count: rows.length,
+		filter: { repository: repository ?? null, since: since?.toISOString() ?? null, limit },
+		contradictions: rows.map((r) => ({
+			id: r.id,
+			entry_a: { id: r.entryAId, title: r.entryATitle },
+			entry_b: { id: r.entryBId, title: r.entryBTitle },
+			description: r.description,
+			created_at: r.createdAt.toISOString(),
+		})),
 	});
 }
 

@@ -117,6 +117,7 @@ const MATRIX: Record<string, MatrixEntry> = {
 	memory_run_invalidation: { mode: "skip", reason: "admin op, no content input" },
 	memory_audit: { mode: "skip", reason: "admin op, emits counts only" },
 	memory_review: { mode: "skip", reason: "admin op, id-based" },
+	memory_contradictions: { mode: "skip", reason: "admin op, filter-based" },
 	memory_resolve_contradiction: { mode: "skip", reason: "admin op, id-based" },
 	memory_merge_duplicates: { mode: "skip", reason: "admin op, id-based" },
 	memory_promote: { mode: "skip", reason: "admin op, id-based" },

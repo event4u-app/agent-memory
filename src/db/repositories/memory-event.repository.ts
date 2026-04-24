@@ -36,6 +36,9 @@ export const TRUST_EVENT_TYPES = [
 	"entry_superseded", // paired with entry_deprecated when a new entry replaces it
 	"entry_invalidated", // diff / drift / file-delete invalidation
 	"entry_archived", // stale/invalidated → archived (retention)
+	"review_accepted", // B3: operator ran `memory review` and accepted the case action
+	"review_deferred", // B3: operator deferred — suppress case for defer window
+	"review_skipped", // B3: operator skipped — no action, no suppression
 ] as const;
 export type TrustEventType = (typeof TRUST_EVENT_TYPES)[number];
 
@@ -181,6 +184,26 @@ export class MemoryEventRepository {
       ORDER BY count DESC
     `;
 		return rows.map((r) => ({ eventType: r.event_type, count: r.count }));
+	}
+
+	/**
+	 * Collect `metadata->>'case_id'` for events of a given type within the
+	 * last `sinceMinutes`. Used by `memory review` (B3) to suppress cases
+	 * the operator recently deferred so the interactive loop does not
+	 * re-surface them on the next run.
+	 */
+	async listCaseIdsByTypeSince(eventType: TrustEventType, sinceMinutes: number): Promise<string[]> {
+		const rows = await this.sql<{ case_id: string | null }[]>`
+      SELECT metadata->>'case_id' AS case_id
+      FROM memory_events
+      WHERE event_type = ${eventType}
+        AND occurred_at > NOW() - (${sinceMinutes} || ' minutes')::interval
+        AND metadata ? 'case_id'
+    `;
+		const ids = rows
+			.map((r) => r.case_id)
+			.filter((x): x is string => typeof x === "string" && x.length > 0);
+		return [...new Set(ids)];
 	}
 
 	private mapRow(row: postgres.Row): MemoryEvent {
