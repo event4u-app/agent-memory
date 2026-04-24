@@ -16,13 +16,17 @@ so a change that breaks a copy-paste path turns CI red before it ships.
 
 ## What lives here
 
-| Snippet | Transport | Smoke in CI |
+Status matrix is maintained in [`docs/integrations.md`](../../docs/integrations.md)
+— this table mirrors it, but a row only appears here once the
+directory is real and its `smoke.sh` is wired into CI.
+
+| Snippet | Transport | Status |
 |---|---|---|
-| [`claude-desktop/`](claude-desktop/) | MCP stdio | ✅ config validates + `memory mcp` boots |
-| [`cursor/`](cursor/) | MCP stdio | ✅ config validates + `memory mcp` boots |
-| [`github-actions/`](github-actions/) | CLI | ✅ meta-smoke: same steps run in this repo's CI |
-| [`docker-sidecar-laravel/`](docker-sidecar-laravel/) | HTTP / CLI exec | ✅ via [`examples/laravel-sidecar/`](../laravel-sidecar/) |
-| [`docker-sidecar-django/`](docker-sidecar-django/) | HTTP | ✅ compose up + `curl /health` |
+| — | — | _No integrations shipped yet; skeleton-only._ |
+
+Planned, tracked in [`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md):
+`claude-desktop`, `cursor`, `github-actions`, `docker-sidecar-laravel`
+(backing in [`../laravel-sidecar/`](../laravel-sidecar/)), `docker-sidecar-django`.
 
 ## Non-goals
 
