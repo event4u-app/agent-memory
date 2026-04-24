@@ -676,7 +676,18 @@ Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
     mit Zeilennummer bevor irgendein DB-Write erfolgt; Ajv-Pass
     erfolgt ebenfalls up-front._
 
-### D2 · First-class Integration-Snippets · [Must]
+### D2 · First-class Integration-Snippets · [Must] · ✅ shipped
+
+> ✅ Shipped — fünf Integrationen in `examples/integrations/` mit
+> eigenem `smoke.sh` pro Verzeichnis: `claude-desktop`, `cursor`,
+> `github-actions`, `docker-sidecar-laravel`, `docker-sidecar-django`.
+> `.github/workflows/integrations.yml` entdeckt Verzeichnisse
+> dynamisch via `find … smoke.sh` und fährt pro Integration einen
+> Matrix-Job. `docs/integrations.md` ist Ein-Sprung-Stelle.
+> Stack-Neutralität bewiesen durch das Laravel (PHP/Symfony-Process)
+> + Django (Python/subprocess) Pärchen auf identischem Sidecar-
+> Pattern. `vscode-continue` und `gitlab-ci` bleiben Opt-in-
+> Folgearbeit, nicht kritischer Pfad.
 
 - **Warum:** Feedback #1 hat klar gemacht: kein Composer-Paket, kein
   Installer — aber **maintained Snippets** sind Pflicht. Ein Team,

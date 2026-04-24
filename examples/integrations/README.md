@@ -25,10 +25,15 @@ directory is real and its `smoke.sh` is wired into CI.
 | [`claude-desktop/`](claude-desktop/) | MCP stdio | ✅ Available |
 | [`cursor/`](cursor/) | MCP stdio | ✅ Available |
 | [`github-actions/`](github-actions/) | CLI | ✅ Available |
+| [`docker-sidecar-laravel/`](docker-sidecar-laravel/) | CLI exec via `docker compose` | ✅ Available |
+| [`docker-sidecar-django/`](docker-sidecar-django/) | CLI exec via `docker compose` | ✅ Available |
 
-Planned, tracked in [`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md):
-`docker-sidecar-laravel`
-(backing in [`../laravel-sidecar/`](../laravel-sidecar/)), `docker-sidecar-django`.
+All five D2 integrations required by
+[`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md) are
+live — the Laravel + Django pair proves stack-neutrality (PHP and
+Python host apps talking to the same sidecar with the same CLI).
+Further integrations like `vscode-continue`, `gitlab-ci`, or
+`slack-bot` are opt-in future work, not on the critical path.
 
 ## Non-goals
 

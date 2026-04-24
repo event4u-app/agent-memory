@@ -23,8 +23,8 @@ A change that breaks a copy-paste path turns CI red before it ships.
 | [claude-desktop](../examples/integrations/claude-desktop/) | MCP stdio | ✅ Available | config template + `jq`-shape smoke + `memory --version` check |
 | [cursor](../examples/integrations/cursor/) | MCP stdio | ✅ Available | project-local `.cursor/mcp.json` template (`${workspaceFolder}`) + `jq`-shape smoke + `memory --version` check |
 | [github-actions](../examples/integrations/github-actions/) | CLI | ✅ Available | workflow template + static smoke that verifies every referenced `memory <subcommand>` against the live CLI |
-| docker-sidecar-laravel | HTTP + CLI exec | 🚧 Planned | [`examples/laravel-sidecar/`](../examples/laravel-sidecar/) (compose + `php-demo.php` already usable standalone) |
-| docker-sidecar-django | HTTP | 🚧 Planned | — |
+| [docker-sidecar-laravel](../examples/integrations/docker-sidecar-laravel/) | CLI exec via `docker compose` | ✅ Available | compose template + `MemoryService.php` (Symfony\\Process) + static smoke (compose shape + CLI subcommand validation). Backed by [`examples/laravel-sidecar/`](../examples/laravel-sidecar/) for full boot. |
+| [docker-sidecar-django](../examples/integrations/docker-sidecar-django/) | CLI exec via `docker compose` | ✅ Available | compose template + `memory_service.py` (`subprocess.run`) + static smoke (compose shape + CLI subcommand validation) |
 
 Roadmap anchor: [`agents/roadmaps/runtime-trust.md`](../agents/roadmaps/runtime-trust.md)
 § D2. Target: at least five integrations available, with
