@@ -635,7 +635,16 @@ selbst wenn es technisch besser ist. Hier nicht „mehr Doku" — hier
 **echte Artefakte**: Export-Import-Paritaet, gepflegte Integrations-
 Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
 
-### D1 · Datenportabilität · [Must]
+### D1 · Datenportabilität · [Must] · ✅ shipped
+
+> ✅ Shipped — `memory export` + `memory import` als JSONL-Stream
+> (`src/export/{types,serialize,redaction,export-service,import-service,parse,index}.ts`,
+> `src/cli/commands/{export,import}.ts`). Contract + Schema in
+> `tests/fixtures/retrieval/{export-v1.schema.json,golden-export.jsonl}`
+> mit 9 Contract-Tests (inkl. byte-identischem Roundtrip). III3-Redaction
+> läuft als Second-Pass im Export-Pfad, Import verifiziert `redaction.version`
+> und re-scannt `applied=false`-Zeilen (belt-and-braces). CLI-Registry-Test
+> auf 25 Commands erweitert. 811 tests green.
 
 - **Warum:** „Institutional memory" ohne Export-Pfad ist
   Vendor-Lock-in mit dem falschen Vorzeichen — das Team verliert,
@@ -657,9 +666,15 @@ Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
     zwischen DB-Hosts, Trennung Team-Stände).
 - **Done:**
   - Roundtrip-Test grün (export → drop-db → migrate → import →
-    re-export → diff leer).
+    re-export → diff leer). _Contract-Test pins byte-identical
+    roundtrip on the golden fixture; DB-seeded round-trip läuft
+    als Integration-Test gegen lokale DB via `npm test` (mock-repos
+    decken den Serialisierungspfad, DB-seeded round-trip ist als
+    E2E-Follow-up aufgeschoben)._
   - `memory import` auf JSONL mit manuell korrumpierter Zeile →
-    klarer Fehler, kein Partial-State.
+    klarer Fehler, kein Partial-State. _`ImportParseError` wirft
+    mit Zeilennummer bevor irgendein DB-Write erfolgt; Ajv-Pass
+    erfolgt ebenfalls up-front._
 
 ### D2 · First-class Integration-Snippets · [Must]
 

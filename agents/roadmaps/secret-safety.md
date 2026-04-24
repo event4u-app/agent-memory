@@ -425,7 +425,18 @@ nicht abdecken — Alt-Bestände, Re-Export, seitliche Leak-Kanäle.
   - Perf-Regression-Test hält das 100-ms-Designbudget und das 500-ms-
     CI-Budget ein.
 
-### III3 · Export-Pfad mit Redaction-Metadata · [Must]
+### III3 · Export-Pfad mit Redaction-Metadata · [Must] · ✅ shipped
+
+> ✅ Shipped zusammen mit `runtime-trust.md` D1.
+> `src/export/redaction.ts` wendet `SECRET_PATTERNS`
+> (code=`SECRET_DETECTED`) auf Titel, Summary, Details, Embedding-Text,
+> Evidence-Refs + Details sowie Event-Reason an. Marker bleibt
+> `[REDACTED:retrieve]` (Single-Vocabulary mit Retrieval-Pfad, bewusste
+> Entscheidung — siehe File-Header).
+> Import-Guard (`verifyNoSecretLeak`, `src/export/import-service.ts`)
+> re-scannt jede `applied=false`-Zeile und wirft `ImportSecretLeakError`
+> wenn ein Pattern dennoch greift. 5 Unit-Tests (`tests/unit/export-redaction.test.ts`)
+> + 6 Import/Export-Service-Tests + 9 Contract-Tests beweisen den Pfad.
 
 - **Warum:** `runtime-trust.md` D1 plant `memory export`. Ohne
   diese Task würde ein Export Redacts verlieren oder, schlimmer,
@@ -441,9 +452,13 @@ nicht abdecken — Alt-Bestände, Re-Export, seitliche Leak-Kanäle.
     Stand.
 - **Done:**
   - Export eines Setups mit einem bewusst eingepflanzten Secret
-    (vor III1-Fix) enthält `[REDACTED:secret]`, nicht das Original.
+    (vor III1-Fix) enthält `[REDACTED:retrieve]`, nicht das Original.
+    _Marker-Vocabulary mit Retrieval-Path geteilt; `redactEntryLine`
+    unit-tested gegen AWS-Canary in title/summary/details/evidence/events._
   - Import eines Exports, der `redaction: { applied: false }`
     behauptet, wird abgelehnt, wenn Pattern-Scan neue Secrets findet.
+    _`verifyNoSecretLeak` + `ImportSecretLeakError`; 3 Unit-Tests
+    decken happy path, tampered line, und valid pre-redacted line ab._
 
 ### III4 · Provider-Boundary-Drift-Guard · [Must] · ✅ shipped
 
