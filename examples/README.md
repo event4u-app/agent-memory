@@ -14,6 +14,7 @@ for the full contract.
 | [`laravel-sidecar/`](laravel-sidecar/) | Full Docker-sidecar example with a PHP / Laravel host app |
 | [`node-programmatic/`](node-programmatic/) | Node / TypeScript embedded usage — `runMigrations()` + programmatic retrieval |
 | [`with-agent-config/`](with-agent-config/) | Paired setup with [`@event4u/agent-config`](https://github.com/event4u-app/agent-config); smoke-tested (P5-2) |
+| [`weekly-digest/`](weekly-digest/) | GitHub-Actions cron → Slack digest of stale / contradicted / poison-candidate entries (C4) |
 
 ## Using these
 

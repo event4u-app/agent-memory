@@ -1,6 +1,8 @@
 import type { Command } from "commander";
+import { config } from "../../config.js";
 import { EvidenceRepository } from "../../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../../db/repositories/memory-entry.repository.js";
+import { buildInvalidateGitDiffEnvelope } from "../../invalidation/git-diff-envelope.js";
 import { hardInvalidate, softInvalidate } from "../../invalidation/invalidation-flows.js";
 import { InvalidationOrchestrator } from "../../invalidation/orchestrator.js";
 import { closeDb, getDb } from "../context.js";
@@ -32,7 +34,14 @@ export function register(program: Command): void {
 						fromRef: options.fromRef,
 						sinceDate: options.since,
 					});
-					console.log(JSON.stringify(result, null, 2));
+					// C3 · wrap in invalidate-git-diff-v1 envelope so the GitHub
+					// Action (`event4u-app/agent-memory-action`) can render stable
+					// PR comments. Repository scope comes from .agent-memory.yml.
+					const envelope = buildInvalidateGitDiffEnvelope({
+						result,
+						repository: config.repository,
+					});
+					console.log(JSON.stringify(envelope, null, 2));
 				} else if (options.entry) {
 					const result = options.hard
 						? await hardInvalidate(options.entry, options.reason, entryRepo, options.triggeredBy)

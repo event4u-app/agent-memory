@@ -475,7 +475,17 @@ was fehlt, ist die Oberfläche, die `agent-memory` vom „Solo-Gadget"
 zum „Team-Artefakt" hebt — projekt-committete Policies, PR-Integration,
 wiederkehrende Digests.
 
-### C1 · `.agent-memory.yml` projektlokale Config · [Must]
+### C1 · `.agent-memory.yml` projektlokale Config · [Must] · ✅ shipped
+
+> ✅ Shipped (`5cc8e63`) — `schema/agent-memory-config-v1.schema.json`
+> pinnt das Format; `src/config/project-config.ts` lädt und validiert
+> YAML beim CLI-Start, `src/config.ts` führt die Präzedenz-Chain
+> `CLI-Flag > ENV > YAML > Default` aus. `memory init` schreibt eine
+> kommentierte Vorlage, `memory doctor` validiert gegen das Schema und
+> fail-fast bei Schema-Verstößen (kein silent-fallback).
+> `tests/unit/config-precedence.test.ts` deckt die Chain mit 7 Cases
+> ab (Default · YAML-Override · ENV > YAML · Flag > ENV · bad YAML ·
+> unbekannte Felder · Repo-Scope). 779 Tests grün.
 
 - **Warum:** Alle team-relevanten Einstellungen (Trust-Thresholds,
   Repository-ID, Policy-Overrides, Decay-Profile) sind heute
@@ -500,7 +510,28 @@ wiederkehrende Digests.
     silent-fallback).
   - `npm test` deckt die Präzedenz-Regeln mit ≥ 6 Cases ab.
 
-### C2 · CI Policy-Engine · [Must]
+### C2 · CI Policy-Engine · [Must] · ✅ shipped (in-repo)
+
+> ✅ Shipped in-repo (`5cc8e63`) — `memory policy check [--format
+> json|human] [--config <path>]` liefert Exit 0 (pass) / 1 (violations)
+> / 2 (config error); `src/quality/policy-check.service.ts` +
+> `policy-check-fetchers.ts` trennen SQL von Business-Logik für
+> Unit-Tests ohne DB. Vier aktive Policies:
+> `fail_on_contradicted_critical`, `fail_on_invalidated_adr`,
+> `min_trust_for_type.architecture_decision`,
+> `block_on_poisoned_referenced`. Contract pinned via
+> `tests/fixtures/retrieval/policy-check-v1.schema.json` +
+> `golden-policy-check.json`, 6 Contract- + 5 Unit-Tests (786 grün).
+> README-CLI-Count 22 → 23, `docs/cli-reference.md` regeneriert,
+> `check:cli-commands` grün.
+>
+> **Deferred follow-up:** Das separate Action-Repo
+> [`event4u-app/agent-memory-action`](https://github.com/event4u-app/agent-memory-action)
+> ist **noch nicht angelegt** — braucht explizite User-Permission für
+> neues öffentliches Repo. Smoke-Workflow in diesem separaten Repo
+> bleibt daher offen. Die CLI-Shape steht und ist vertraglich pinned;
+> die Action kann gegen den Golden-Output gebaut werden, ohne diesen
+> Code erneut zu berühren.
 
 - **Warum:** „Team-fähig" heißt: Memory-Regeln können einen PR
   blocken. Ohne das ist `agent-memory` bei Reviewern hübsche
@@ -528,7 +559,22 @@ wiederkehrende Digests.
   - GitHub-Action läuft in einem Smoke-Test-Workflow im neuen
     Action-Repo grün.
 
-### C3 · PR-Review-Integration · [Should]
+### C3 · PR-Review-Integration · [Should] · ✅ shipped (in-repo)
+
+> ✅ Shipped in-repo — `memory invalidate --from-git-diff` liefert
+> jetzt den stabilen `invalidate-git-diff-v1`-Envelope
+> (`src/invalidation/git-diff-envelope.ts`). Der Orchestrator trackt
+> pro Entry `{id, title, action, reason, trigger}`, die CLI wrappt
+> das Ergebnis mit `repository` aus `.agent-memory.yml`. Contract
+> pinned via
+> `tests/fixtures/retrieval/invalidate-git-diff-v1.schema.json` +
+> `golden-invalidate-git-diff.json`, 7 Contract-Tests; 786 grün.
+>
+> **Deferred follow-up:** PR-Comment-Rendering + Idempotenz-Marker
+> leben im externen Action-Repo (siehe C2). Diese Roadmap liefert den
+> stabilen Input (JSON pro Entry, Contract-Version pinned) — der
+> Renderer ist 20 Zeilen TypeScript auf der Action-Seite, sobald das
+> Repo existiert.
 
 - **Warum:** Der sichtbarste Team-Moment. Ein PR kommt rein,
   `agent-memory` kommentiert „dieser PR invalidiert 4 Memory-Entries,
@@ -553,7 +599,15 @@ wiederkehrende Digests.
     (invalidates / strengthens / contradicts).
   - Zweiter Push überschreibt Comment, dupliziert nicht.
 
-### C4 · Weekly-Digest · [Could]
+### C4 · Weekly-Digest · [Could] · ✅ shipped
+
+> ✅ Shipped — `examples/weekly-digest/` enthält README + `digest.yml`
+> (GitHub-Actions-Cron auf `slackapi/slack-github-action@v1.27.0`,
+> ruft `memory review --weekly --format slack-block-kit`, skippt den
+> Slack-Step bei leerem Digest via `case_count`-Guard). Output-Shape
+> pinned durch `review-weekly-v1` (bereits in B3 geshipt). Keine neue
+> Runtime-Komponente, reine Dokumentation + Template — in Übereinstimmung
+> mit dem Scope-Versprechen „rein Documentation + Example".
 
 - **Warum:** Adoption-Reminder ohne eigene Infrastruktur. Wenn ein
   Team einmal pro Woche einen Slack-Post sieht mit „3 stale
