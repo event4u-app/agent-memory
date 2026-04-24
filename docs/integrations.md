@@ -22,7 +22,7 @@ A change that breaks a copy-paste path turns CI red before it ships.
 |---|---|---|---|
 | [claude-desktop](../examples/integrations/claude-desktop/) | MCP stdio | ✅ Available | config template + `jq`-shape smoke + `memory --version` check |
 | cursor | MCP stdio | 🚧 Planned | — |
-| github-actions | CLI | 🚧 Planned | — |
+| [github-actions](../examples/integrations/github-actions/) | CLI | ✅ Available | workflow template + static smoke that verifies every referenced `memory <subcommand>` against the live CLI |
 | docker-sidecar-laravel | HTTP + CLI exec | 🚧 Planned | [`examples/laravel-sidecar/`](../examples/laravel-sidecar/) (compose + `php-demo.php` already usable standalone) |
 | docker-sidecar-django | HTTP | 🚧 Planned | — |
 

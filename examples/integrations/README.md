@@ -23,9 +23,10 @@ directory is real and its `smoke.sh` is wired into CI.
 | Snippet | Transport | Status |
 |---|---|---|
 | [`claude-desktop/`](claude-desktop/) | MCP stdio | ✅ Available |
+| [`github-actions/`](github-actions/) | CLI | ✅ Available |
 
 Planned, tracked in [`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md):
-`cursor`, `github-actions`, `docker-sidecar-laravel`
+`cursor`, `docker-sidecar-laravel`
 (backing in [`../laravel-sidecar/`](../laravel-sidecar/)), `docker-sidecar-django`.
 
 ## Non-goals

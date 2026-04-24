@@ -1,0 +1,67 @@
+# Example: use @event4u/agent-memory as a CLI tool in GitHub Actions.
+#
+# Copy this file into your repository as .github/workflows/<anything>.yml
+# and set the `AGENT_MEMORY_DATABASE_URL` secret to point at a reachable
+# Postgres-with-pgvector instance. The workflow demonstrates the two
+# bidirectional CLI paths:
+#
+#   memory retrieve …   — pull prior context before the agent runs
+#   memory ingest …     — capture a finding after the work is done
+#
+# `memory health` is used as a pre-flight gate so a misconfigured secret
+# fails the job early, before any real work is wasted.
+
+name: Example — agent-memory in CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "What prior context to recall before running"
+        required: true
+      finding:
+        description: "Optional finding to capture at the end"
+        required: false
+
+jobs:
+  agent-with-memory:
+    runs-on: ubuntu-latest
+
+    env:
+      # Set this as a repository/organization secret.
+      DATABASE_URL: ${{ secrets.AGENT_MEMORY_DATABASE_URL }}
+      # File/symbol validators resolve against this root.
+      REPO_ROOT: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install agent-memory
+        run: npm install -g @event4u/agent-memory
+
+      # Fail early if the backend is unreachable or the secret is wrong.
+      - name: Verify backend reachable
+        run: memory health --timeout 5000
+
+      - name: Recall prior context
+        run: |
+          memory retrieve "${{ inputs.topic }}" \
+            --limit 5 \
+            --budget 2000
+
+      # ── your agent / pipeline steps would go here ────────────────────
+
+      # Only runs when a finding was supplied via workflow_dispatch.
+      - name: Capture new finding
+        if: ${{ inputs.finding != '' }}
+        run: |
+          memory ingest \
+            --type bug_pattern \
+            --title "CI finding from run ${{ github.run_id }}" \
+            --summary "${{ inputs.finding }}" \
+            --repository "${{ github.repository }}" \
+            --created-by "github-actions/${{ github.workflow }}"
