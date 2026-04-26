@@ -24,9 +24,7 @@ curl -o docker-compose.yml \
 docker compose up -d agent-memory
 ```
 
-<!-- Uncomment once event4u-app/with-agent-memory is public:
 **Prefer a ready-made reference stack?** Clone [`event4u-app/with-agent-memory`](https://github.com/event4u-app/with-agent-memory) — minimal Docker Compose + smoke test, zero editing required.
--->
 
 **Check it.** One command verifies the DB, pgvector, and migrations:
 

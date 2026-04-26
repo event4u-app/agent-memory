@@ -712,7 +712,20 @@ Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
   - Beispiele für PHP/Laravel und Python/Django beweisen
     Stack-Neutralität (Hard Invariant).
 
-### D3 · Reference-Repo `with-agent-memory` · [Should]
+### D3 · Reference-Repo `with-agent-memory` · [Should] · ✅ shipped
+
+> ✅ Shipped — Repo `event4u-app/with-agent-memory` published
+> ([github.com/event4u-app/with-agent-memory](https://github.com/event4u-app/with-agent-memory),
+> initial commit `9420d7a`). Inhalt: `docker-compose.yml` (postgres +
+> agent-memory sidecar, default `IMAGE_TAG=:main` damit `docker compose
+> up -d` ohne Setup grün läuft), `.agent-memory.yml` als C1-Beispiel,
+> `smoke.sh` mit health → propose → promote → retrieve Round-Trip
+> (verifiziert end-to-end gegen `:main`, exit 0), `README.md` mit
+> 4-Step-Quickstart und Trust-Lifecycle-Erklärung (`filtered=1` ist
+> by-design für Fresh-Floor-Entries), und
+> `.github/workflows/weekly-drift.yml` als wöchentlicher Canary gegen
+> `agent-memory:main`. README-Link aus dem agent-memory-README aktiviert
+> (genau eine Stelle, in der "60-second quick-start"-Sektion).
 
 - **Warum:** `examples/with-agent-config/` (aus Feedback #2) ist
   das Gegenstück für `@event4u/agent-config`. Für `agent-memory`
