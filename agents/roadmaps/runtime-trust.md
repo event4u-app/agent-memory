@@ -734,7 +734,24 @@ Snippets, lebende Reference-Repos, Migrations-Pfade von Konkurrenten.
   - README-Link aus `agent-memory`-README auf dieses Repo (genau
     eine Stelle, nicht an mehreren Orten).
 
-### D4 · Migrations-Importer · [Could]
+### D4 · Migrations-Importer · [Could] · ✅ shipped
+
+> ✅ Shipped — `memory import --from mem0-jsonl <file> --repository <id>`
+> via Mapper in `src/ingestion/importers/mem0.ts` (pure function, no I/O).
+> CLI-Flags `--from`, `--repository`, `--initial-trust` (default `0.5`,
+> validated `[0,1]`), `--quarantine` (status-Override). Provenance:
+> `promotion_metadata.imported_from = "mem0"`, plus `mem0_id` und
+> `mem0_raw` für lossless re-mapping. Default-Status `validated` (mit
+> Trust-Score-Cap unterhalb der Retrieval-Schwelle), `--quarantine`-Flag
+> als Opt-in für Sicherheits-Skeptiker. Belt-and-braces: Mapper-Output
+> läuft durch dieselbe Ajv-Pass gegen `export-v1.schema.json` wie native
+> Imports, dann durch `verifyNoSecretLeak()`. Golden-Fixture
+> `tests/fixtures/importers/mem0/sample.jsonl` (5 Records: memory/text/
+> content-Varianten, mit/ohne metadata, mit/ohne categories), 10 Tests
+> in `tests/unit/importers/mem0.test.ts` (Mapping-Invarianten + Schema-
+> Kompatibilität + Error-Pfade). Migrations-Doku in
+> `docs/migration/mem0.md` mit Mapping-Tabelle, Trust-Policy und
+> expliziten "What you lose"-Abschnitt.
 
 - **Warum:** Ein Team, das heute Mem0 / Zep / Chroma-mit-eigener-
   Konvention nutzt, wechselt nicht, wenn es seinen Bestand

@@ -14,9 +14,14 @@ import {
 	type OnConflict,
 } from "../../export/import-service.js";
 import { parseExportJsonl } from "../../export/parse.js";
+import type { ExportEntryLine } from "../../export/types.js";
+import { parseMem0Jsonl } from "../../ingestion/importers/mem0.js";
 import { closeDb, getDb } from "../context.js";
 
 const SCHEMA_PATH = join(process.cwd(), "tests/fixtures/retrieval/export-v1.schema.json");
+
+const SUPPORTED_FORMATS = ["agent-memory-v1", "mem0-jsonl"] as const;
+type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
 
 function loadSchema(): object {
 	return JSON.parse(readFileSync(SCHEMA_PATH, "utf-8")) as object;
@@ -28,6 +33,48 @@ function parseOnConflict(raw: string | undefined): OnConflict {
 	throw new Error(`invalid --on-conflict: ${raw} (expected fail | update | skip)`);
 }
 
+function parseFormat(raw: string | undefined): ImportFormat {
+	const value = raw ?? "agent-memory-v1";
+	if ((SUPPORTED_FORMATS as readonly string[]).includes(value)) return value as ImportFormat;
+	throw new Error(`invalid --from: ${value} (expected ${SUPPORTED_FORMATS.join(" | ")})`);
+}
+
+function parseInitialTrust(raw: string | undefined): number | undefined {
+	if (raw === undefined) return undefined;
+	const n = Number.parseFloat(raw);
+	if (!Number.isFinite(n) || n < 0 || n > 1) {
+		throw new Error(`invalid --initial-trust: ${raw} (expected number in [0,1])`);
+	}
+	return n;
+}
+
+interface ImportOptions {
+	onConflict?: string;
+	from?: string;
+	initialTrust?: string;
+	repository?: string;
+	quarantine?: boolean;
+}
+
+function loadEntries(
+	file: string,
+	format: ImportFormat,
+	options: ImportOptions,
+): ExportEntryLine[] {
+	const content = readFileSync(file, "utf-8");
+	if (format === "mem0-jsonl") {
+		if (!options.repository) {
+			throw new Error("--repository is required when --from=mem0-jsonl");
+		}
+		return parseMem0Jsonl(content, {
+			repository: options.repository,
+			initialTrust: parseInitialTrust(options.initialTrust),
+			quarantine: options.quarantine === true,
+		});
+	}
+	return parseExportJsonl(content).entries;
+}
+
 export function register(program: Command): void {
 	program
 		.command("import <file>")
@@ -37,19 +84,27 @@ export function register(program: Command): void {
 			"What to do when an entry id already exists: fail | update | skip",
 			"fail",
 		)
-		.action(async (file: string, options: { onConflict?: string }) => {
+		.option("--from <format>", `Source format: ${SUPPORTED_FORMATS.join(" | ")}`, "agent-memory-v1")
+		.option("--repository <id>", "Target repository scope (required for non-native formats)")
+		.option(
+			"--initial-trust <score>",
+			"Initial trust score for non-native imports (0..1, default 0.5)",
+		)
+		.option("--quarantine", "Import non-native records as quarantine instead of validated")
+		.action(async (file: string, options: ImportOptions) => {
 			try {
 				const onConflict = parseOnConflict(options.onConflict);
-				const content = readFileSync(file, "utf-8");
-				const parsed = parseExportJsonl(content);
+				const format = parseFormat(options.from);
+				const entries = loadEntries(file, format, options);
 
-				// Ajv pass — validate every line envelope before any DB write.
-				// We check lines individually so a malformed entry line does
-				// not swallow the header error, and vice versa.
+				// Ajv pass — validate every entry envelope (mapper or native)
+				// against export-v1 before any DB write. Belt-and-braces:
+				// the mapper produces schema-shaped output by construction,
+				// but a refactor regression must surface here, not in SQL.
 				const ajv = new Ajv({ allErrors: true, strict: false });
 				addFormats(ajv);
 				const validate = ajv.compile(loadSchema());
-				for (const line of [parsed.header, ...parsed.entries]) {
+				for (const line of entries) {
 					if (!validate(line)) {
 						throw new Error(
 							`schema validation failed: ${JSON.stringify(validate.errors, null, 2)}`,
@@ -58,7 +113,7 @@ export function register(program: Command): void {
 				}
 
 				const sql = getDb();
-				const stats = await importEntries(sql, parsed.entries, onConflict);
+				const stats = await importEntries(sql, entries, onConflict);
 				process.stdout.write(`${JSON.stringify(stats)}\n`);
 				await closeDb();
 				process.exit(0);

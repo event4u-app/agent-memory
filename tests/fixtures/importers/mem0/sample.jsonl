@@ -1,0 +1,5 @@
+{"id":"a1111111-1111-1111-1111-111111111111","memory":"User prefers tabs over spaces in TypeScript files.","created_at":"2026-01-15T10:00:00.000Z","updated_at":"2026-01-15T10:00:00.000Z","categories":["preferences","style"],"metadata":{"language":"typescript"}}
+{"id":"a2222222-2222-2222-2222-222222222222","memory":"All API endpoints must validate input with Zod before reaching the service layer. Treat unvalidated input as poison.","created_at":"2026-02-03T12:30:00.000Z","categories":["coding_convention"],"user_id":"alice","agent_id":"backend-coder"}
+{"id":"a3333333-3333-3333-3333-333333333333","text":"Use ULID, not UUIDv4, for new public-facing IDs.","metadata":{"adr":"ADR-0042"}}
+{"id":"a4444444-4444-4444-4444-444444444444","content":"Never log raw request bodies — they may contain PII.","categories":["security"]}
+{"id":"a5555555-5555-5555-5555-555555555555","memory":"Migration to Postgres 16 is blocked on the pgvector 0.7 release.","created_at":"2026-03-10T09:15:00.000Z","metadata":{"jira":"INFRA-417","priority":"high"}}
