@@ -11,7 +11,156 @@ was bumped — the baseline package version on tag `1.0.0` is `0.1.0`. The
 
 ## [Unreleased]
 
-_No unreleased changes. Next entries land here on merge to `main`._
+Theme: **runtime reliability, visible trust layer, team adoption, ecosystem
+lock-in, and a hard secret boundary**. Driven by two roadmaps on branch
+`feat/improve-user-setup`, both archived on merge:
+
+- `agents/roadmaps/archive/runtime-trust.md` — phases A (Runtime
+  Excellence), B (Trust as a Feature), C (Team Adoption), D (Ecosystem
+  Lock-In).
+- `agents/roadmaps/archive/secret-safety.md` — phases I (policy &
+  ingress), II (entropy + allow-list), III (egress filters & legacy
+  scan), IV (audit + drift guards).
+
+### Added
+
+- `memory serve` exposes HTTP `/health` and `/ready` endpoints —
+  liveness + readiness probes for the Docker sidecar (A1 ·
+  runtime-trust).
+- `memory migrate up` / `memory migrate status` subcommands — explicit
+  control over migration execution, separate from `memory serve`'s
+  auto-run (A1).
+- `memory init` bootstrap command — generates `.agent-memory.yml` and
+  validates the local Postgres + pgvector setup in a single step (A1).
+- `memory doctor --fix` — auto-repairs missing `pgvector` extension
+  and runs pending migrations end-to-end (A1).
+- Prometheus metrics + SLO surface (`/metrics` on the supervisor port,
+  RED-style histograms for retrieve/propose/promote, error budgets
+  in `docs/observability.md`) (A2).
+- `memory mcp` HTTP/SSE transport with bearer-token auth — second
+  transport alongside stdio, single-tenant by design (A4). **BREAKING
+  CHANGE** at the transport layer: stdio behaviour unchanged; new
+  surface is opt-in via `--transport http`.
+- Audit-log schema + repository emitter — every trust-transition
+  records `before / after / reason` to `memory_events` (B4).
+- `memory explain <id>` — score breakdown (BM25, vector, RRF, recency,
+  trust) for any retrieval result (B1).
+- `memory history <id>` — forensic timeline of trust transitions for
+  a single entry (B2).
+- `memory review` — weekly maintenance digest with contradiction
+  detection (B3).
+- `.agent-memory.yml` project config + `memory policy check` — gate
+  CI on trust-floor and ingress policy violations (C1, C2).
+- PR-integration envelope + weekly-digest example workflow — surfaces
+  trust changes on every PR and posts a weekly summary to a chosen
+  channel (C3, C4).
+- `memory export` / `memory import` (JSONL with `export-v1.schema.json`
+  + Ajv validation) — full data-portability with redaction on export
+  and `verifyNoSecretLeak()` on both sides (D1).
+- Five integration snippets, each with an executable `smoke.sh` and
+  smoke-tested in CI (D2): `examples/integrations/claude-desktop`,
+  `cursor`, `github-actions`, `docker-sidecar-laravel`,
+  `docker-sidecar-django`.
+- `memory import --from mem0-jsonl` — golden-fixture-tested mapper
+  with provenance (`promotion_metadata.imported_from = "mem0"`,
+  `mem0_id`, `mem0_raw`); same Ajv + secret-leak pass as native
+  imports; default trust below retrieval threshold (D4).
+- `event4u-app/with-agent-memory` reference repository — minimal
+  Docker Compose + `smoke.sh` + weekly drift CI against
+  `ghcr.io/event4u-app/agent-memory:main` (D3, external repo).
+- `docs/deprecation-policy.md` operational playbook + drift-guard
+  `scripts/check-deprecation-changelog.ts` (D5).
+- Secret-safety primitives: `SecretViolation`, policy resolution, and
+  ingress enforcement at CLI, MCP, and service boundaries — every
+  ingress path now consults the same policy engine (secret-safety
+  Phase I).
+- Logger scrubs secrets from output, including deep-scrub for
+  structured fields (`feat(security): scrub secrets from logger
+  output`, plus deep-scrub fix; secret-safety I).
+- Embedding ingress gated by the secret boundary — no secret ever
+  reaches the embedding provider (secret-safety I).
+- Versioned secret-pattern catalog with generated table + CI
+  drift-guard (`scripts/generate-secret-patterns-doc.ts`) — the
+  catalog is the single source of truth, README is regenerated
+  (secret-safety II1).
+- Calibrated entropy threshold against a fixture corpus + drift-guard
+  on the calibration output — entropy floor is now reproducible, not
+  hand-tuned (secret-safety II2, II3).
+- High-entropy allow-list for benign shapes (UUIDs, hashes, base64
+  metadata) — reduces false positives without weakening the floor
+  (secret-safety II4).
+- Retrieval output filter (`III2`) — secrets never leave the API
+  surface, even if a legacy entry slipped past ingress.
+- DB legacy-secret scan (`III1`) — scheduled re-scan over the
+  existing entry corpus with quarantine on hit.
+- Provider-boundary drift guard (`III4`) and ingress-path inventory
+  drift guard (`IV4`) — fails CI if a new ingress path bypasses the
+  secret boundary or a new provider call lacks the boundary check.
+- `no-secret-in-output` contract matrix (`IV3`) — golden assertions
+  across every public response shape.
+- `memory doctor` secret-safety posture (`IV2`) — visible signal in
+  doctor output for missing or stale guards.
+- `memory_events` audit table for every secret reject/redact (`IV1`).
+- Database migration `005_repair_jsonb_strings` — idempotent repair
+  of double-encoded JSONB rows from earlier writes; safe to re-run.
+
+### Changed
+
+- CLI module layout: 928-line `src/cli/index.ts` monolith split into
+  per-command modules under `src/cli/commands/` (A3). **BREAKING
+  CHANGE** for downstream importers reaching into the CLI internals;
+  the public `bin` entrypoint and command surface are unchanged.
+- README quick-start now leads with the public reference repo
+  (`event4u-app/with-agent-memory`) — single forward-reference, in
+  the 60-second quick-start section.
+- Install guidance: `agent-memory` is documented as a **dev
+  dependency** by default; production sidecar setup remains via the
+  Docker image (out-of-band of `npm install`).
+- Documentation index: integrations status table (`docs/integrations/`)
+  is now the source of truth for snippet maturity, replacing
+  scattered hints in the README.
+
+### Fixed
+
+- JSONB columns (`scope`, `promotion_metadata` on memory entries and
+  events) are now bound via `sql.json(obj)` instead of
+  `${JSON.stringify(obj)}::jsonb` — `postgres.js` was double-encoding
+  the JSON when it saw the cast on a string. Migration 005 repairs
+  any rows written with the old code path. Regression coverage in
+  `tests/integration/jsonb-encoding.integration.test.ts` (gated on
+  `TEST_DATABASE_URL`).
+- `memory doctor` `EXPECTED_MIGRATIONS` resynced with migration 004
+  (B4 audit table) — drift between code and registered migrations no
+  longer surfaces as a doctor warning on a fresh install.
+- Secret-pattern description for `basic_auth_url` no longer breaks
+  YAML/Markdown rendering — URL shape escaped at generation time
+  (secret-safety II2 follow-up).
+- `memory_observe` MCP ingress is now reject-by-default for unknown
+  payload shapes — closes the gap in secret-safety II3.
+
+### Tooling / CI
+
+- `npm run check:portability` — guards the JSONL export schema and
+  the foreign-identifier policy.
+- `npm run check:deprecation-changelog` — guards deprecation entries
+  against the playbook (D5).
+- `npm run check:embedding-boundary` — drift-guard on the embedding
+  provider boundary; fails CI if a provider call lacks the secret
+  boundary check (secret-safety III4).
+- `npm run check:ingress-guards` — drift-guard on the ingress-path
+  inventory; fails CI on a new ingress path without secret-boundary
+  wiring (secret-safety IV4).
+- `scripts/generate-secret-patterns-doc.ts` — regenerates the
+  secret-pattern catalogue table from the source-of-truth registry;
+  the existing `check:neutral-docs` guard catches drift on the
+  generated artefacts (secret-safety II1).
+- `.github/workflows/integrations.yml` — runs each integration
+  snippet's `smoke.sh` against the published image on every push.
+
+### Tests
+
+- Test count: 267 → 821 unit (+ 3 integration gated on
+  `TEST_DATABASE_URL`).
 
 ## [1.1.0] — 2026-04-23
 
