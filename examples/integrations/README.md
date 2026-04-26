@@ -29,7 +29,7 @@ directory is real and its `smoke.sh` is wired into CI.
 | [`docker-sidecar-django/`](docker-sidecar-django/) | CLI exec via `docker compose` | ✅ Available |
 
 All five D2 integrations required by
-[`runtime-trust.md` § D2](../../agents/roadmaps/runtime-trust.md) are
+[`runtime-trust.md` § D2](../../agents/roadmaps/archive/runtime-trust.md) are
 live — the Laravel + Django pair proves stack-neutrality (PHP and
 Python host apps talking to the same sidecar with the same CLI).
 Further integrations like `vscode-continue`, `gitlab-ci`, or

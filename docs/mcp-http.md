@@ -105,7 +105,7 @@ A4 intentionally ships the minimum viable auth story. Out of scope:
 - **Per-user RBAC** — all authenticated callers see the same memory scope.
 - **Rate limiting** — put it at the proxy layer.
 
-See the **Non-Goals** section in `agents/roadmaps/runtime-trust.md` for the full list.
+See the **Non-Goals** section in `agents/roadmaps/archive/runtime-trust.md` for the full list.
 
 ## Operations
 

@@ -98,7 +98,7 @@ workflow.
 
 - **Alerting** — this is a digest, not a pager. For critical-path
   policy failures use `memory policy check` in a required PR check
-  (see [`C2` in the roadmap](../../agents/roadmaps/runtime-trust.md)).
+  (see [`C2` in the roadmap](../../agents/roadmaps/archive/runtime-trust.md)).
 - **Historical trends** — the digest is a snapshot. If you want a
   trend line, persist each run's JSON into your data warehouse and
   chart from there.

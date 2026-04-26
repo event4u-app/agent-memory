@@ -1,7 +1,7 @@
 # Deprecation policy
 
 > **Status:** Accepted · ships with the Phase D release wave.
-> **Roadmap:** [`agents/roadmaps/runtime-trust.md` · D5](../agents/roadmaps/runtime-trust.md).
+> **Roadmap:** [`agents/roadmaps/archive/runtime-trust.md` · D5](../agents/roadmaps/archive/runtime-trust.md).
 > **Parent:** [ADR-0003 · Contract version bumps](../agents/adrs/0003-contract-version-bumps.md).
 
 ADR-0003 defines *when* a schema change is additive vs. breaking. This
@@ -126,4 +126,4 @@ When a PR introduces a deprecation:
 
 - [ADR-0003 · Contract version bumps](../agents/adrs/0003-contract-version-bumps.md)
 - [Compatibility matrix](compatibility-matrix.md)
-- [Roadmap · runtime-trust · D5](../agents/roadmaps/runtime-trust.md)
+- [Roadmap · runtime-trust · D5](../agents/roadmaps/archive/runtime-trust.md)

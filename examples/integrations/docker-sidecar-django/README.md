@@ -9,7 +9,7 @@ dependency on `@event4u/agent-memory` — the sidecar owns the code, your
 app owns the `MemoryService` boundary class.
 
 This is the realization of one of the two **stack-neutrality** proofs
-required by [`runtime-trust.md` § D2](../../../agents/roadmaps/runtime-trust.md).
+required by [`runtime-trust.md` § D2](../../../agents/roadmaps/archive/runtime-trust.md).
 The Laravel variant is its twin: [`docker-sidecar-laravel/`](../docker-sidecar-laravel/).
 
 ## When to use

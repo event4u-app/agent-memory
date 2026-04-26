@@ -26,7 +26,7 @@ A change that breaks a copy-paste path turns CI red before it ships.
 | [docker-sidecar-laravel](../examples/integrations/docker-sidecar-laravel/) | CLI exec via `docker compose` | ✅ Available | compose template + `MemoryService.php` (Symfony\\Process) + static smoke (compose shape + CLI subcommand validation). Backed by [`examples/laravel-sidecar/`](../examples/laravel-sidecar/) for full boot. |
 | [docker-sidecar-django](../examples/integrations/docker-sidecar-django/) | CLI exec via `docker compose` | ✅ Available | compose template + `memory_service.py` (`subprocess.run`) + static smoke (compose shape + CLI subcommand validation) |
 
-Roadmap anchor: [`agents/roadmaps/runtime-trust.md`](../agents/roadmaps/runtime-trust.md)
+Roadmap anchor: [`agents/roadmaps/archive/runtime-trust.md`](../agents/roadmaps/archive/runtime-trust.md)
 § D2. Target: at least five integrations available, with
 Laravel/PHP **and** Django/Python both represented to prove stack
 neutrality. Two more slots (`vscode-continue`, `gitlab-ci`) are tracked

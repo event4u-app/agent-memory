@@ -309,6 +309,21 @@ memory explain <id> [options]
 |---|---|---|---|
 | `--json` | no | — | Emit explain-v1 JSON envelope instead of human output |
 
+### `export`
+
+Export memory entries + events + evidence as JSONL (D1 · runtime-trust)
+
+```bash
+memory export [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--since <iso>` | no | — | Only entries with updated_at >= ISO timestamp |
+| `--repository <id>` | no | — | Only entries scoped to this repository |
+
 ### `health`
 
 Probe backend health — returns contract v1 envelope as JSON
@@ -343,6 +358,30 @@ memory history <id> [options]
 |---|---|---|---|
 | `--json` | no | — | Emit history-v1 JSON envelope instead of human output |
 | `--since <ts>` | no | — | ISO-8601 timestamp — only events at or after this time |
+
+### `import`
+
+Import a JSONL export back into the store (D1 · runtime-trust)
+
+```bash
+memory import <file> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<file>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--on-conflict <mode>` | no | `fail` | What to do when an entry id already exists: fail | update | skip |
+| `--from <format>` | no | `agent-memory-v1` | Source format: agent-memory-v1 | mem0-jsonl |
+| `--repository <id>` | no | — | Target repository scope (required for non-native formats) |
+| `--initial-trust <score>` | no | — | Initial trust score for non-native imports (0..1, default 0.5) |
+| `--quarantine` | no | — | Import non-native records as quarantine instead of validated |
 
 ### `ingest`
 
