@@ -10,6 +10,7 @@
  * - This file is the canonical contract — drift = bug
  */
 
+import type { RetrievalWarning } from "../security/retrieval-redaction.js";
 import type { L1IndexEntry, L2TimelineEntry, L3FullEntry } from "./progressive-disclosure.js";
 
 export const CONTRACT_VERSION = 1 as const;
@@ -69,6 +70,11 @@ export interface RetrieveResponseV1 {
 	entries: ContractEntry[];
 	slices: Record<string, SliceSummary>;
 	errors: SliceError[];
+	/**
+	 * Retrieval-time warnings, e.g. secrets redacted at the output boundary
+	 * (code `RETRIEVE_POST_REDACT`). Minor-additive; omitted when empty.
+	 */
+	warnings?: RetrievalWarning[];
 }
 
 /** Response: health() */

@@ -1,0 +1,104 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/schema/agent-memory-config-v1.schema.json",
+	"title": "Agent-Memory Project Config v1",
+	"description": "Shape-only contract for `.agent-memory.yml` (C1 · runtime-trust). Config-Chain precedence (highest first): CLI flag > ENV > YAML > built-in default. Env-var names stay unchanged — this file is an additional, committable layer, never a replacement for ENV.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version"],
+	"properties": {
+		"version": {
+			"type": "integer",
+			"const": 1,
+			"description": "Schema version. Bumped only on breaking changes."
+		},
+		"repository": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Stable repository identifier used by retrieval filters and PR-integration. Overrides REPO_ROOT-derived defaults."
+		},
+		"trust": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"threshold": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 1,
+					"description": "Minimum trust score for retrieval. Maps to MEMORY_TRUST_THRESHOLD_DEFAULT."
+				},
+				"threshold_low": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 1,
+					"description": "Lower threshold for low-trust mode. Maps to MEMORY_TRUST_THRESHOLD_LOW."
+				}
+			}
+		},
+		"retrieval": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"token_budget": {
+					"type": "integer",
+					"minimum": 100,
+					"maximum": 50000,
+					"description": "Progressive-disclosure token budget. Maps to MEMORY_TOKEN_BUDGET."
+				}
+			}
+		},
+		"embedding": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"provider": {
+					"type": "string",
+					"enum": ["local", "gemini", "openai", "voyage", "bm25-only"],
+					"description": "Embedding provider. Maps to EMBEDDING_PROVIDER."
+				}
+			}
+		},
+		"decay": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"profile": {
+					"type": "string",
+					"enum": ["default", "conservative", "aggressive"],
+					"description": "Named decay preset. Maps to a subset of MEMORY_DECAY_OVERRIDES."
+				}
+			}
+		},
+		"policies": {
+			"type": "object",
+			"additionalProperties": false,
+			"description": "C2 policy-engine knobs. Every field is optional; absence means the policy is disabled.",
+			"properties": {
+				"fail_on_contradicted_critical": {
+					"type": "boolean",
+					"description": "Fail `memory policy check` if any critical-impact entry has unresolved contradictions."
+				},
+				"fail_on_invalidated_adr": {
+					"type": "boolean",
+					"description": "Fail if any architecture_decision entry is invalidated by the diff."
+				},
+				"min_trust_for_type": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"architecture_decision": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 1,
+							"description": "Required trust score for architecture_decision entries."
+						}
+					}
+				},
+				"block_on_poisoned_referenced": {
+					"type": "boolean",
+					"description": "Fail if the diff references any poisoned entry."
+				}
+			}
+		}
+	}
+}

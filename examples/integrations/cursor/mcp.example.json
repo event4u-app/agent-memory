@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "agent-memory": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/docker-compose.yml",
+        "exec",
+        "-i",
+        "agent-memory",
+        "memory",
+        "mcp"
+      ]
+    }
+  }
+}

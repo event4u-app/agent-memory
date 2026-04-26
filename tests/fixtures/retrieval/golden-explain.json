@@ -1,0 +1,66 @@
+{
+	"contract_version": "explain-v1",
+	"entry": {
+		"id": "mem_explain_golden",
+		"title": "Use event sourcing for orders",
+		"type": "architecture_decision",
+		"status": "validated",
+		"impact_level": "high",
+		"knowledge_class": "semi_stable",
+		"stored_score": 0.73,
+		"access_count": 8,
+		"expires_at": "2026-06-01T00:00:00.000Z"
+	},
+	"score": {
+		"computed": 0.716,
+		"components": {
+			"evidence": {
+				"count": 2,
+				"min_required": 2,
+				"contribution": 0.7,
+				"note": "floor cleared: base 0.7 +0.1 per surplus evidence (cap +0.3)"
+			},
+			"access_boost": {
+				"access_count": 8,
+				"contribution": 0.016,
+				"max": 0.1,
+				"note": "+0.02 from 8 access(es)"
+			},
+			"decay": {
+				"days_since_validation": 10,
+				"ttl_days": 30,
+				"penalty": 0,
+				"note": "no decay — within first half of TTL"
+			},
+			"single_evidence_cap": { "applied": false, "cap": null }
+		},
+		"why_not_max": [
+			"evidence base 0.70 < 0.9 — floor cleared: base 0.7 +0.1 per surplus evidence (cap +0.3)",
+			"access_boost +0.02 (max +0.10) — needs 50 accesses, have 8"
+		]
+	},
+	"promotion_history": [
+		{
+			"event_type": "entry_proposed",
+			"occurred_at": "2026-01-10T09:00:00.000Z",
+			"actor": "agent:pr-bot",
+			"reason": "initial proposal from PR#42",
+			"before": null,
+			"after": { "status": "quarantine", "score": 0.5 }
+		},
+		{
+			"event_type": "entry_promoted",
+			"occurred_at": "2026-01-12T10:30:00.000Z",
+			"actor": "system:promote",
+			"reason": "all gates passed",
+			"before": { "status": "quarantine", "score": 0.5 },
+			"after": { "status": "validated", "score": 0.73 }
+		}
+	],
+	"contradictions": [],
+	"decay": {
+		"expires_at": "2026-06-01T00:00:00.000Z",
+		"days_until_expiry": 39,
+		"stale_at_current_rate": false
+	}
+}

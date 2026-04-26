@@ -1,0 +1,1 @@
+../../../node_modules/@event4u/agent-config/.agent-src/skills/description-assist/SKILL.md

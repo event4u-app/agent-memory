@@ -4,6 +4,7 @@ import { closeDb, getDb } from "../db/connection.js";
 import { ContradictionRepository } from "../db/repositories/contradiction.repository.js";
 import { EvidenceRepository } from "../db/repositories/evidence.repository.js";
 import { MemoryEntryRepository } from "../db/repositories/memory-entry.repository.js";
+import { MemoryEventRepository } from "../db/repositories/memory-event.repository.js";
 import { ObservationRepository } from "../db/repositories/observation.repository.js";
 import { buildEmbeddingChain } from "../embedding/index.js";
 import { InvalidationOrchestrator } from "../invalidation/orchestrator.js";
@@ -22,12 +23,23 @@ import { isMainModule } from "../utils/is-main-module.js";
 import { registerLifecycleHandlers } from "./lifecycle.js";
 import { registerToolHandlers } from "./tools.js";
 
-const BACKEND_VERSION = "0.1.0";
+export const BACKEND_VERSION = "0.1.0";
 
-export async function startMcpServer(): Promise<void> {
+/**
+ * Build a fully-wired MCP `Server` plus the ctx object used by the
+ * lifecycle + tool handlers. Extracted from `startMcpServer` so the
+ * SSE transport (A4 · runtime-trust) can reuse the exact same wiring
+ * — one Server instance per connection, zero drift between transports.
+ */
+export function buildMcpServer(): {
+	server: Server;
+	close: () => Promise<void>;
+} {
 	const sql = getDb();
 
-	const entryRepo = new MemoryEntryRepository(sql);
+	// eventRepo first — entryRepo binds it for B4 trust-audit emissions.
+	const eventRepo = new MemoryEventRepository(sql);
+	const entryRepo = new MemoryEntryRepository(sql, eventRepo);
 	const evidenceRepo = new EvidenceRepository(sql);
 	const contradictionRepo = new ContradictionRepository(sql);
 	const observationRepo = new ObservationRepository(sql);
@@ -48,7 +60,7 @@ export async function startMcpServer(): Promise<void> {
 		contradictionRepo,
 		validators,
 	);
-	const promotionService = new PromotionService(sql, entryRepo, quarantineService);
+	const promotionService = new PromotionService(sql, entryRepo, quarantineService, eventRepo);
 	const contradictionService = new ContradictionService(sql, contradictionRepo);
 	const poisonService = new PoisonService(sql, entryRepo);
 	const ttlExpiryJob = new TtlExpiryJob(sql, entryRepo);
@@ -68,6 +80,7 @@ export async function startMcpServer(): Promise<void> {
 		evidenceRepo,
 		contradictionRepo,
 		observationRepo,
+		eventRepo,
 		retrievalEngine,
 		quarantineService,
 		promotionService,
@@ -83,6 +96,16 @@ export async function startMcpServer(): Promise<void> {
 	registerToolHandlers(server, ctx);
 	registerLifecycleHandlers(server, ctx);
 
+	return {
+		server,
+		close: async () => {
+			await server.close();
+		},
+	};
+}
+
+export async function startMcpServer(): Promise<void> {
+	const { server } = buildMcpServer();
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
 	console.error("agent-memory MCP server running on stdio");

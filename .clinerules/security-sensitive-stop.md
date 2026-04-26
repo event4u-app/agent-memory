@@ -1,0 +1,1 @@
+../.augment/rules/security-sensitive-stop.md

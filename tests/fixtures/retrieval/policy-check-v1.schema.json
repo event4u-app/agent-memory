@@ -1,0 +1,81 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/schema/policy-check-v1.schema.json",
+	"title": "memory policy check — report envelope v1",
+	"description": "Shape contract for `memory policy check` JSON output (C2 · runtime-trust).",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"contract_version",
+		"status",
+		"repository",
+		"policies_evaluated",
+		"summary",
+		"violations"
+	],
+	"properties": {
+		"contract_version": { "type": "string", "const": "policy-check-v1" },
+		"status": { "type": "string", "enum": ["pass", "fail"] },
+		"repository": { "type": ["string", "null"], "minLength": 1 },
+		"policies_evaluated": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"fail_on_contradicted_critical",
+					"fail_on_invalidated_adr",
+					"min_trust_for_type.architecture_decision",
+					"block_on_poisoned_referenced"
+				]
+			},
+			"uniqueItems": true
+		},
+		"summary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["violations", "policies_failed"],
+			"properties": {
+				"violations": { "type": "integer", "minimum": 0 },
+				"policies_failed": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"violations": {
+			"type": "array",
+			"items": { "$ref": "#/definitions/violation" }
+		}
+	},
+	"definitions": {
+		"violation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"policy",
+				"severity",
+				"entry_id",
+				"entry_type",
+				"entry_title",
+				"trust_status",
+				"trust_score",
+				"message"
+			],
+			"properties": {
+				"policy": {
+					"type": "string",
+					"enum": [
+						"fail_on_contradicted_critical",
+						"fail_on_invalidated_adr",
+						"min_trust_for_type.architecture_decision",
+						"block_on_poisoned_referenced"
+					]
+				},
+				"severity": { "type": "string", "const": "error" },
+				"entry_id": { "type": "string", "minLength": 1 },
+				"entry_type": { "type": "string", "minLength": 1 },
+				"entry_title": { "type": "string" },
+				"trust_status": { "type": "string", "minLength": 1 },
+				"trust_score": { "type": "number", "minimum": 0, "maximum": 1 },
+				"message": { "type": "string", "minLength": 1 }
+			}
+		}
+	}
+}

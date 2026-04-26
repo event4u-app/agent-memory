@@ -1,0 +1,158 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/schema/export-v1.schema.json",
+	"title": "memory export — JSONL line envelope v1",
+	"description": "Shape contract for `memory export` / `memory import` (D1 · runtime-trust, III3 · secret-safety). Each line of the emitted JSONL conforms to one of the two variants in `definitions` — a single header line first, followed by one entry line per memory entry. Contract is additive: keys may be added in v2 with a new `contract_version` constant; removal requires a deprecation cycle per `docs/deprecation-policy.md`.",
+	"oneOf": [
+		{ "$ref": "#/definitions/header" },
+		{ "$ref": "#/definitions/entry_line" }
+	],
+	"definitions": {
+		"header": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"kind",
+				"contract_version",
+				"exported_at",
+				"entry_count",
+				"filters",
+				"redaction_version"
+			],
+			"properties": {
+				"kind": { "type": "string", "const": "header" },
+				"contract_version": { "type": "string", "const": "export-v1" },
+				"exported_at": { "type": "string", "format": "date-time" },
+				"entry_count": { "type": "integer", "minimum": 0 },
+				"filters": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["since", "repository"],
+					"properties": {
+						"since": { "type": ["string", "null"], "format": "date-time" },
+						"repository": { "type": ["string", "null"], "minLength": 1 }
+					}
+				},
+				"redaction_version": { "type": "string", "const": "1" }
+			}
+		},
+		"entry_line": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["kind", "entry", "evidence", "events", "redaction"],
+			"properties": {
+				"kind": { "type": "string", "const": "entry" },
+				"entry": { "$ref": "#/definitions/entry" },
+				"evidence": { "type": "array", "items": { "$ref": "#/definitions/evidence" } },
+				"events": { "type": "array", "items": { "$ref": "#/definitions/event" } },
+				"redaction": { "$ref": "#/definitions/redaction" }
+			}
+		},
+		"redaction": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["applied", "patterns", "version"],
+			"properties": {
+				"applied": { "type": "boolean" },
+				"patterns": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+				"version": { "type": "string", "const": "1" }
+			}
+		},
+		"entry": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"type",
+				"title",
+				"summary",
+				"details",
+				"scope",
+				"impact_level",
+				"knowledge_class",
+				"consolidation_tier",
+				"trust",
+				"embedding_text",
+				"access_count",
+				"last_accessed_at",
+				"created_by",
+				"created_in_task",
+				"created_at",
+				"updated_at",
+				"promotion_metadata"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"type": { "type": "string", "minLength": 1 },
+				"title": { "type": "string" },
+				"summary": { "type": "string" },
+				"details": { "type": ["string", "null"] },
+				"scope": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["repository", "files", "symbols", "modules"],
+					"properties": {
+						"repository": { "type": "string" },
+						"bounded_context": { "type": ["string", "null"] },
+						"files": { "type": "array", "items": { "type": "string" } },
+						"symbols": { "type": "array", "items": { "type": "string" } },
+						"modules": { "type": "array", "items": { "type": "string" } }
+					}
+				},
+				"impact_level": { "type": "string", "enum": ["critical", "high", "normal", "low"] },
+				"knowledge_class": { "type": "string", "enum": ["evergreen", "semi_stable", "volatile"] },
+				"consolidation_tier": {
+					"type": "string",
+					"enum": ["working", "episodic", "semantic", "procedural"]
+				},
+				"trust": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["status", "score", "validated_at", "expires_at"],
+					"properties": {
+						"status": { "type": "string" },
+						"score": { "type": "number", "minimum": 0, "maximum": 1 },
+						"validated_at": { "type": ["string", "null"], "format": "date-time" },
+						"expires_at": { "type": "string", "format": "date-time" }
+					}
+				},
+				"embedding_text": { "type": "string" },
+				"access_count": { "type": "integer", "minimum": 0 },
+				"last_accessed_at": { "type": ["string", "null"], "format": "date-time" },
+				"created_by": { "type": "string" },
+				"created_in_task": { "type": ["string", "null"] },
+				"created_at": { "type": "string", "format": "date-time" },
+				"updated_at": { "type": "string", "format": "date-time" },
+				"promotion_metadata": { "type": "object" }
+			}
+		},
+		"evidence": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "kind", "ref", "details", "verified_at", "created_at"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"kind": { "type": "string", "enum": ["file", "commit", "test", "adr", "documentation", "symbol"] },
+				"ref": { "type": "string" },
+				"details": { "type": ["string", "null"] },
+				"verified_at": { "type": ["string", "null"], "format": "date-time" },
+				"created_at": { "type": "string", "format": "date-time" }
+			}
+		},
+		"event": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "occurred_at", "actor", "event_type", "metadata", "before", "after", "reason"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"occurred_at": { "type": "string", "format": "date-time" },
+				"actor": { "type": "string" },
+				"event_type": { "type": "string" },
+				"metadata": { "type": "object" },
+				"before": { "type": ["object", "null"] },
+				"after": { "type": ["object", "null"] },
+				"reason": { "type": ["string", "null"] }
+			}
+		}
+	}
+}

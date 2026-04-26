@@ -234,6 +234,31 @@ It lists every command, argument, flag, default, and required-ness
 the real CLI accepts. If this section and the code disagree, the code
 wins — the CI drift guard will fail the build.
 
+### `audit`
+
+Run audits across memory stores (subcommands)
+
+```bash
+memory audit
+```
+
+### `contradictions`
+
+List unresolved memory contradictions (B3 · runtime-trust)
+
+```bash
+memory contradictions [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--repository <repo>` | no | — | Filter to entries whose scope.repository matches |
+| `--since <ts>` | no | — | ISO-8601 timestamp — only contradictions created at or after |
+| `--limit <n>` | no | `50` | Max rows to return |
+| `--json` | no | — | Emit JSON list instead of human output |
+
 ### `diagnose`
 
 Identify issues: stale entries, low-trust entries
@@ -247,6 +272,7 @@ memory diagnose [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--max-results <n>` | no | `10` | Max entries per category |
+| `--entry <id>` | no | — | Show trust-audit event-count breakdown for a single entry (B4) |
 
 ### `doctor`
 
@@ -261,6 +287,42 @@ memory doctor [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--json` | no | off | Emit JSON only (no human summary on stderr) |
+| `--fix` | no | off | Auto-repair pgvector + pending migrations, then re-diagnose |
+
+### `explain`
+
+Explain how a memory entry's trust_score was calculated (B1 · runtime-trust)
+
+```bash
+memory explain <id> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<id>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--json` | no | — | Emit explain-v1 JSON envelope instead of human output |
+
+### `export`
+
+Export memory entries + events + evidence as JSONL (D1 · runtime-trust)
+
+```bash
+memory export [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--since <iso>` | no | — | Only entries with updated_at >= ISO timestamp |
+| `--repository <id>` | no | — | Only entries scoped to this repository |
 
 ### `health`
 
@@ -275,6 +337,51 @@ memory health [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--timeout <ms>` | no | `2000` | Timeout in ms |
+
+### `history`
+
+Print the trust-transition timeline for a memory entry (B2 · runtime-trust)
+
+```bash
+memory history <id> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<id>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--json` | no | — | Emit history-v1 JSON envelope instead of human output |
+| `--since <ts>` | no | — | ISO-8601 timestamp — only events at or after this time |
+
+### `import`
+
+Import a JSONL export back into the store (D1 · runtime-trust)
+
+```bash
+memory import <file> [options]
+```
+
+**Arguments**
+
+| Name | Required | Description |
+|---|---|---|
+| `<file>` | yes | — |
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--on-conflict <mode>` | no | `fail` | What to do when an entry id already exists: fail | update | skip |
+| `--from <format>` | no | `agent-memory-v1` | Source format: agent-memory-v1 | mem0-jsonl |
+| `--repository <id>` | no | — | Target repository scope (required for non-native formats) |
+| `--initial-trust <score>` | no | — | Initial trust score for non-native imports (0..1, default 0.5) |
+| `--quarantine` | no | — | Import non-native records as quarantine instead of validated |
 
 ### `ingest`
 
@@ -300,6 +407,21 @@ memory ingest [options]
 | `--knowledge-class <class>` | no | `semi_stable` | Knowledge class (evergreen|semi_stable|volatile) |
 | `--created-by <actor>` | no | `cli:ingest` | Caller identifier |
 
+### `init`
+
+Bootstrap a consumer project: docker-compose.agent-memory.yml, .env.agent-memory, .gitignore marker
+
+```bash
+memory init [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--yes` | no | off | Non-interactive mode (assume yes to prompts) |
+| `--force` | no | off | Overwrite existing files instead of skipping |
+
 ### `invalidate`
 
 Mark entries as stale or rejected (soft/hard or git-diff sweep)
@@ -322,15 +444,23 @@ memory invalidate [options]
 
 ### `mcp`
 
-Start the MCP stdio server (for agent clients)
+Start the MCP server (stdio by default; --transport sse exposes HTTP/SSE)
 
 ```bash
-memory mcp
+memory mcp [options]
 ```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--transport <kind>` | no | `stdio` | Transport: stdio (default) | sse (HTTP listener with bearer auth) |
+| `--port <n>` | no | — | SSE port (only when --transport=sse; default 7078) |
+| `--host <host>` | no | `0.0.0.0` | SSE bind host (only when --transport=sse; default 0.0.0.0) |
 
 ### `migrate`
 
-Apply pending database migrations (safe to run repeatedly; idempotent)
+Database migrations — `up` (default) applies pending, `status` prints applied/pending as JSON
 
 ```bash
 memory migrate
@@ -356,6 +486,14 @@ memory poison <id> <reason> [options]
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--triggered-by <actor>` | no | `cli:poison` | Caller identifier |
+
+### `policy`
+
+Project policy engine (C2) — gate PRs on memory-state violations.
+
+```bash
+memory policy
+```
 
 ### `promote`
 
@@ -432,6 +570,22 @@ memory retrieve <query> [options]
 | `--low-trust` | no | — | Include low-trust entries (lower threshold, marked) |
 | `--type <type>` | no | — | Filter by memory type (repeatable) |
 | `--repository <id>` | no | — | Filter by repository |
+
+### `review`
+
+Triage open memory cases: accept/defer/skip (B3 · runtime-trust)
+
+```bash
+memory review [options]
+```
+
+**Options**
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--weekly` | no | — | Non-interactive digest of open cases |
+| `--format <fmt>` | no | `json` | Output format for --weekly: json | slack-block-kit |
+| `--actor <actor>` | no | `human:review-cli` | Audit actor for accept/defer/skip writes |
 
 ### `rollback`
 

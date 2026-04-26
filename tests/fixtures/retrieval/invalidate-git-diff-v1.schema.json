@@ -1,0 +1,76 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/schema/invalidate-git-diff-v1.schema.json",
+	"title": "memory invalidate --from-git-diff — envelope v1",
+	"description": "Shape contract for `memory invalidate --from-git-diff` JSON output (C3 · runtime-trust). Consumed by the external GitHub Action event4u-app/agent-memory-action to render PR comments.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"contract_version",
+		"repository",
+		"diff",
+		"summary",
+		"entries"
+	],
+	"properties": {
+		"contract_version": { "type": "string", "const": "invalidate-git-diff-v1" },
+		"repository": { "type": ["string", "null"], "minLength": 1 },
+		"diff": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["files_changed", "from_ref", "to_ref"],
+			"properties": {
+				"files_changed": { "type": "integer", "minimum": 0 },
+				"from_ref": { "type": "string", "minLength": 1 },
+				"to_ref": { "type": "string", "minLength": 1 }
+			}
+		},
+		"summary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"watch_matches",
+				"soft_invalidated",
+				"hard_invalidated",
+				"drift_detected",
+				"skipped"
+			],
+			"properties": {
+				"watch_matches": { "type": "integer", "minimum": 0 },
+				"soft_invalidated": { "type": "integer", "minimum": 0 },
+				"hard_invalidated": { "type": "integer", "minimum": 0 },
+				"drift_detected": { "type": "integer", "minimum": 0 },
+				"skipped": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"entries": {
+			"type": "array",
+			"items": { "$ref": "#/definitions/entry" }
+		}
+	},
+	"definitions": {
+		"entry": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "title", "action", "reason", "trigger"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"title": { "type": "string" },
+				"action": {
+					"type": "string",
+					"enum": [
+						"soft_invalidate",
+						"hard_invalidate",
+						"drift_invalidate",
+						"skipped"
+					]
+				},
+				"reason": { "type": "string", "minLength": 1 },
+				"trigger": {
+					"type": "string",
+					"enum": ["file", "symbol", "drift", "file_deleted"]
+				}
+			}
+		}
+	}
+}

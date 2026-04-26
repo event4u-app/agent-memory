@@ -910,10 +910,12 @@ larger than a typical patch-release roadmap.
       now covers the same surface; re-running cold start adds no
       new signal until an outside contributor tries it.
 - [x] `package.json` version bumped to `1.1.0` (commit `4d42c37`).
-- [ ] Tag `1.1.0` pushed; release notes published — **reserved for
-      the user** (per explicit instruction). Paste-ready text at
-      `agents/drafts/release-notes-1.1.0.md`.
-- [ ] This file archived to `agents/roadmaps/archive/improve-system.md`
-      after the tag push — archival is the final step that marks the
-      cycle closed.
+- [-] Tag `1.1.0` pushed; release notes published — **out of roadmap
+      scope.** Roadmaps do not define tags or releases; the user owns
+      tag-management. Paste-ready text remains at
+      `agents/drafts/release-notes-1.1.0.md` for when the user decides
+      to tag.
+- [x] This file archived to `agents/roadmaps/archive/improve-system.md`
+      — archival marks the implementation cycle closed; tagging is a
+      separate, user-owned step.
 

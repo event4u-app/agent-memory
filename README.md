@@ -24,6 +24,8 @@ curl -o docker-compose.yml \
 docker compose up -d agent-memory
 ```
 
+**Prefer a ready-made reference stack?** Clone [`event4u-app/with-agent-memory`](https://github.com/event4u-app/with-agent-memory) — minimal Docker Compose + smoke test, zero editing required.
+
 **Check it.** One command verifies the DB, pgvector, and migrations:
 
 ```bash
@@ -59,8 +61,8 @@ promotion, and invalidation when code changes.
 
 ## What you get
 
-- **23 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
-- **16 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **26 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
+- **25 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
@@ -93,6 +95,7 @@ tools, then follow the matching guide.
 | **Docker sidecar + CLI** | [`docs/consumer-setup-docker-sidecar.md`](docs/consumer-setup-docker-sidecar.md) | any language that can shell out | [`examples/laravel-sidecar/`](examples/laravel-sidecar/) |
 | **Node programmatic API** | [`docs/consumer-setup-node.md`](docs/consumer-setup-node.md) | Node / TypeScript apps | [`examples/node-programmatic/`](examples/node-programmatic/) |
 | **MCP stdio** | [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md) | any MCP-aware agent client | — |
+| **MCP over HTTP/SSE** | [`docs/mcp-http.md`](docs/mcp-http.md) | remote agents (GitHub Actions, Slack webhooks, browser playgrounds) | — |
 
 > Need a quick language-neutral overview first? Start at
 > [`docs/consumer-setup-generic.md`](docs/consumer-setup-generic.md).
@@ -102,10 +105,15 @@ tools, then follow the matching guide.
 
 ## Installation
 
-### As a dependency
+### As a dev dependency (recommended)
+
+`agent-memory` is primarily a **development-time** tool — it stores what an
+AI coding agent learns about *your* repository, and its surface area (CLI,
+MCP server, Postgres sidecar) is scoped to engineers and their agents.
+Install it as a dev dependency so it stays out of production bundles:
 
 ```bash
-npm install @event4u/agent-memory
+npm install --save-dev @event4u/agent-memory
 ```
 
 You must also provide Postgres with pgvector. Easiest path — copy the bundled
@@ -119,6 +127,19 @@ docker compose up -d postgres
 
 See [`examples/`](examples/) for ready-to-copy `docker-compose.yml` and
 GitHub Actions snippets.
+
+### Using it in production
+
+Production use is supported but not the default target. If you ship
+agent-memory as part of a running service (e.g. a backend that queries its
+own memory at runtime), install it as a regular dependency instead:
+
+```bash
+npm install @event4u/agent-memory
+```
+
+Everything documented in this README applies the same way — only the
+dependency scope changes.
 
 ### From source (development)
 
@@ -169,6 +190,8 @@ the full matrix.
 | `EMBEDDING_PROVIDER` | `bm25-only` | `openai`, `gemini`, `voyage`, `local`, or `bm25-only` — see [Embeddings](#embeddings) below. |
 | `MEMORY_TRUST_THRESHOLD_DEFAULT` | `0.6` | Minimum `trust_score` surfaced by retrieval. Lower to see low-trust entries during debugging. |
 | `MEMORY_TOKEN_BUDGET` | `2000` | Default progressive-disclosure budget per retrieval call. |
+| `MEMORY_ENTROPY_THRESHOLD` | `4.5` | Shannon-entropy cutoff (bits/char) for the residual `HIGH_ENTROPY_DETECTED` heuristic. Calibrated against the corpus in `tests/fixtures/entropy-corpus/` — see [`docs/security/entropy-calibration.md`](docs/security/entropy-calibration.md). |
+| `MEMORY_ENTROPY_MIN_LENGTH` | `20` | Minimum quoted-string length (chars) before the entropy heuristic fires. |
 | `MEMORY_AUTO_MIGRATE` | `true` (Docker image) | Container entrypoint runs `memory migrate` on startup. Set to `false` for ephemeral CLI containers or externally managed schemas. Host installs run `memory migrate` manually. |
 
 A ready-to-copy template lives in [`.env.example`](.env.example).
@@ -227,8 +250,8 @@ Works for any project regardless of language. Assumes you ran
 
 ### Option B — Installed npm binary
 
-After `npm install -g @event4u/agent-memory` (or `npm install` in a
-Node-based project), run the MCP server directly:
+After `npm install -g @event4u/agent-memory` (or `npm install --save-dev`
+in a Node-based project), run the MCP server directly:
 
 ```json
 {
@@ -334,21 +357,22 @@ Nine canonical types cover most project knowledge:
 
 ## Tools & commands
 
-### MCP tools (23)
+### MCP tools (26)
 
 | Category | Tools |
 |---|---|
 | **Retrieval** | `memory_retrieve`, `memory_retrieve_details` |
 | **Ingestion** | `memory_ingest`, `memory_propose`, `memory_promote` |
-| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate` |
+| **Trust** | `memory_validate`, `memory_verify`, `memory_invalidate`, `memory_poison`, `memory_deprecate`, `memory_explain`, `memory_history` |
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
-| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
+| **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_contradictions`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (16)
+### CLI commands (25)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
-`migrate` · `doctor` · `serve` · `mcp`
+`audit` · `explain` · `history` · `review` · `contradictions` · `policy` ·
+`export` · `import` · `migrate` · `init` · `doctor` · `serve` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 
@@ -403,7 +427,7 @@ src/
 ├── quality/             # metrics, dedup, contradictions, archival
 ├── embedding/           # provider abstraction + fallback chain
 ├── infra/               # circuit breaker, retry
-├── mcp/                 # MCP server (stdio), 23 tools
+├── mcp/                 # MCP server (stdio), 24 tools
 └── cli/                 # commander-based CLI
 
 docs/
