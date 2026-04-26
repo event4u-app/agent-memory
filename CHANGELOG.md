@@ -54,9 +54,9 @@ lock-in, and a hard secret boundary**. Driven by two roadmaps on branch
 - PR-integration envelope + weekly-digest example workflow — surfaces
   trust changes on every PR and posts a weekly summary to a chosen
   channel (C3, C4).
-- `memory export` / `memory import` (JSONL with `export-v1.schema.json`
-  + Ajv validation) — full data-portability with redaction on export
-  and `verifyNoSecretLeak()` on both sides (D1).
+- `memory export` / `memory import` — JSONL format validated by Ajv
+  against the v1 export schema. Full data-portability with redaction
+  on export and `verifyNoSecretLeak()` on both sides (D1).
 - Five integration snippets, each with an executable `smoke.sh` and
   smoke-tested in CI (D2): `examples/integrations/claude-desktop`,
   `cursor`, `github-actions`, `docker-sidecar-laravel`,

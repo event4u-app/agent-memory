@@ -62,7 +62,7 @@ promotion, and invalidation when code changes.
 ## What you get
 
 - **26 MCP tools** — any agent that speaks MCP (Claude Desktop, Cursor, Cline, Augment…) can retrieve, ingest, invalidate, and promote memory.
-- **22 CLI commands** — pure JSON on stdout, safe for scripts and CI.
+- **25 CLI commands** — pure JSON on stdout, safe for scripts and CI.
 - **4-tier memory** — Working → Episodic → Semantic → Procedural, auto-consolidated at session end.
 - **Evidence-gated promotion** — nothing enters `validated` without passing gate criteria (file/symbol exists, diff impact, tests linked).
 - **Ebbinghaus decay** — memories fade unless used; ADRs never decay.
@@ -367,12 +367,12 @@ Nine canonical types cover most project knowledge:
 | **Session lifecycle** | `memory_session_start`, `memory_observe`, `memory_observe_failure`, `memory_session_end`, `memory_stop`, `memory_run_invalidation` |
 | **Quality** | `memory_health`, `memory_diagnose`, `memory_audit`, `memory_review`, `memory_contradictions`, `memory_resolve_contradiction`, `memory_merge_duplicates`, `memory_prune` |
 
-### CLI commands (23)
+### CLI commands (25)
 
 `retrieve` · `ingest` · `propose` · `promote` · `validate` · `invalidate` ·
 `poison` · `rollback` · `verify` · `health` · `status` · `diagnose` ·
 `audit` · `explain` · `history` · `review` · `contradictions` · `policy` ·
-`migrate` · `init` · `doctor` · `serve` · `mcp`
+`export` · `import` · `migrate` · `init` · `doctor` · `serve` · `mcp`
 
 Full reference: [`docs/cli-reference.md`](docs/cli-reference.md).
 
