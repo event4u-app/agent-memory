@@ -26,6 +26,12 @@ function mockSql(handlers: Record<string, Handler>): postgres.Sql {
 		}
 		return Promise.resolve([]);
 	};
+	// sql.json / sql.array are identity stubs — assertions inspect the value
+	// the repository passes in, not the server-side wire format. sql.unsafe
+	// is a no-op for migration 005 (identifier-name interpolation only).
+	(fn as unknown as { json: (v: unknown) => unknown }).json = (v) => v;
+	(fn as unknown as { array: (v: unknown) => unknown }).array = (v) => v;
+	(fn as unknown as { unsafe: (text: string) => Promise<unknown> }).unsafe = async () => [];
 	return fn as unknown as postgres.Sql;
 }
 
@@ -90,9 +96,11 @@ describe("MemoryEventRepository.record", () => {
 			actor: "system:legacy_scan",
 			eventType: "secret_detected_on_legacy_scan",
 		});
-		// Metadata is serialized to a JSON string at the bind site (matches
-		// the project convention of `JSON.stringify(x)::jsonb`).
-		expect(calls[0]?.[3]).toBe("{}");
+		// Metadata is bound via `sql.json(...)` so postgres.js sends it as a
+		// real JSONB object. The mock's identity stub for `sql.json` returns
+		// the value untouched, so the captured bind is the original `{}`
+		// object, not a JSON string.
+		expect(calls[0]?.[3]).toEqual({});
 	});
 });
 
@@ -214,9 +222,11 @@ describe("MemoryEventRepository — B4 trust audit", () => {
 			reason: "Gate passed",
 		});
 		// INSERT positional args: entryId, actor, eventType, metadata,
-		// before, after, reason (mirrors repository source order).
-		expect(calls[0]?.[4]).toBe(JSON.stringify({ status: "quarantine", score: 0.2 }));
-		expect(calls[0]?.[5]).toBe(JSON.stringify({ status: "validated", score: 0.8 }));
+		// before, after, reason (mirrors repository source order). before/after
+		// are bound via `sql.json(...)` so the mock's identity stub returns
+		// the original objects, not pre-serialized JSON strings.
+		expect(calls[0]?.[4]).toEqual({ status: "quarantine", score: 0.2 });
+		expect(calls[0]?.[5]).toEqual({ status: "validated", score: 0.8 });
 		expect(calls[0]?.[6]).toBe("Gate passed");
 		expect(event.before).toEqual({ status: "quarantine", score: 0.2 });
 		expect(event.after).toEqual({ status: "validated", score: 0.8 });

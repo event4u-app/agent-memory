@@ -84,6 +84,10 @@ async function deleteChildren(sql: SqlLike, entryId: string): Promise<void> {
 
 async function insertEntryRow(sql: SqlLike, line: ExportEntryLine): Promise<void> {
 	const e = line.entry;
+	// JSONB columns bound via `sql.json(...)` so postgres.js sends a real JSONB
+	// object. `${JSON.stringify(x)}::jsonb` double-encodes (driver re-serializes
+	// the string from the cast hint) and lands as a JSONB string — invisible to
+	// `scope->>'key'` reads. See migration 005_repair_jsonb_strings.
 	await sql`
 		INSERT INTO memory_entries (
 			id, type, title, summary, details, scope,
@@ -95,13 +99,13 @@ async function insertEntryRow(sql: SqlLike, line: ExportEntryLine): Promise<void
 			promotion_metadata
 		) VALUES (
 			${e.id}, ${e.type}, ${e.title}, ${e.summary}, ${e.details},
-			${JSON.stringify(e.scope)}::jsonb,
+			${sql.json(e.scope as unknown as postgres.JSONValue)},
 			${e.impact_level}, ${e.knowledge_class}, ${e.consolidation_tier},
 			${e.embedding_text}, NULL,
 			${e.trust.status}, ${e.trust.score}, ${e.trust.validated_at}, ${e.trust.expires_at},
 			${e.access_count}, ${e.last_accessed_at},
 			${e.created_by}, ${e.created_in_task}, ${e.created_at}, ${e.updated_at},
-			${JSON.stringify(e.promotion_metadata)}::jsonb
+			${sql.json(e.promotion_metadata as unknown as postgres.JSONValue)}
 		)
 	`;
 	for (const ev of line.evidence) {
@@ -115,9 +119,9 @@ async function insertEntryRow(sql: SqlLike, line: ExportEntryLine): Promise<void
 			INSERT INTO memory_events (id, entry_id, occurred_at, actor, event_type, metadata, before, after, reason)
 			VALUES (
 				${ev.id}, ${e.id}, ${ev.occurred_at}, ${ev.actor}, ${ev.event_type},
-				${JSON.stringify(ev.metadata)}::jsonb,
-				${ev.before ? JSON.stringify(ev.before) : null}::jsonb,
-				${ev.after ? JSON.stringify(ev.after) : null}::jsonb,
+				${sql.json(ev.metadata as unknown as postgres.JSONValue)},
+				${ev.before ? sql.json(ev.before as unknown as postgres.JSONValue) : null},
+				${ev.after ? sql.json(ev.after as unknown as postgres.JSONValue) : null},
 				${ev.reason}
 			)
 		`;

@@ -87,9 +87,10 @@ export class MemoryEventRepository {
 	constructor(private readonly sql: postgres.Sql) {}
 
 	async record(input: RecordEventInput): Promise<MemoryEvent> {
-		// JSON.stringify + ::jsonb matches the project convention used by
-		// MemoryEntryRepository for promotion_metadata — keeps serialization
-		// explicit and side-steps postgres.js' JSONValue typing on this.sql.json().
+		// JSONB columns are bound via `sql.json(...)` so postgres.js encodes the
+		// value once as a real JSONB object. The earlier `JSON.stringify(x)::jsonb`
+		// pattern produced a JSONB *string* (driver double-encoded), which broke
+		// downstream `metadata->>'key'` operators silently.
 		const reason = input.reason
 			? input.reason.length > REASON_MAX_LEN
 				? input.reason.slice(0, REASON_MAX_LEN)
@@ -101,9 +102,9 @@ export class MemoryEventRepository {
         ${input.entryId ?? null},
         ${input.actor},
         ${input.eventType},
-        ${JSON.stringify(input.metadata ?? {})}::jsonb,
-        ${input.before ? JSON.stringify(input.before) : null}::jsonb,
-        ${input.after ? JSON.stringify(input.after) : null}::jsonb,
+        ${this.sql.json((input.metadata ?? {}) as unknown as postgres.JSONValue)},
+        ${input.before ? this.sql.json(input.before as unknown as postgres.JSONValue) : null},
+        ${input.after ? this.sql.json(input.after as unknown as postgres.JSONValue) : null},
         ${reason}
       )
       RETURNING id, entry_id, occurred_at, actor, event_type, metadata, before, after, reason

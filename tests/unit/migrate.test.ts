@@ -22,8 +22,10 @@ function mockSql(handlers: Record<string, Handler>): postgres.Sql {
 		return Promise.resolve([]);
 	};
 	// `postgres.Sql` exposes helpers like `sql.end()` — only stub what runMigrations
-	// and executeMigrations actually touch. end() is used in the databaseUrl path.
+	// and executeMigrations actually touch. end() is used in the databaseUrl path;
+	// unsafe() is used by migration 005 to interpolate identifier names.
 	(fn as unknown as { end: () => Promise<void> }).end = vi.fn(async () => undefined);
+	(fn as unknown as { unsafe: (text: string) => Promise<unknown> }).unsafe = vi.fn(async () => []);
 	return fn as unknown as postgres.Sql;
 }
 
@@ -46,6 +48,7 @@ describe("runMigrations — sql option", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		];
 		expect(result.applied).toEqual(all);
 		expect(result.skipped).toEqual([]);
@@ -61,6 +64,7 @@ describe("runMigrations — sql option", () => {
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
 				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
 			],
 		});
 
@@ -72,6 +76,7 @@ describe("runMigrations — sql option", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		]);
 	});
 
@@ -88,6 +93,7 @@ describe("runMigrations — sql option", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		]);
 		expect(result.skipped).toEqual(["001_initial"]);
 	});
@@ -123,6 +129,7 @@ describe("runMigrations — databaseUrl option", () => {
 					{ name: "002_promotion_metadata" },
 					{ name: "003_memory_events" },
 					{ name: "004_memory_events_trust_extension" },
+					{ name: "005_repair_jsonb_strings" },
 				]);
 			}
 			return Promise.resolve([]);
@@ -148,6 +155,7 @@ describe("runMigrations — databaseUrl option", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		]);
 	});
 
@@ -185,6 +193,7 @@ describe("listPendingMigrations", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		]);
 	});
 
@@ -197,6 +206,7 @@ describe("listPendingMigrations", () => {
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
 				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
 			],
 		});
 		expect(await listPendingMigrations(sql)).toEqual([]);
@@ -212,6 +222,7 @@ describe("listPendingMigrations", () => {
 			"002_promotion_metadata",
 			"003_memory_events",
 			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
 		]);
 	});
 });
@@ -227,8 +238,9 @@ describe("buildMigrationStatus", () => {
 				"002_promotion_metadata",
 				"003_memory_events",
 				"004_memory_events_trust_extension",
+				"005_repair_jsonb_strings",
 			],
-			total: 4,
+			total: 5,
 		});
 	});
 
@@ -241,6 +253,7 @@ describe("buildMigrationStatus", () => {
 				{ name: "002_promotion_metadata" },
 				{ name: "003_memory_events" },
 				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
 			],
 		});
 		expect(await buildMigrationStatus(sql)).toEqual({
@@ -249,9 +262,10 @@ describe("buildMigrationStatus", () => {
 				"002_promotion_metadata",
 				"003_memory_events",
 				"004_memory_events_trust_extension",
+				"005_repair_jsonb_strings",
 			],
 			pending: [],
-			total: 4,
+			total: 5,
 		});
 	});
 
@@ -266,7 +280,11 @@ describe("buildMigrationStatus", () => {
 		});
 		const status = await buildMigrationStatus(sql);
 		expect(status.applied).toEqual(["001_initial", "003_memory_events"]);
-		expect(status.pending).toEqual(["002_promotion_metadata", "004_memory_events_trust_extension"]);
-		expect(status.total).toBe(4);
+		expect(status.pending).toEqual([
+			"002_promotion_metadata",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
+		expect(status.total).toBe(5);
 	});
 });

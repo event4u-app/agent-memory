@@ -91,12 +91,12 @@ export class MemoryEntryRepository {
         created_by, created_in_task, promotion_metadata
       ) VALUES (
         ${input.type}, ${input.title}, ${input.summary}, ${input.details ?? null},
-        ${JSON.stringify(input.scope)}::jsonb,
+        ${this.sql.json(input.scope as unknown as postgres.JSONValue)},
         ${input.impactLevel}, ${input.knowledgeClass}, ${tier},
         ${input.embeddingText}, ${input.embedding ? JSON.stringify(input.embedding) : null}::vector,
         'quarantine', 0.0, ${expiresAt},
         ${input.createdBy ?? "agent"}, ${input.createdInTask ?? null},
-        ${JSON.stringify(input.promotionMetadata ?? {})}::jsonb
+        ${this.sql.json((input.promotionMetadata ?? {}) as unknown as postgres.JSONValue)}
       )
       RETURNING *
     `;
@@ -222,7 +222,7 @@ export class MemoryEntryRepository {
 	async updatePromotionMetadata(id: string, metadata: PromotionMetadata): Promise<void> {
 		await this.sql`
       UPDATE memory_entries
-      SET promotion_metadata = ${JSON.stringify(metadata)}::jsonb,
+      SET promotion_metadata = ${this.sql.json(metadata as unknown as postgres.JSONValue)},
           updated_at = NOW()
       WHERE id = ${id}
     `;
@@ -247,11 +247,11 @@ export class MemoryEntryRepository {
         AND consolidation_tier IN ('semantic', 'procedural')
         AND scope->>'repository' = ${candidate.scope.repository}
         AND (
-          (${JSON.stringify(files)}::jsonb <> '[]'::jsonb
-            AND scope->'files' ?| ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(files)}::jsonb)))
+          (${this.sql.json(files)} <> '[]'::jsonb
+            AND scope->'files' ?| ARRAY(SELECT jsonb_array_elements_text(${this.sql.json(files)})))
           OR
-          (${JSON.stringify(symbols)}::jsonb <> '[]'::jsonb
-            AND scope->'symbols' ?| ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(symbols)}::jsonb)))
+          (${this.sql.json(symbols)} <> '[]'::jsonb
+            AND scope->'symbols' ?| ARRAY(SELECT jsonb_array_elements_text(${this.sql.json(symbols)})))
         )
       ORDER BY trust_score DESC, updated_at DESC
       LIMIT 1

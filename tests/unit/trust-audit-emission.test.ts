@@ -40,6 +40,9 @@ function mockEntryRow(overrides: Record<string, unknown> = {}): Record<string, u
 
 function mockSql(route: (text: string) => unknown): postgres.Sql {
 	const fn = (strings: TemplateStringsArray) => Promise.resolve(route(strings.join("?")));
+	// `sql.json` is used by the entry repository to bind JSONB columns —
+	// stubbed as identity so route() inspects the same value the repo passed.
+	(fn as unknown as { json: (v: unknown) => unknown }).json = (v) => v;
 	return fn as unknown as postgres.Sql;
 }
 
