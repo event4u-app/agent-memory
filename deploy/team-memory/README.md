@@ -3,6 +3,8 @@
 End-to-end steps to bring up the shared `agent-memory` brain on a Hetzner CX22 with Tailscale-only network access. Implements the decisions in [ADR-0004](../../agents/adrs/0004-team-memory-hosting.md), [ADR-0005](../../agents/adrs/0005-team-memory-auth.md), [ADR-0006](../../agents/adrs/0006-team-memory-scope-policy.md).
 
 > **Status:** ready for Phase 2 spike. Real provisioning is **not** automated yet — the steps below are run by a maintainer once. Cost: ≈ €8.82/month.
+>
+> **In a hurry?** [`operator-cheatsheet.md`](operator-cheatsheet.md) condenses the same flow into a Day-0 / Day-1 sequence with one command per step.
 
 ## Prerequisites
 
