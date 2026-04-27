@@ -56,6 +56,24 @@ server.
 Any MCP-aware client that supports stdio transport works without a
 custom plugin.
 
+### Pattern C · MCP over SSE (shared / team-memory brain)
+
+Best for: teams running a single shared `agent-memory` brain that every developer connects to instead of running a local Postgres + sidecar. No local containers; the client speaks SSE over HTTP to a remote listener (typically reachable only over a private network like Tailscale).
+
+```jsonc
+{
+  "mcpServers": {
+    "agent-memory": {
+      "transport": "sse",
+      "url": "http://memory-brain:7078/sse",
+      "headers": { "Authorization": "Bearer ${MEMORY_MCP_AUTH_TOKEN}" }
+    }
+  }
+}
+```
+
+Bearer comes from a secret manager (e.g. `op read 'op://Engineering/team-memory/mcp-bearer'`), never from a tracked file. Full deployment runbook: [`deploy/team-memory/README.md`](../deploy/team-memory/README.md). Consumer-side details (token fetching, `.agent-memory.yml` shape, troubleshooting): [`consumer-setup-docker-sidecar.md` §4](consumer-setup-docker-sidecar.md#4--team-memory-remote-mode).
+
 ## Mental model
 
 ```

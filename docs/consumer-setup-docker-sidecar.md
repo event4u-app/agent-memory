@@ -170,7 +170,75 @@ For CI, see [`examples/consumer-ci.yml`](../examples/consumer-ci.yml)
 a health check. For a full Laravel runnable example, see
 [`examples/laravel-sidecar/`](../examples/laravel-sidecar/).
 
-## 4 · Troubleshooting
+## 4 · Team-memory remote mode
+
+If the team runs a single shared brain (see [`deploy/team-memory/`](../deploy/team-memory/) and [ADR-0006](../agents/adrs/0006-team-memory-scope-policy.md)), skip the local Postgres + sidecar entirely and point your client at the remote SSE listener.
+
+**What changes vs. the solo setup above:**
+
+- No `agent-memory-postgres` and no `agent-memory` container in your project's compose file.
+- MCP client uses the SSE transport, not stdio.
+- `.agent-memory.yml` **omits** `repository:` so the team brain returns entries from any project (per ADR-0006).
+- The bearer token is shared, distributed via the team vault, and rotates quarterly.
+
+### a · Fetch the bearer
+
+Never paste the token into a tracked file or shell history. Wire it through your secret manager. **1Password CLI:**
+
+```bash
+# In your shell rc file (~/.zshrc, ~/.bashrc):
+export MEMORY_MCP_AUTH_TOKEN="$(op read 'op://Engineering/team-memory/mcp-bearer')"
+export MEMORY_BRAIN_URL="http://memory-brain:7078"
+```
+
+The Tailscale hostname (`memory-brain`) only resolves while the developer is on the team's tailnet; outside the tailnet the hostname is dead by design (ADR-0005). Bitwarden / Doppler / Vault equivalents follow the same shape — replace `op read …` with their CLI.
+
+### b · Configure the MCP client
+
+```jsonc
+// Claude Desktop / Cursor / Cline
+{
+  "mcpServers": {
+    "agent-memory": {
+      "transport": "sse",
+      "url": "http://memory-brain:7078/sse",
+      "headers": { "Authorization": "Bearer ${MEMORY_MCP_AUTH_TOKEN}" }
+    }
+  }
+}
+```
+
+Augment users follow the same shape via the IDE's MCP settings panel. The full transport reference lives in [`docs/mcp-http.md`](mcp-http.md#client-configurations).
+
+### c · Verify with `memory health`
+
+The CLI itself does not yet speak SSE — it only talks to a local Postgres. To verify the remote brain from a developer machine, hit the SSE endpoint directly:
+
+```bash
+curl -fsSL --max-time 3 \
+  -H "Authorization: Bearer $MEMORY_MCP_AUTH_TOKEN" \
+  "$MEMORY_BRAIN_URL/sse" | head -3
+#  → event: endpoint
+#    data: /message?sessionId=…
+```
+
+A `200 OK` plus the SSE handshake confirms the bearer is valid and the tailnet is reachable. `401` = wrong bearer; connection timeout = not on the tailnet (`tailscale status`).
+
+### d · `.agent-memory.yml` for team-brain mode
+
+```yaml
+# .agent-memory.yml in any consumer repo
+# repository: my-app   # ← intentionally omitted; team-brain default per ADR-0006
+defaults:
+  trust_threshold: 0.6
+  token_budget: 2000
+```
+
+Setting `repository:` re-introduces the exact-match filter at `src/retrieval/engine.ts` and turns the brain into a per-project store again. The omission is the team-brain switch.
+
+> **Privacy boundary reminder.** Quarantined entries (`memory propose`) are invisible to retrieval until `memory promote` runs. Promotion is the only moment new content reaches the shared brain — see [`docs/secret-safety.md`](secret-safety.md#policy-floor-for-shared--team-memory-deployments) for the policy floor.
+
+## 5 · Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -179,6 +247,9 @@ a health check. For a full Laravel runnable example, see
 | `status: misconfigured` | `DATABASE_URL` env mismatch | Verify the URL hostname matches the Postgres service name inside the compose network |
 | `file-exists` / `symbol-exists` validators fail on paths that exist on the host | `REPO_ROOT` inside the container points at a host path, not the mount target | Leave `REPO_ROOT=/workspace` (the default in `docker-compose.yml`). Set the **host** path on a bind mount, not in the container env. |
 | MCP client can't see tools | Stale client cache | Restart the client; for Claude, quit fully (`⌘Q`) |
+| Team-memory: `curl … /sse` times out | Not on the tailnet, or ACL blocks `tag:memory-host:7078` | `tailscale status`; ask a maintainer to check the tailnet ACL |
+| Team-memory: `401 Unauthorized` on `/sse` | Bearer empty, expired, or rotated | `op read 'op://Engineering/team-memory/mcp-bearer'` returns the current value; re-export `MEMORY_MCP_AUTH_TOKEN` |
+| Team-memory: brain returns no entries despite promoted data | `repository:` still set in `.agent-memory.yml` | Remove the `repository:` line (team-brain default per ADR-0006) |
 
 Still stuck? Open an issue at
 <https://github.com/event4u-app/agent-memory/issues> with the output of
