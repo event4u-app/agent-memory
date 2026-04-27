@@ -7,6 +7,8 @@ Phase 2 of [`agents/roadmaps/team-memory-deployment.md`](../roadmaps/team-memory
 > **Operator:** _<name — single dev running the spike>_
 > **Brain host:** _<tailnet hostname, e.g. memory-brain>_
 > **Image tag:** _<MEMORY_IMAGE_TAG from .env>_
+>
+> **Pre-spike dry-run:** Local Compose validation completed 2026-04-27 — see [`team-memory-dryrun-results.md`](team-memory-dryrun-results.md). Outcome: pass; one papercut (GHCR image not yet public, runbook §5 needs a sha-pinned tag or a `git clone` build on the host). Use [`scripts/team-memory-smoketest.sh`](../../scripts/team-memory-smoketest.sh) for the Step 3 acceptance round-trip.
 
 ## Acceptance checks (Phase 2 Steps 3–4)
 
