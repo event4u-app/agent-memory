@@ -1,6 +1,6 @@
 # ADR-0005: Team memory auth model
 
-> **Status:** Proposed
+> **Status:** Accepted
 > **Date:** 2026-04-27
 > **Roadmap:** `agents/roadmaps/team-memory-deployment.md` (Phase 1, Step 2)
 > **Related:** ADR-0004 (hosting), `docs/mcp-http.md`, `docs/secret-safety.md`.
@@ -91,24 +91,31 @@ per-token allow-list. Tokens are issued from a scripted vault
 
 ## Decision
 
-**Open.** Resolve during Phase 1, Step 2 of
-`agents/roadmaps/team-memory-deployment.md`. The decision must record:
+**Option A — Tailscale VPN, layered with the existing `MEMORY_MCP_AUTH_TOKEN` bearer (defense in depth).**
 
-- Chosen option (A / B / C) and reasoning.
-- **Rotation policy:** how often, who triggers, where the new
-  credential is delivered.
-- **Offboarding runbook:** the exact steps to revoke a departing
-  developer's access (covers Phase 5, Step 4).
-- **CI integration path:** how the auth credential reaches a GitHub
-  Actions runner without leaking into logs.
-- **Failure mode:** what happens to agent retrieval if the auth
-  layer is unavailable (degraded mode? hard fail? local cache?).
-- **Audit log:** where authenticated requests are recorded and how
-  long they are retained.
+The package already mandates `MEMORY_MCP_AUTH_TOKEN` for the SSE transport (`docs/mcp-http.md`) — the server refuses to start without one. That bearer stays. Tailscale is the network gate in front of it: the SSE listener binds to the tailnet interface only; the public internet sees nothing.
 
-## Consequences (to be filled when decision is made)
+| Field | Value |
+|---|---|
+| Network gate | Tailscale tailnet (free tier, ≤ 100 devices). Host runs the `tailscale/tailscale` sidecar; SSE binds to the `100.x.x.x` (tailnet) address only. No public DNS, no inbound port. |
+| Application auth | Existing `MEMORY_MCP_AUTH_TOKEN` (32-byte hex), set at deploy, distributed to developers via the team's password manager (1Password / Bitwarden — chosen by the maintainer at provisioning time). |
+| Rotation policy | Bearer token rotated **quarterly** by re-deploying the host with a fresh token; new value distributed via the team's vault. Tailscale device keys auto-rotate every 180 days. CI ephemeral keys regenerate per workflow run via the Tailscale OAuth client. |
+| Offboarding | (1) Remove dev from the Tailscale SSO group → device key invalid within minutes. (2) Re-deploy host with a fresh bearer. (3) Confirm via `tailscale status` on the host. Captured end-to-end in the Phase 5 Step 4 runbook. |
+| CI integration | `tailscale/github-action@v3` with OAuth client + ephemeral auth key (no long-lived secret in CI). Bearer token from GitHub Secrets. `memory doctor` runs as a workflow step; failure fails CI fast. |
+| Failure mode | If the tailnet is unreachable, retrieval **hard-fails** (`memory retrieve` returns empty + logs a warning). No local cache fallback in V1 — agents fall back to live code analysis. Documented in `docs/operations.md` extension. |
+| Audit log | Tailscale's own audit log + the SSE listener's structured request log (Pino) shipped to the team's chosen log destination (Phase 5 Step 2). 30-day retention. |
 
-To be written when status flips from `Proposed` to `Accepted`.
+### Why not the others
+
+- **Option B (Cloudflare Tunnel + mTLS)** rejected on hot-path dependency: Cloudflare Access in front of every retrieval adds a third-party uptime dependency and per-cert rotation overhead. Tailscale's free tier already covers SSO offboarding without managing certificates.
+- **Option C (public + token only)** rejected because long-lived bearer tokens are explicitly called out as a smell in `docs/secret-safety.md`. With Tailscale layered in front, the same bearer is acceptable because the network attack surface is removed before authentication is even attempted.
+
+## Consequences
+
+- **Two layers of credential.** Developers need both a Tailscale identity (SSO via Google/GitHub) and the shared bearer token. The onboarding script (Phase 3 Step 2) checks both.
+- **No public DNS for the brain.** Only a tailnet hostname (e.g. `memory-brain.tail-scale.ts.net`). Document the tailnet name once provisioned, in `deploy/team-memory/README.md`.
+- **Tailscale is on the hot path.** Tailscale outage = retrieval outage. Mitigated by Tailscale's uptime track record (>99.9%) and the agent's hard-fail mode (no memory ≠ broken agent).
+- **Phase 5 Step 4 runbook is the source of truth for offboarding.** When a dev leaves: SSO group removal, bearer rotation, runbook walked end-to-end and confirmed.
 
 ## Non-goals
 

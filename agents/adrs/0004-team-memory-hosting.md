@@ -1,6 +1,6 @@
 # ADR-0004: Team memory hosting
 
-> **Status:** Proposed
+> **Status:** Accepted
 > **Date:** 2026-04-27
 > **Roadmap:** `agents/roadmaps/team-memory-deployment.md` (Phase 1, Step 1)
 > **Related:** ADR-0001 (single Postgres + pgvector), ADR-0002 (`memory serve`).
@@ -95,19 +95,29 @@ shared cluster, an existing VPS pool, or the Kubernetes cluster).
 
 ## Decision
 
-**Open.** Resolve during Phase 1, Step 1 of
-`agents/roadmaps/team-memory-deployment.md`. The decision must record:
+**Option A — Hetzner Cloud CX22 + self-managed Postgres in Compose.**
 
-- Chosen option (A / B / C / D) and reasoning.
-- Monthly cost estimate against the €25 ceiling.
-- Backup model and PITR target (RPO / RTO).
-- Ops owner (named human on the team).
-- Reversibility plan (how to abandon the spike in <1 day).
-- EU region confirmation.
+| Field | Value |
+|---|---|
+| Region | EU-Falkenstein (`fsn1`) — German jurisdiction, matches the team's location |
+| Monthly cost | ~€5.83 (CX22) + ~€2.99 (Storage Box BX11, 1 TB, backup target) ≈ **€8.82/mo** — well under the €25 ceiling |
+| Backup model | Nightly `pg_dump` (custom format, gzip) + weekly base backup, both rotated 30 days on Hetzner Storage Box. No PITR in V1. |
+| RPO / RTO target | RPO ≤ 24h (last nightly dump). RTO ≤ 30 min for restore drill — measured in Phase 5 Step 1. |
+| Ops owner | **TBD — recorded by the maintainer who provisions the host before Phase 2 Step 1.** |
+| Reversibility | `hcloud server delete <name>` + Storage Box retains last dump. Re-deploy elsewhere from the dump in <1h. Total spike abandonment: <1 day. |
 
-## Consequences (to be filled when decision is made)
+### Why not the others
 
-To be written when status flips from `Proposed` to `Accepted`.
+- **Option B (RDS)** rejected on cost (~€16/mo before egress, plus the compute for a separate `memory serve`) and on the architectural split: Compose-on-laptop ≠ RDS-in-prod weakens the local-development story.
+- **Option C (Fly.io)** rejected on operational maturity. Fly Postgres is unmanaged Postgres on Fly machines, so the backup story is identical to Option A but with a smaller vendor and recent regional reliability incidents.
+- **Option D (existing Galawork)** rejected for V1 because the inventory work it requires (capacity, ownership, conventions) hasn't been done. Re-evaluate at the end of Phase 5 Step 3 — if capacity exists in Galawork's own infrastructure, Option D becomes a follow-up ADR to reduce vendor surface.
+
+## Consequences
+
+- **Operational responsibility on us.** No managed PITR; the spike must record measured restore time (Phase 5 Step 1) before declaring done.
+- **Stack mirrors local dev.** The same `docker-compose.yml` shape runs on the host and on every developer's laptop — only network exposure and credentials differ. The deploy artifact lives at `deploy/team-memory/` (added in Phase 2 prep).
+- **Phase 5 Step 1 (backup drill) is mandatory.** No PITR, so the only proof of recoverability is a measured restore drill.
+- **Re-evaluate at €25.** If the brain grows past 1 TB or CI concurrency exceeds CX22 capacity, the next step up (CX32, ~€13/mo) keeps us under the ceiling. Above that — re-open this ADR.
 
 ## Non-goals
 

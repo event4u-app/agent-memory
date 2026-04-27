@@ -15,18 +15,18 @@ Today every developer runs a private Postgres in a Docker volume. Memory written
 
 Promotion gate is the privacy boundary: quarantined entries stay invisible to retrieval until `memory promote` runs, so personal scratch never leaks before the author opts in.
 
-- **ADRs to author later:** `0004-team-memory-hosting.md`, `0005-team-memory-auth.md`, `0006-team-memory-scope-policy.md`
+- **ADRs:** `0004-team-memory-hosting.md`, `0005-team-memory-auth.md`, `0006-team-memory-scope-policy.md` — all `Accepted` since Phase 1 closed.
 - **Related:** `agents/roadmaps/archive/from-agent-config/road-to-cross-project-learning.md` (V2 design — deferred, prerequisites now in scope here)
 
 ## Phase 1: Decisions (no infra yet)
 
 Each decision must land as an ADR before its implementation phase starts. No code, no infra spend until Phase 1 is `[x]`.
 
-- [ ] **Step 1 — Hosting:** decide between Hetzner Cloud (CX22 ≈ €5/mo, self-managed Postgres in Compose), AWS RDS db.t4g.micro (≈ $13/mo, managed backups + PITR), Fly.io Postgres (≈ $5–10/mo, half-managed), or existing Galawork infrastructure. Capture cost, backup model, who owns ops, and PITR requirement.
-- [ ] **Step 2 — Auth model:** decide between Tailscale VPN (zero-config, free tier ≤ 100 devices), Cloudflare Tunnel + mTLS, or public endpoint + `MCP_AUTH_TOKEN` per developer. Capture rotation policy and offboarding path (departing dev).
-- [ ] **Step 3 — Scope default:** decide whether every consumer `.agent-memory.yml` keeps `repository:` set (strict per-project, cross-project only via explicit removal) or drops `repository:` by default (team-brain everywhere). Document the default in the consumer-setup docs.
-- [ ] **Step 4 — Privacy boundary:** document what is *never* allowed in shared memory (secrets, customer data, PII) — the existing privacy filter is the technical floor; the policy floor is wider. Cite `docs/secret-safety.md`.
-- [ ] **Step 5 — Promotion authority:** decide who may run `memory promote` (any dev, only maintainers, or PR-style review). Capture in ADR-0006.
+- [x] **Step 1 — Hosting:** Hetzner Cloud CX22 in EU-Falkenstein, self-managed Postgres+pgvector in Compose. Backups via nightly `pg_dump` to Hetzner Storage Box. Total ≈ €8.82/mo, well under the €25 ceiling. Decision recorded in [ADR-0004](../adrs/0004-team-memory-hosting.md).
+- [x] **Step 2 — Auth model:** Tailscale tailnet as the network gate, layered with the existing `MEMORY_MCP_AUTH_TOKEN` bearer (defense in depth). SSO offboarding via the Tailscale group. Decision recorded in [ADR-0005](../adrs/0005-team-memory-auth.md).
+- [x] **Step 3 — Scope default:** team-brain default — every consumer `.agent-memory.yml` omits `repository:`. Per-entry `scope.repository` provenance preserved for query-time filtering. Decision recorded in [ADR-0006](../adrs/0006-team-memory-scope-policy.md).
+- [x] **Step 4 — Privacy boundary:** policy floor for shared memory documented in [`docs/secret-safety.md`](../../docs/secret-safety.md#policy-floor-for-shared--team-memory-deployments). The existing pattern catalog is the technical floor; the policy floor adds end-customer PII, production data snippets, and personal opinions to the never-shared list.
+- [x] **Step 5 — Promotion authority:** any developer may promote their own entries. The existing trust pipeline (validators + contradiction detector + poison-cascade) is the V1 quality gate. Re-evaluation trigger: ≥ 3 false promotions per quarter. Decision recorded in [ADR-0006](../adrs/0006-team-memory-scope-policy.md).
 
 ## Phase 2: Single-user spike
 

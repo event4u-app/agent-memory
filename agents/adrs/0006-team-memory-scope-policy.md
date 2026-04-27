@@ -1,6 +1,6 @@
 # ADR-0006: Team memory scope policy + promotion authority
 
-> **Status:** Proposed
+> **Status:** Accepted
 > **Date:** 2026-04-27
 > **Roadmap:** `agents/roadmaps/team-memory-deployment.md` (Phase 1, Steps 3 & 5)
 > **Related:** ADR-0001 (trust / promotion gate), `src/retrieval/engine.ts:218` (repository filter).
@@ -74,10 +74,22 @@ flag in `.agent-memory.yml`.
 
 ### Decision
 
-**Open.** Resolve during Phase 1, Step 3. The decision must record
-the recommended `.agent-memory.yml` template for every consumer
-category (agent-* repos, application repos, libraries) and update
-`docs/consumer-setup-*.md` accordingly.
+**Option B — Team-brain default. The recommended `.agent-memory.yml` template omits `repository:`** for every consumer category.
+
+| Consumer | `.agent-memory.yml` shape |
+|---|---|
+| `agent-config`, `agent-memory` (agent-* repos) | omit `repository:` — full team-brain |
+| Galawork application repos | omit `repository:` — full team-brain |
+| Libraries / open-source spin-offs | optional: set `repository: <slug>` if the library should not see internal Galawork knowledge |
+
+Per-entry `scope.repository` provenance is preserved automatically — every promoted entry still carries the repo it originated in, so consumers can filter at query time if they want (`memory retrieve --repository <slug>`).
+
+The consumer-setup docs are updated in Phase 3 Step 1 to reflect this default.
+
+### Why not the others
+
+- **Option A (strict per-repo)** defeats the roadmap's stated goal. Cross-project learning would only fire for developers who deliberately edit their config — exactly the friction the roadmap exists to remove.
+- **Option C (hybrid with a `team_brain:` flag)** would require a package patch the roadmap explicitly forbids. Re-evaluate as a follow-up only if multi-team isolation becomes a real requirement.
 
 ## Decision 2 — Promotion authority
 
@@ -121,13 +133,26 @@ least one other developer must `+1` before promotion runs.
 
 ### Decision
 
-**Open.** Resolve during Phase 1, Step 5. The decision must record
-who may run `memory promote`, the review tooling (if any), and the
-escape valve for time-sensitive promotions.
+**Option A — Any developer may promote their own entries.** The existing trust pipeline (file-exists + symbol-exists validators, contradiction detector, poison-cascade) is the V1 quality gate; no new human-in-the-loop step.
 
-## Consequences (to be filled when decisions are made)
+| Field | Value |
+|---|---|
+| Who may promote | Any developer with CLI access — same as the local-only model today. |
+| Pre-promotion gate | Existing quarantine validators (ADR-0001 Decision 9). |
+| Recovery from a wrong promotion | `memory deprecate` + poison-cascade (ADR-0001 Decision 4). |
+| Re-evaluation trigger | If the team observes **≥ 3 wrong-but-valid promotions per quarter**, re-open this ADR and reconsider Option B or C. |
 
-To be written when status flips from `Proposed` to `Accepted`.
+### Why not the others
+
+- **Option B (maintainers-only)** rejected on bottleneck risk. The agent-driven learning loop only works if promotion is cheap; queueing every dev's findings on a maintainer review re-creates the friction the roadmap exists to remove.
+- **Option C (PR-style review)** rejected because the package has no review primitive today and the roadmap forbids package patches. Could become a follow-up ADR if Option A produces poison incidents above the trigger threshold.
+
+## Consequences
+
+- **Trust pipeline carries the load.** A wrong-but-valid promotion (validators pass, claim is inaccurate) reaches the whole team's retrieval immediately. The recovery tool is `memory deprecate` + poison-cascade — a recovery, not a prevention.
+- **Promotion is logged.** Every `memory promote` writes to the entry's audit trail. Phase 5 Step 2 (monitoring) should ship an alert if the promotion rate spikes — signal for either a burst of real learning or noise.
+- **No new role.** Existing developers plus the trust pipeline are the whole quality gate.
+- **Re-evaluation is metric-driven.** The ≥ 3 false promotions per quarter trigger turns into a fresh ADR. Below that — status quo holds.
 
 ## Non-goals
 
