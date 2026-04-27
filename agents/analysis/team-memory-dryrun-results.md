@@ -50,11 +50,16 @@ Pre-spike validation of [`deploy/team-memory/docker-compose.yml`](../../deploy/t
 
 **Why not auto-emit `:latest` on every main push?** Convention: `:latest` should track the newest **stable release**, not the newest commit. Once the first `v1.x.y` tag lands the workflow already emits `:latest` correctly; until then, `:main` is the explicit "newest build" name and operators pin `:sha-<short>` for production.
 
-### 2 · Synthetic entries depress below retrieval threshold by design
+### 2 · CLI-only entries cannot reach the retrieval threshold by design
 
-A `propose` with no `--file`, `--symbol`, `--module`, or `--scenario` lands at the proposed confidence (0.7) and **passes** validators on `promote` ("All validators passed"), but the trust pipeline depresses the score to 0.2. With the default threshold 0.6, and even with `--low-trust`, the entry stays out of `retrieve` results (`totalCandidates: 1, filtered: 1`).
+CLI `memory propose` and `memory ingest` accept `--file`, `--symbol`, `--module`, `--scenario`, `--source`, and `--confidence`, but **none** of those become an `evidence` row — only the ingestion scanners (`git-reader.ts`, `file-scanner.ts`, `doc-reader.ts`) and `mcp.memory_ingest` from an agent context attach evidence. `src/trust/scoring.ts:27` floors entries with zero evidence at trust score `0.2`, which is below both the default (0.6) and the low-trust (0.3) thresholds in `src/retrieval/engine.ts:35-36`.
 
-This is expected per the trust pipeline, not a bug. Spike notes and acceptance checks (Step 3 round-trip) need real entries with at least a `--file` scope and one `--scenario`, otherwise the round-trip looks like it failed when the data plane is fine. **Documented in `scripts/team-memory-smoketest.sh` so the smoke test uses a realistic entry shape.**
+Two consequences:
+
+1. **`propose --impact normal` from CLI gets rejected at promotion** with `rejection_reason: evidence_floor` because `MIN_EVIDENCE_COUNT.normal = 1` (`src/types.ts:185`). Only `--impact low` (`MIN_EVIDENCE_COUNT.low = 0`) clears the gate.
+2. **Even after a successful promote, CLI-only entries never surface in `retrieve`** — they show as `totalCandidates: 1, filtered: 1` even with `--low-trust`. This is correct behaviour: the trust pipeline filters synthetic entries from production retrieval.
+
+**Smoketest fix (committed):** `scripts/team-memory-smoketest.sh` now uses `--impact low`, expects `totalCandidates >= 1` (not a surfaced result), and adds a `verify` check + a `health` probe. All 8 checks pass against the local stack on 2026-04-27 (re-validated after fix). Real Step-3 round-trip during the spike must drive entries through `mcp.memory_ingest` from an agent (Augment, Claude Desktop, Cursor) to attach evidence; that is what the actual team-memory traffic looks like in production.
 
 ### 3 · Auth boundary matches `docs/mcp-http.md` exactly
 
@@ -78,5 +83,6 @@ The `.tmp/dryrun/.env` file with the test secrets matches the `.env` rule in `.g
 
 ## Open follow-ups
 
-- Phase 2 spike: publish a `:latest` (or pin a sha tag) before the operator runs §5 of the runbook.
+- ~~Publish a `:latest`~~ — RESOLVED (Finding 1): default tag is `:main`, GHCR public-visibility step in `operator-setup.md §4`.
+- Phase 2 spike Step 4 must drive its round-trip through `mcp.memory_ingest` from an agent context, not via CLI `propose`, so retrieved entries have real evidence (Finding 2).
 - Phase 5 monitoring: alert on `Status: Health: starting` lasting > 60s — the agent-memory container hits healthy in ~17s on a workstation; a slower host might take longer but anything > 60s signals a migration or DB problem.
