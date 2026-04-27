@@ -1,0 +1,81 @@
+# Team-memory deployment — Hetzner Cloud CX22 + Tailscale.
+#
+# Companion: deploy/team-memory/README.md (full runbook).
+# Decisions: ADR-0004 (hosting), ADR-0005 (auth), ADR-0006 (scope policy).
+#
+# Prerequisites on the host:
+#   1. Tailscale installed and authenticated:
+#        curl -fsSL https://tailscale.com/install.sh | sh
+#        sudo tailscale up --ssh --hostname memory-brain
+#      Then `tailscale ip -4` → record the 100.x.x.x address as TAILNET_IP.
+#   2. .env populated from .env.example. POSTGRES_PASSWORD and
+#      MEMORY_MCP_AUTH_TOKEN must be 32-byte random hex
+#      (`openssl rand -hex 32`). Both stored in the team's vault.
+#   3. Docker 24+ with Compose v2.
+#
+# The SSE listener binds to TAILNET_IP only — NEVER 0.0.0.0 on a
+# public host. The compose file enforces this via the port mapping
+# below; do not edit it without updating ADR-0005.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agent_memory
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory -d agent_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - team-memory
+    # Postgres is internal-only. No `ports:` published on the host.
+    # Backups run via `pg_dump` from a host-side cron (see README).
+
+  agent-memory:
+    image: ghcr.io/event4u-app/agent-memory:${MEMORY_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Override the image's default `memory serve` (supervisor) with the
+    # SSE MCP transport. The entrypoint still runs `memory migrate`
+    # first when MEMORY_AUTO_MIGRATE=true (default).
+    command: ["memory", "mcp", "--transport", "sse", "--port", "7078", "--host", "0.0.0.0"]
+    environment:
+      DATABASE_URL: postgresql://memory:${POSTGRES_PASSWORD}@postgres:5432/agent_memory
+      MEMORY_MCP_AUTH_TOKEN: ${MEMORY_MCP_AUTH_TOKEN:?MEMORY_MCP_AUTH_TOKEN is required}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MEMORY_AUTO_MIGRATE: "true"
+      # REPO_ROOT is unused by the SSE listener — file/symbol validators
+      # only run inside the consumer (CLI/MCP-stdio) flow. Left at the
+      # image default to keep the validator boundary explicit if a
+      # future server-side validator lands.
+    ports:
+      # Bind ONLY to the host's tailnet interface. TAILNET_IP must be
+      # the 100.x.x.x address from `tailscale ip -4`. Setting it to
+      # 0.0.0.0 here would expose the brain on the public IP and
+      # silently bypass the Tailscale gate (ADR-0005).
+      - "${TAILNET_IP:?TAILNET_IP must be the host's tailnet 100.x.x.x address}:7078:7078"
+    healthcheck:
+      test: ["CMD", "memory", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - team-memory
+
+networks:
+  team-memory:
+    driver: bridge
+    name: team-memory
+
+volumes:
+  pgdata:
+    name: team-memory-pgdata
