@@ -184,6 +184,24 @@ Docker sidecar alternative: see
 [`consumer-setup-docker-sidecar.md`](consumer-setup-docker-sidecar.md)
 — the MCP config is language-agnostic.
 
+**Shared / team-memory brain:** if your team runs a single remote brain
+instead of a local Postgres, swap the stdio transport for SSE:
+
+```jsonc
+{
+  "mcpServers": {
+    "agent-memory": {
+      "transport": "sse",
+      "url": "http://memory-brain:7078/sse",
+      "headers": { "Authorization": "Bearer ${MEMORY_MCP_AUTH_TOKEN}" }
+    }
+  }
+}
+```
+
+Full setup (token fetching, `.agent-memory.yml` shape):
+[`consumer-setup-docker-sidecar.md` §4](consumer-setup-docker-sidecar.md#4--team-memory-remote-mode).
+
 ## 5 · Migrations in your own app lifecycle
 
 If your app owns the DB schema lifecycle, run the published migration
