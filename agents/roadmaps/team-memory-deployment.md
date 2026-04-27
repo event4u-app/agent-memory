@@ -39,9 +39,9 @@ Each decision must land as an ADR before its implementation phase starts. No cod
 ## Phase 3: Team rollout
 
 - [x] **Step 1:** Update `docs/consumer-setup-*.md` with the agreed auth flow and the new default `.agent-memory.yml` shape. — `consumer-setup-docker-sidecar.md` §4 covers the SSE transport, 1Password-backed bearer fetch, `memory health` curl probe, and team-brain `.agent-memory.yml`. Pattern C added to `consumer-setup-generic.md`; SSE alternative added to `consumer-setup-node.md` §4.
-- [ ] **Step 2:** Add an onboarding script (`scripts/team-memory-onboard.sh` or equivalent) that provisions per-developer credentials and verifies connectivity end-to-end.
-- [ ] **Step 3:** Roll out to all consumer repos in waves (start with the two agent-* repos, then app repos). Each repo's `.agent-memory.yml` is updated in its own PR; this roadmap does not edit other repos directly.
-- [ ] **Step 4:** Add a `memory doctor` invocation to each consumer's `task ci` (or equivalent) so a broken connection fails CI fast instead of silently degrading retrieval.
+- [x] **Step 2:** Add an onboarding script (`scripts/team-memory-onboard.sh` or equivalent) that provisions per-developer credentials and verifies connectivity end-to-end. — Read-only helper that checks Tailscale, brain DNS, 1Password-backed bearer fetch, and the `/sse` handshake. Prints copy-pasteable shell exports on success.
+- [ ] **Step 3:** Roll out to all consumer repos in waves (start with the two agent-* repos, then app repos). Each repo's `.agent-memory.yml` is updated in its own PR; this roadmap does not edit other repos directly. — Tracked per-repo; not addressed in this PR.
+- [ ] **Step 4:** Add a `memory doctor` invocation to each consumer's `task ci` (or equivalent) so a broken connection fails CI fast instead of silently degrading retrieval. — Tracked per-repo; not addressed in this PR.
 
 ## Phase 4: Migration of existing local DBs
 
