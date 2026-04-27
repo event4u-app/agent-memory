@@ -38,7 +38,10 @@ services:
     # Backups run via `pg_dump` from a host-side cron (see README).
 
   agent-memory:
-    image: ghcr.io/event4u-app/agent-memory:${MEMORY_IMAGE_TAG:-latest}
+    # Default `main` tracks the newest main-branch build. `:latest` is reserved
+    # for v* releases and does not exist until the first release tag ships.
+    # Override via .env (MEMORY_IMAGE_TAG=sha-<short>) for production pinning.
+    image: ghcr.io/event4u-app/agent-memory:${MEMORY_IMAGE_TAG:-main}
     restart: unless-stopped
     depends_on:
       postgres:

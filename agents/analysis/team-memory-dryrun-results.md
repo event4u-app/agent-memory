@@ -27,16 +27,28 @@ Pre-spike validation of [`deploy/team-memory/docker-compose.yml`](../../deploy/t
 
 ## Findings (deploy/team-memory README + ADRs unaffected)
 
-### 1 · GHCR image is not yet public — README step 5 will fail today
+### 1 · `:latest` doesn't exist — and the package is private — RESOLVED
 
-`docker manifest inspect ghcr.io/event4u-app/agent-memory:latest` returns `manifest unknown`, even though `.github/workflows/docker-image.yml` exists. The `docker compose pull` step in [`deploy/team-memory/README.md`](../../deploy/team-memory/README.md) (§5) will fail until the image is published with a fixed tag.
+**Original symptom (2026-04-27 dry-run):** `docker manifest inspect ghcr.io/event4u-app/agent-memory:latest` returns `manifest unknown`. Anonymous `curl` against `/v2/event4u-app/agent-memory/manifests/main` returns `HTTP 401`. So the runbook §5 `docker compose pull` had two problems: the wrong default tag and a missing auth step.
 
-**Action:** when the maintainer runs the real spike, either:
-- publish a release tag from `main` first (`docker-image.yml` already builds on push), or
-- build the image on the Hetzner host directly via a temporary `git clone` (slow, but works), or
-- pin `MEMORY_IMAGE_TAG=sha-<short>` once a sha-tagged image lands.
+**Investigation:**
 
-Not a blocker for Phase 2 — but the README §5 should mention this until `:latest` is reliably published. Tracked as a Phase-2 papercut.
+| Tag | Status | Source |
+|---|---|---|
+| `:latest` | does not exist | workflow line 69 emits `:latest` only on `v*` git tags |
+| `:main` | exists | `type=ref,event=branch` on every main push |
+| `:sha-<short>` | exists | `type=sha,prefix=sha-,format=short` on every main push |
+
+**Resolution path (committed in this branch):**
+
+1. `deploy/team-memory/.env.example` default changed from `MEMORY_IMAGE_TAG=latest` → `MEMORY_IMAGE_TAG=main`. `:latest` reservation kept for future v* releases — no workflow change.
+2. `deploy/team-memory/docker-compose.yml` fallback changed from `${MEMORY_IMAGE_TAG:-latest}` → `${MEMORY_IMAGE_TAG:-main}`.
+3. New `deploy/team-memory/operator-setup.md §4` documents the one-time **set GHCR package visibility to public** click-action (https://github.com/orgs/event4u-app/packages/container/agent-memory/settings → Danger Zone), plus the available-tag matrix and the revert-to-private path.
+4. `deploy/team-memory/README.md §5` references `operator-setup.md §4` as a one-time prerequisite before `docker compose pull`.
+
+**Operator action before the spike (one click, no code):** set the GHCR package to public visibility per `operator-setup.md §4`. After that, `docker compose pull` works anonymously from the Hetzner host. No `docker login ghcr.io`, no PAT distribution.
+
+**Why not auto-emit `:latest` on every main push?** Convention: `:latest` should track the newest **stable release**, not the newest commit. Once the first `v1.x.y` tag lands the workflow already emits `:latest` correctly; until then, `:main` is the explicit "newest build" name and operators pin `:sha-<short>` for production.
 
 ### 2 · Synthetic entries depress below retrieval threshold by design
 

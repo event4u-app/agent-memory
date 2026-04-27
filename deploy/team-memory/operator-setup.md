@@ -1,6 +1,6 @@
 # Operator setup — pieces that live outside `docker-compose.yml`
 
-Three things the maintainer configures **once**, in addition to the Compose stack: the Hetzner Cloud Firewall, the Tailscale ACL, and the team's secret vault items. Each is an artefact the runbook ([`README.md`](README.md)) references.
+Four things the maintainer configures **once**, in addition to the Compose stack: the Hetzner Cloud Firewall, the Tailscale ACL, the team's secret vault items, and the GHCR package visibility. Each is an artefact the runbook ([`README.md`](README.md)) references.
 
 ## 1 · Hetzner Cloud Firewall
 
@@ -94,3 +94,34 @@ The schema is identical — two secrets, one maintainer-only, one read-shared wi
 | Doppler | `doppler secrets get TEAM_MEMORY_MCP_BEARER --plain` |
 
 Override the default 1Password reference via `MEMORY_BEARER_OP_REF` (consumed by [`scripts/team-memory-onboard.sh`](../../scripts/team-memory-onboard.sh)).
+
+## 4 · GHCR package visibility (one-time)
+
+The runtime image `ghcr.io/event4u-app/agent-memory` is built and pushed by [`.github/workflows/docker-image.yml`](../../.github/workflows/docker-image.yml) on every push to `main`. It defaults to **private** visibility on first publish — every `docker pull` then needs `docker login ghcr.io` with a `read:packages` PAT, which is unnecessary friction for a public-license tool.
+
+**Set it to public once, before the spike:**
+
+1. Open <https://github.com/orgs/event4u-app/packages/container/agent-memory/settings>.
+2. Scroll to **Danger Zone** → **Change package visibility** → **Public** → confirm with the package name.
+3. Verify anonymously from any machine without `docker login`:
+
+   ```bash
+   docker manifest inspect ghcr.io/event4u-app/agent-memory:main >/dev/null && echo "public ✓"
+   ```
+
+Once public, the runbook §5 `docker compose pull` works without authentication. No code or workflow change required — only the visibility setting.
+
+### Available tags
+
+| Tag | Source | Use |
+|---|---|---|
+| `main` | every push to main | spike / dev (default in `.env.example`) |
+| `sha-<short>` | every push to main | production pinning (immutable) |
+| `vX.Y.Z` / `X.Y` / `latest` | only on `v*` git tags | once a release ships |
+| `<branch-name>` | when the workflow is dispatched on a branch | one-off testing |
+
+`:latest` does **not** exist until the first `v*` release lands — by design, so operators do not silently track a moving target.
+
+### Reverting to private
+
+If a hotfix temporarily exposes a sensitive layer, set the package back to **Private** at the same URL. Existing pulls keep working until the running compose pulls again; a `docker compose pull` from a non-authenticated host then fails with a `401`. After the hotfix re-publishes, set back to **Public**.

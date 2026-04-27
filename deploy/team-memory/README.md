@@ -69,6 +69,8 @@ Store both in the team vault under `team-memory/postgres` and `team-memory/mcp-b
 
 ## 5 · Deploy the stack
 
+> **One-time prerequisite:** the GHCR package `ghcr.io/event4u-app/agent-memory` must be set to **public visibility** before `docker compose pull` can fetch images anonymously. See [`operator-setup.md` §4](operator-setup.md#4--ghcr-package-visibility-one-time). The default `MEMORY_IMAGE_TAG=main` tracks the newest main-branch build; for production pin to `sha-<short>` (reproducibility) or `v1.x.y` once a release ships — `:latest` is reserved for release tags and does not exist yet.
+
 ```bash
 # On the host, as the `memory` user:
 mkdir -p ~/agent-memory-deploy && cd ~/agent-memory-deploy
