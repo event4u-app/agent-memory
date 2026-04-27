@@ -32,7 +32,7 @@ usermod -aG sudo,docker memory   # docker group only after step 3
 
 ## 2 · Lock down the firewall
 
-Hetzner Cloud Console → Firewalls → attach a firewall to the host that allows **inbound only**: `22/tcp` (SSH) and `41641/udp` (Tailscale). Block everything else inbound.
+Hetzner Cloud Console → Firewalls → attach a firewall to the host that allows **inbound only**: `22/tcp` (SSH) and `41641/udp` (Tailscale). Full configuration (Console click-path + reproducible `hcloud` CLI commands) lives in [`operator-setup.md` §1](operator-setup.md#1--hetzner-cloud-firewall).
 
 ```bash
 # Optional second layer on the host itself:
@@ -55,7 +55,7 @@ sudo tailscale ip -4
 #  → 100.x.x.x  ← record this; it is the TAILNET_IP for .env
 ```
 
-In the Tailscale admin console, define the ACL so only members of the `team-memory-users` group can reach `tag:memory-host` on TCP 7078.
+In the Tailscale admin console (Access Controls tab), paste the ACL from [`tailscale-acl.json`](tailscale-acl.json) and replace the placeholder emails with the team list. The ACL grants `team-memory-users` access to `tag:memory-host:7078` only, plus admin SSH on port 22; full reasoning in [`operator-setup.md` §2](operator-setup.md#2--tailscale-acl).
 
 ## 4 · Generate secrets
 
@@ -65,7 +65,7 @@ openssl rand -hex 32   # POSTGRES_PASSWORD       → store in vault
 openssl rand -hex 32   # MEMORY_MCP_AUTH_TOKEN   → store in vault
 ```
 
-Store both in the team vault under `team-memory/postgres` and `team-memory/mcp-bearer`. The bearer is distributed to every developer; the Postgres password stays maintainer-only.
+Store both in the team vault under `team-memory/postgres` and `team-memory/mcp-bearer`. The bearer is distributed to every developer; the Postgres password stays maintainer-only. Vault item schema (1Password / Bitwarden / Vault / Doppler equivalents): [`operator-setup.md` §3](operator-setup.md#3--1password-vault-items).
 
 ## 5 · Deploy the stack
 

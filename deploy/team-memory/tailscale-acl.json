@@ -1,0 +1,84 @@
+{
+	"//": "Team-memory Tailscale ACL — paste into the Tailscale admin console (Access Controls tab).",
+	"//": "Implements ADR-0005: Tailscale tailnet as the network gate.",
+	"//": "Adjust 'group:team-memory-users' membership to your team's email list.",
+	"//": "The host running deploy/team-memory/docker-compose.yml must be tagged 'tag:memory-host'.",
+
+	"tagOwners": {
+		"tag:memory-host": [
+			"group:admin"
+		]
+	},
+
+	"groups": {
+		"group:admin": [
+			"REPLACE_WITH_MAINTAINER_EMAIL@example.com"
+		],
+		"group:team-memory-users": [
+			"REPLACE_WITH_DEV_1@example.com",
+			"REPLACE_WITH_DEV_2@example.com"
+		]
+	},
+
+	"acls": [
+		{
+			"//": "Default-deny: members of team-memory-users may only reach the brain on TCP 7078.",
+			"action": "accept",
+			"src": [
+				"group:team-memory-users",
+				"group:admin"
+			],
+			"dst": [
+				"tag:memory-host:7078"
+			]
+		},
+		{
+			"//": "Admins keep SSH access to the brain host (Tailscale SSH; no key distribution needed).",
+			"action": "accept",
+			"src": [
+				"group:admin"
+			],
+			"dst": [
+				"tag:memory-host:22"
+			]
+		}
+	],
+
+	"ssh": [
+		{
+			"//": "Tailscale SSH for maintenance — admins to root on tagged hosts. Auth via Tailscale identity.",
+			"action": "accept",
+			"src": [
+				"group:admin"
+			],
+			"dst": [
+				"tag:memory-host"
+			],
+			"users": [
+				"root",
+				"memory"
+			]
+		}
+	],
+
+	"tests": [
+		{
+			"//": "Regression test: a normal team-memory user must reach 7078 but not SSH.",
+			"src": "group:team-memory-users",
+			"accept": [
+				"tag:memory-host:7078"
+			],
+			"deny": [
+				"tag:memory-host:22"
+			]
+		},
+		{
+			"//": "Regression test: an outsider (no group) must be denied entirely.",
+			"src": "REPLACE_WITH_NON_MEMBER@example.com",
+			"deny": [
+				"tag:memory-host:7078",
+				"tag:memory-host:22"
+			]
+		}
+	]
+}
