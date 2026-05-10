@@ -1,6 +1,6 @@
 # Phase 0 — Audit & Baseline Outputs
 
-Working notes for `agents/roadmaps/improve-system.md`. Not user-facing.
+Working notes for `agents/roadmaps/archive/improve-system.md`. Not user-facing.
 Regenerate by re-running the commands below before declaring Phase 0 done.
 
 ## P0-1 · Universality drift (file:line)

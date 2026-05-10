@@ -2,7 +2,7 @@
 
 > **Status:** Accepted
 > **Date:** 2026-04-22
-> **Roadmap:** `agents/roadmaps/improve-system.md` (P3-4a)
+> **Roadmap:** `agents/roadmaps/archive/improve-system.md` (P3-4a)
 > **Supersedes partially:** ADR-0001 container section (retains the
 > `docker compose exec` usage pattern; replaces `tail -f /dev/null`).
 
@@ -123,7 +123,7 @@ pressure hits):
 
 ## References
 
-- `agents/roadmaps/improve-system.md` — P3-4a / P3-4b
+- `agents/roadmaps/archive/improve-system.md` — P3-4a / P3-4b
 - `docker-compose.yml`, `Dockerfile`, `docker-entrypoint.sh`
 - Reviewer feedback on PR #3 (Claude, GPT) — archived in
   `agents/analysis/improve-system-phase0.md`

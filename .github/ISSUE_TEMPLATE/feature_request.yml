@@ -6,10 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before filing: check the
-        [roadmap](../agents/roadmaps/improve-system.md) and existing
-        issues so we don't duplicate work. For architectural changes,
-        consider opening a discussion first.
+        Before filing: check the existing issues and the
+        [archived roadmaps](../agents/roadmaps/archive/) (context on
+        what each release cycle shipped) so we don't duplicate work.
+        For architectural changes, consider opening a discussion first.
 
   - type: textarea
     id: problem

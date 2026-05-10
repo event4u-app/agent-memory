@@ -2,7 +2,7 @@
 
 > **Status:** Accepted
 > **Date:** 2026-04-23
-> **Roadmap:** `agents/roadmaps/improve-system.md` (P5-3)
+> **Roadmap:** `agents/roadmaps/archive/improve-system.md` (P5-3)
 > **Related:** `src/retrieval/contract.ts`,
 > `agents/roadmaps/archive/from-agent-config/road-to-retrieval-contract.md`,
 > `tests/fixtures/retrieval/`.

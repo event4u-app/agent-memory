@@ -4,11 +4,11 @@ Thanks for taking an interest in the project. This file documents what
 we expect from contributions and how to validate them locally before
 opening a pull request.
 
-> **Before you start:** browse the existing [roadmap](agents/roadmaps/improve-system.md)
-> and the [open issues](https://github.com/event4u-app/agent-memory/issues)
-> so we don't duplicate work. For architectural changes, please open a
-> discussion first — small fixes and documentation improvements can go
-> straight to a PR.
+> **Before you start:** browse the [open issues](https://github.com/event4u-app/agent-memory/issues)
+> and the [archived roadmaps](agents/roadmaps/archive/) (context on
+> what each release cycle shipped and why) so we don't duplicate work.
+> For architectural changes, please open a discussion first — small
+> fixes and documentation improvements can go straight to a PR.
 
 ## Dev setup
 
