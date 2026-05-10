@@ -1,0 +1,1 @@
+../.augment/rules/artifact-drafting-protocol.md

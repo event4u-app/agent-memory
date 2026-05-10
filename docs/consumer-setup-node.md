@@ -17,9 +17,15 @@ All three can coexist in the same project.
 
 ## 1 · Install
 
+`agent-memory` is a development-time tool for most consumers — install it
+as a dev dependency so it stays out of production bundles:
+
 ```bash
-npm install @event4u/agent-memory
+npm install --save-dev @event4u/agent-memory
 ```
+
+Production-time callers (a service that queries its own memory at runtime)
+can drop the `--save-dev` flag. Everything below works the same either way.
 
 Migrations ship with the package. Run them once against an empty DB
 via the published migration script:

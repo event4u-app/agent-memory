@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "/abs/path/to/your/project/docker-compose.yml",
+        "exec",
+        "-i",
+        "agent-memory",
+        "memory",
+        "mcp"
+      ]
+    }
+  }
+}

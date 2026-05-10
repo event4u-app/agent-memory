@@ -1,0 +1,108 @@
+# Smoke-test every integration snippet under `examples/integrations/`.
+#
+# Convention: each integration is a directory with a `README.md` (what ·
+# when · copy-paste · smoke) and an executable `smoke.sh` that exits 0
+# on success. The workflow discovers them dynamically, so adding a new
+# integration means dropping in a directory — no CI edit required.
+#
+# Today the directory is empty of real integrations; `discover` then
+# reports `has_any=false` and the matrix job is skipped. This is
+# intentional: the workflow exists so the first integration arrives
+# with its smoke-gate already wired, not as a follow-up.
+#
+# Roadmap anchor: `agents/roadmaps/runtime-trust.md` § D2.
+
+name: Integration snippets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/integrations/**"
+      - ".github/workflows/integrations.yml"
+  pull_request:
+    paths:
+      - "examples/integrations/**"
+      - ".github/workflows/integrations.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover integrations
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.scan.outputs.list }}
+      has_any: ${{ steps.scan.outputs.has_any }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: scan
+        name: Scan examples/integrations/
+        run: |
+          set -euo pipefail
+          root="examples/integrations"
+          if [ ! -d "$root" ]; then
+            echo "::error::$root is missing — the skeleton is gone."
+            exit 1
+          fi
+
+          # Every subdirectory MUST ship README.md + smoke.sh, otherwise
+          # the claim in examples/integrations/README.md drifts from
+          # reality. Fail loud, not silent.
+          missing=()
+          for dir in "$root"/*/; do
+            [ -d "$dir" ] || continue
+            [ -f "$dir/README.md" ] || missing+=("$dir: README.md")
+            [ -f "$dir/smoke.sh" ] || missing+=("$dir: smoke.sh")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Incomplete integration: %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+          names=$(find "$root" -mindepth 2 -maxdepth 2 -name smoke.sh \
+            -exec dirname {} \; | xargs -n1 -r basename | sort -u)
+          if [ -z "$names" ]; then
+            echo "has_any=false" >> "$GITHUB_OUTPUT"
+            echo "list=[]" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  No integrations present yet — skeleton-only."
+            exit 0
+          fi
+
+          json=$(printf '%s\n' "$names" | jq -R . | jq -s -c .)
+          echo "has_any=true" >> "$GITHUB_OUTPUT"
+          echo "list=$json" >> "$GITHUB_OUTPUT"
+          echo "Discovered: $json"
+
+  smoke:
+    name: Smoke · ${{ matrix.integration }}
+    needs: discover
+    if: needs.discover.outputs.has_any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        integration: ${{ fromJson(needs.discover.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Build (so smoke.sh finds dist/cli/index.js)
+        run: npm run build
+
+      - name: Run smoke.sh
+        working-directory: examples/integrations/${{ matrix.integration }}
+        env:
+          MEMORY_BIN: node ${{ github.workspace }}/dist/cli/index.js
+        run: |
+          chmod +x smoke.sh
+          ./smoke.sh

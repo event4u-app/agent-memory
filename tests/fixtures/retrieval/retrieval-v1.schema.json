@@ -25,9 +25,30 @@
 		"errors": {
 			"type": "array",
 			"items": { "$ref": "#/$defs/error" }
+		},
+		"warnings": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/warning" }
 		}
 	},
 	"$defs": {
+		"warning": {
+			"type": "object",
+			"required": ["code", "entryId"],
+			"additionalProperties": true,
+			"properties": {
+				"code": { "type": "string", "enum": ["RETRIEVE_POST_REDACT"] },
+				"entryId": { "type": "string", "minLength": 1 },
+				"patterns": {
+					"type": "array",
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"fields": {
+					"type": "array",
+					"items": { "type": "string", "minLength": 1 }
+				}
+			}
+		},
 		"entry": {
 			"type": "object",
 			"required": ["id", "type", "source", "confidence", "body"],

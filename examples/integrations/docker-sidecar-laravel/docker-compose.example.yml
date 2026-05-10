@@ -1,0 +1,64 @@
+# Docker sidecar for a Laravel application.
+#
+# Merge these two services into the compose file your Laravel app already
+# runs. Keep the `depends_on: agent-memory: service_healthy` guard on your
+# app service so nothing boots before the sidecar finishes migrations.
+#
+# `REPO_ROOT=/workspace` + the read-only mount lets file-exists and
+# symbol-exists validators resolve memory entries against your actual
+# PHP source. Without it those validators fail-closed on every propose.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: agent_memory
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: memory_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory -d agent_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  agent-memory:
+    # For a release-tracked setup, pin a tag instead of `latest`.
+    image: ghcr.io/event4u-app/agent-memory:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://memory:memory_dev@postgres:5432/agent_memory
+      LOG_LEVEL: info
+      REPO_ROOT: /workspace
+    volumes:
+      - .:/workspace:ro
+    # Default CMD is `memory serve` — supervisor that applies pending
+    # migrations on start, then idles until SIGTERM (see ADR-0002).
+    healthcheck:
+      test: ["CMD", "memory", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Your Laravel app service ───────────────────────────────────────────
+  # Uncomment and adapt. `depends_on: service_healthy` is the key guard.
+  #
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     agent-memory:
+  #       condition: service_healthy
+  #   environment:
+  #     AGENT_MEMORY_SERVICE: agent-memory
+  #     AGENT_MEMORY_REPOSITORY: my-laravel-app
+  #   volumes:
+  #     - .:/var/www/html
+
+volumes:
+  pgdata:

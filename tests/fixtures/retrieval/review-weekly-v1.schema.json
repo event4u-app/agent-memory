@@ -1,0 +1,118 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "review-weekly-v1",
+	"title": "Memory review digest envelope (B3 · runtime-trust)",
+	"description": "Non-interactive digest of open maintenance cases: stale high-value entries, unresolved contradictions, and poison candidates. Consumers: `memory review --weekly` CLI + `memory_review` MCP tool. Locked at schema version 1 — additive fields require v2.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["contract_version", "generated_at", "summary", "cases"],
+	"properties": {
+		"contract_version": { "const": "review-weekly-v1" },
+		"generated_at": { "type": "string", "format": "date-time" },
+		"summary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["stale_high_value", "contradictions", "poison_candidates", "deferred"],
+			"properties": {
+				"stale_high_value": { "type": "integer", "minimum": 0 },
+				"contradictions": { "type": "integer", "minimum": 0 },
+				"poison_candidates": { "type": "integer", "minimum": 0 },
+				"deferred": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"cases": {
+			"type": "array",
+			"items": {
+				"oneOf": [
+					{ "$ref": "#/definitions/stale_high_value" },
+					{ "$ref": "#/definitions/contradiction" },
+					{ "$ref": "#/definitions/poison_candidate" }
+				]
+			}
+		}
+	},
+	"definitions": {
+		"stale_high_value": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"kind",
+				"case_id",
+				"entry_id",
+				"title",
+				"impact_level",
+				"trust_score",
+				"days_since_validation",
+				"hint"
+			],
+			"properties": {
+				"kind": { "const": "stale_high_value" },
+				"case_id": { "type": "string", "pattern": "^stale:" },
+				"entry_id": { "type": "string" },
+				"title": { "type": "string" },
+				"impact_level": {
+					"type": "string",
+					"enum": ["low", "medium", "high", "critical"]
+				},
+				"trust_score": { "type": "number", "minimum": 0, "maximum": 1 },
+				"days_since_validation": { "type": "integer", "minimum": 0 },
+				"hint": { "type": "string" }
+			}
+		},
+		"contradiction": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"kind",
+				"case_id",
+				"contradiction_id",
+				"entry_a",
+				"entry_b",
+				"description",
+				"created_at",
+				"hint"
+			],
+			"properties": {
+				"kind": { "const": "contradiction" },
+				"case_id": { "type": "string", "pattern": "^contradiction:" },
+				"contradiction_id": { "type": "string" },
+				"entry_a": { "$ref": "#/definitions/entry_ref" },
+				"entry_b": { "$ref": "#/definitions/entry_ref" },
+				"description": { "type": "string" },
+				"created_at": { "type": "string", "format": "date-time" },
+				"hint": { "type": "string" }
+			}
+		},
+		"poison_candidate": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"kind",
+				"case_id",
+				"entry_id",
+				"title",
+				"trust_score",
+				"invalidation_count",
+				"hint"
+			],
+			"properties": {
+				"kind": { "const": "poison_candidate" },
+				"case_id": { "type": "string", "pattern": "^poison:" },
+				"entry_id": { "type": "string" },
+				"title": { "type": "string" },
+				"trust_score": { "type": "number", "minimum": 0, "maximum": 1 },
+				"invalidation_count": { "type": "integer", "minimum": 0 },
+				"hint": { "type": "string" }
+			}
+		},
+		"entry_ref": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "title"],
+			"properties": {
+				"id": { "type": "string" },
+				"title": { "type": "string" }
+			}
+		}
+	}
+}

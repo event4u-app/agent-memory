@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { observeRetrieveDuration } from "../observability/metrics.js";
 import { shouldRefreshOnHit } from "../trust/decay.js";
 import { applyExpiryFilter } from "../trust/expiry.js";
 import type { ConsolidationTier, MemoryEntry, MemoryType, TrustStatus } from "../types.js";
@@ -113,6 +114,19 @@ export class RetrievalEngine {
 	 * Retrieve memory entries matching a query with full trust enforcement.
 	 */
 	async retrieve(allEntries: MemoryEntry[], options: RetrievalOptions): Promise<RetrievalResponse> {
+		const startNs = process.hrtime.bigint();
+		try {
+			return await this.retrieveInner(allEntries, options);
+		} finally {
+			const elapsedSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
+			observeRetrieveDuration(elapsedSeconds);
+		}
+	}
+
+	private async retrieveInner(
+		allEntries: MemoryEntry[],
+		options: RetrievalOptions,
+	): Promise<RetrievalResponse> {
 		const level = options.level ?? "timeline";
 		const tokenBudget = options.tokenBudget ?? DEFAULT_TOKEN_BUDGET;
 		const limit = options.limit ?? DEFAULT_LIMIT;

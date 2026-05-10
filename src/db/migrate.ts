@@ -4,10 +4,16 @@ import { logger } from "../utils/logger.js";
 import { closeDb, getDb } from "./connection.js";
 import { up as up001 } from "./migrations/001_initial.js";
 import { up as up002 } from "./migrations/002_promotion_metadata.js";
+import { up as up003 } from "./migrations/003_memory_events.js";
+import { up as up004 } from "./migrations/004_memory_events_trust_extension.js";
+import { up as up005 } from "./migrations/005_repair_jsonb_strings.js";
 
 const MIGRATIONS = [
 	{ name: "001_initial", up: up001 },
 	{ name: "002_promotion_metadata", up: up002 },
+	{ name: "003_memory_events", up: up003 },
+	{ name: "004_memory_events_trust_extension", up: up004 },
+	{ name: "005_repair_jsonb_strings", up: up005 },
 ] as const;
 
 export interface MigrationResult {
@@ -56,6 +62,60 @@ export async function runMigrations(opts: RunMigrationsOptions = {}): Promise<Mi
 		}
 	}
 	return executeMigrations(getDb());
+}
+
+/**
+ * Read-only counterpart to `runMigrations`. Returns the names of migrations
+ * that are known to this build but have not been applied to the database yet.
+ *
+ * Used by `memory serve`'s `/ready` endpoint (A1) and `memory migrate status`
+ * — both must observe migration state without side effects.
+ */
+export async function listPendingMigrations(sql?: postgres.Sql): Promise<string[]> {
+	const db = sql ?? getDb();
+	const tableExists = await db<{ exists: boolean }[]>`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables
+			WHERE table_name = 'memory_migrations'
+		) AS "exists"
+	`;
+	if (!tableExists[0]?.exists) return MIGRATIONS.map((m) => m.name);
+	const applied = await db<{ name: string }[]>`SELECT name FROM memory_migrations`;
+	const appliedSet = new Set(applied.map((r) => r.name));
+	return MIGRATIONS.filter((m) => !appliedSet.has(m.name)).map((m) => m.name);
+}
+
+export interface MigrationStatus {
+	applied: string[];
+	pending: string[];
+	total: number;
+}
+
+/**
+ * JSON-shaped migration status used by `memory migrate status` and reusable
+ * from tests or /ready diagnostics. Emits every known migration in its
+ * declared order with a flag whether the tracking table has seen it.
+ */
+export async function buildMigrationStatus(sql?: postgres.Sql): Promise<MigrationStatus> {
+	const db = sql ?? getDb();
+	const tableExists = await db<{ exists: boolean }[]>`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables
+			WHERE table_name = 'memory_migrations'
+		) AS "exists"
+	`;
+	let appliedSet = new Set<string>();
+	if (tableExists[0]?.exists) {
+		const rows = await db<{ name: string }[]>`SELECT name FROM memory_migrations`;
+		appliedSet = new Set(rows.map((r) => r.name));
+	}
+	const applied: string[] = [];
+	const pending: string[] = [];
+	for (const m of MIGRATIONS) {
+		if (appliedSet.has(m.name)) applied.push(m.name);
+		else pending.push(m.name);
+	}
+	return { applied, pending, total: MIGRATIONS.length };
 }
 
 async function executeMigrations(db: postgres.Sql): Promise<MigrationResult> {

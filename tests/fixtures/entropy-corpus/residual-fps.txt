@@ -1,0 +1,23 @@
+# Residual false positives the guard cannot resolve.
+#
+# Every string here is a legitimate non-secret that the entropy heuristic
+# will still flag because it is structurally indistinguishable from a
+# real base64-encoded secret. The allow-list (II4) only suppresses
+# matches that fit a NAMED benign shape (Git SHA, UUID, semver, SRI
+# hash). Base64 of short ASCII plaintext has no syntactic tell.
+#
+# Decoded content is given for reviewer context only. The guard never
+# decodes candidate strings — doing so at ingress would open a
+# zip-bomb / resource-exhaustion vector and still not resolve the core
+# ambiguity (is "dGVzdA==" → "test" a leak of a 4-char password?).
+#
+# Policy: these reject at ingress. Operators who need them in memory
+# either (a) wrap them in a context that isn't quoted, (b) set
+# MEMORY_SECRET_POLICY=redact locally, or (c) split them across keys
+# below the min-length threshold.
+
+# base64("agent-memory-is-not-a-secret-123456")
+YWdlbnQtbWVtb3J5LWlzLW5vdC1hLXNlY3JldC0xMjM0NTY=
+
+# base64("this-is-just-a-test-string-for-corpus")
+dGhpcy1pcy1qdXN0LWEtdGVzdC1zdHJpbmctZm9yLWNvcnB1cw==

@@ -8,6 +8,18 @@ import { hardInvalidate, softInvalidate } from "./invalidation-flows.js";
 import { detectDrift } from "./semantic-drift.js";
 import { matchFileWatches, matchSymbolWatches } from "./watchers.js";
 
+/** Per-entry detail. Stable fields for C3 PR-comment rendering. */
+export interface InvalidationRunEntry {
+	id: string;
+	title: string;
+	/** Outcome applied to the entry in this run. */
+	action: "soft_invalidate" | "hard_invalidate" | "drift_invalidate" | "skipped";
+	/** Human-readable reason (carried into the TRUST_EVENT, too). */
+	reason: string;
+	/** Which signal fired: file change, symbol rename/removal, semantic drift. */
+	trigger: "file" | "symbol" | "drift" | "file_deleted";
+}
+
 export interface InvalidationRunResult {
 	/** Git diff summary */
 	diff: { filesChanged: number; fromRef: string; toRef: string };
@@ -21,6 +33,8 @@ export interface InvalidationRunResult {
 	driftDetected: number;
 	/** Entries skipped (already invalid) */
 	skipped: number;
+	/** Per-entry audit trail for PR-comment rendering (C3). */
+	entries: InvalidationRunEntry[];
 }
 
 export interface InvalidationRunOptions {
@@ -65,6 +79,7 @@ export class InvalidationOrchestrator {
 				hardInvalidated: 0,
 				driftDetected: 0,
 				skipped: 0,
+				entries: [],
 			};
 		}
 
@@ -88,6 +103,7 @@ export class InvalidationOrchestrator {
 		let hardCount = 0;
 		let driftCount = 0;
 		let skipCount = 0;
+		const auditEntries: InvalidationRunEntry[] = [];
 
 		// 4. Process each affected entry
 		for (const entryId of affectedEntryIds) {
@@ -108,30 +124,55 @@ export class InvalidationOrchestrator {
 				const drift = await detectDrift(entry, evidence, options.root);
 				if (drift.shouldInvalidate) {
 					driftCount++;
-					await hardInvalidate(
-						entryId,
-						`Semantic drift: ${drift.driftedSymbols.map((s) => s.symbolName).join(", ")}`,
-						this.entryRepo,
-					);
+					const driftReason = `Semantic drift: ${drift.driftedSymbols.map((s) => s.symbolName).join(", ")}`;
+					await hardInvalidate(entryId, driftReason, this.entryRepo);
 					hardCount++;
+					auditEntries.push({
+						id: entryId,
+						title: entry.title,
+						action: "drift_invalidate",
+						reason: driftReason,
+						trigger: "drift",
+					});
 					continue;
 				}
 			}
 
 			// 6. Apply invalidation based on severity
 			if (hasDeletedFile) {
-				await hardInvalidate(
-					entryId,
-					`Watched file deleted: ${matches.find((m) => m.change.isDeleted)?.matched}`,
-					this.entryRepo,
-				);
+				const deletedFile = matches.find((m) => m.change.isDeleted)?.matched ?? "unknown";
+				const reason = `Watched file deleted: ${deletedFile}`;
+				await hardInvalidate(entryId, reason, this.entryRepo);
 				hardCount++;
+				auditEntries.push({
+					id: entryId,
+					title: entry.title,
+					action: "hard_invalidate",
+					reason,
+					trigger: "file_deleted",
+				});
 			} else if (hasHighSeverity) {
-				await softInvalidate(entryId, `Major changes in watched files`, this.entryRepo);
+				const reason = "Major changes in watched files";
+				await softInvalidate(entryId, reason, this.entryRepo);
 				softCount++;
+				auditEntries.push({
+					id: entryId,
+					title: entry.title,
+					action: "soft_invalidate",
+					reason,
+					trigger: hasSymbolMatch ? "symbol" : "file",
+				});
 			} else {
-				await softInvalidate(entryId, `Minor changes in watched files`, this.entryRepo);
+				const reason = "Minor changes in watched files";
+				await softInvalidate(entryId, reason, this.entryRepo);
 				softCount++;
+				auditEntries.push({
+					id: entryId,
+					title: entry.title,
+					action: "soft_invalidate",
+					reason,
+					trigger: hasSymbolMatch ? "symbol" : "file",
+				});
 			}
 		}
 
@@ -157,6 +198,7 @@ export class InvalidationOrchestrator {
 			hardInvalidated: hardCount,
 			driftDetected: driftCount,
 			skipped: skipCount,
+			entries: auditEntries,
 		};
 	}
 

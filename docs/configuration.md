@@ -82,9 +82,18 @@ Set this in every MCP config entry — the validators need absolute paths.
 
 ## MCP server
 
-The MCP server uses stdio transport exclusively. There is no HTTP
-transport in this release and no environment variables to configure
-for it. An HTTP transport is not on the current roadmap.
+Two transports are available. `stdio` is the default and needs no
+configuration beyond `DATABASE_URL`. `sse` adds an HTTP listener —
+see [`docs/mcp-http.md`](mcp-http.md) for client configs.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MEMORY_MCP_AUTH_TOKEN` | — | **Required** when starting with `--transport sse`. Static bearer token enforced on every `/sse` GET and `/message` POST. Rotate by redeploying. The server refuses to start when empty. |
+
+```bash
+memory mcp                                   # stdio (default)
+memory mcp --transport sse --port 7078       # HTTP/SSE listener
+```
 
 ## Database migrations
 

@@ -1,0 +1,98 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "history-v1",
+	"title": "Memory entry history envelope (B2 · runtime-trust)",
+	"description": "Chronological timeline of memory_events for a single entry, bucketed by UTC day. Consumers: `memory history <id>` CLI + `memory_history` MCP tool. Locked at schema version 1 — additive fields require v2.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["contract_version", "entry", "range", "timeline"],
+	"properties": {
+		"contract_version": { "const": "history-v1" },
+		"entry": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "title", "type", "status", "current_score"],
+			"properties": {
+				"id": { "type": "string" },
+				"title": { "type": "string" },
+				"type": { "type": "string" },
+				"status": { "type": "string" },
+				"current_score": { "type": "number", "minimum": 0, "maximum": 1 }
+			}
+		},
+		"range": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["since", "until", "event_count"],
+			"properties": {
+				"since": { "type": ["string", "null"], "format": "date-time" },
+				"until": { "type": "string", "format": "date-time" },
+				"event_count": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"timeline": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["day", "events"],
+				"properties": {
+					"day": {
+						"type": "string",
+						"pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+					},
+					"events": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"id",
+								"occurred_at",
+								"actor",
+								"actor_kind",
+								"event_type",
+								"reason",
+								"diff"
+							],
+							"properties": {
+								"id": { "type": "string" },
+								"occurred_at": { "type": "string", "format": "date-time" },
+								"actor": { "type": "string" },
+								"actor_kind": {
+									"enum": ["user", "agent", "system", "unknown"]
+								},
+								"event_type": { "type": "string" },
+								"reason": { "type": ["string", "null"] },
+								"diff": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"status": {
+											"type": "object",
+											"additionalProperties": false,
+											"required": ["before", "after"],
+											"properties": {
+												"before": { "type": ["string", "null"] },
+												"after": { "type": ["string", "null"] }
+											}
+										},
+										"score": {
+											"type": "object",
+											"additionalProperties": false,
+											"required": ["before", "after"],
+											"properties": {
+												"before": { "type": ["number", "null"] },
+												"after": { "type": ["number", "null"] }
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

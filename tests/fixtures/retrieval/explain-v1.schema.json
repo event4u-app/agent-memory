@@ -1,0 +1,135 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/event4u-app/agent-memory/tests/fixtures/retrieval/explain-v1.schema.json",
+	"title": "Explain Response v1",
+	"description": "Shape-only contract for `memory explain <id>` (B1 · runtime-trust) and the `memory_explain` MCP tool. See src/trust/explain.service.ts::ExplainV1.",
+	"type": "object",
+	"required": ["contract_version", "entry", "score", "promotion_history", "contradictions", "decay"],
+	"additionalProperties": false,
+	"properties": {
+		"contract_version": { "type": "string", "const": "explain-v1" },
+		"entry": {
+			"type": "object",
+			"required": [
+				"id",
+				"title",
+				"type",
+				"status",
+				"impact_level",
+				"knowledge_class",
+				"stored_score",
+				"access_count",
+				"expires_at"
+			],
+			"additionalProperties": false,
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"title": { "type": "string" },
+				"type": { "type": "string" },
+				"status": { "type": "string" },
+				"impact_level": { "type": "string", "enum": ["critical", "high", "normal", "low"] },
+				"knowledge_class": { "type": "string", "enum": ["evergreen", "semi_stable", "volatile"] },
+				"stored_score": { "type": "number", "minimum": 0, "maximum": 1 },
+				"access_count": { "type": "integer", "minimum": 0 },
+				"expires_at": { "type": "string", "format": "date-time" }
+			}
+		},
+		"score": {
+			"type": "object",
+			"required": ["computed", "components", "why_not_max"],
+			"additionalProperties": false,
+			"properties": {
+				"computed": { "type": "number", "minimum": 0, "maximum": 1 },
+				"components": {
+					"type": "object",
+					"required": ["evidence", "access_boost", "decay", "single_evidence_cap"],
+					"additionalProperties": false,
+					"properties": {
+						"evidence": {
+							"type": "object",
+							"required": ["count", "min_required", "contribution", "note"],
+							"additionalProperties": false,
+							"properties": {
+								"count": { "type": "integer", "minimum": 0 },
+								"min_required": { "type": "integer", "minimum": 0 },
+								"contribution": { "type": "number" },
+								"note": { "type": "string" }
+							}
+						},
+						"access_boost": {
+							"type": "object",
+							"required": ["access_count", "contribution", "max", "note"],
+							"additionalProperties": false,
+							"properties": {
+								"access_count": { "type": "integer", "minimum": 0 },
+								"contribution": { "type": "number", "minimum": 0 },
+								"max": { "type": "number", "minimum": 0 },
+								"note": { "type": "string" }
+							}
+						},
+						"decay": {
+							"type": "object",
+							"required": ["days_since_validation", "ttl_days", "penalty", "note"],
+							"additionalProperties": false,
+							"properties": {
+								"days_since_validation": { "type": "number", "minimum": 0 },
+								"ttl_days": { "type": "integer", "minimum": 0 },
+								"penalty": { "type": "number", "minimum": 0 },
+								"note": { "type": "string" }
+							}
+						},
+						"single_evidence_cap": {
+							"type": "object",
+							"required": ["applied", "cap"],
+							"additionalProperties": false,
+							"properties": {
+								"applied": { "type": "boolean" },
+								"cap": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+							}
+						}
+					}
+				},
+				"why_not_max": { "type": "array", "items": { "type": "string" } }
+			}
+		},
+		"promotion_history": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["event_type", "occurred_at", "actor", "reason", "before", "after"],
+				"additionalProperties": false,
+				"properties": {
+					"event_type": { "type": "string" },
+					"occurred_at": { "type": "string", "format": "date-time" },
+					"actor": { "type": "string" },
+					"reason": { "type": ["string", "null"] },
+					"before": { "type": ["object", "null"] },
+					"after": { "type": ["object", "null"] }
+				}
+			}
+		},
+		"contradictions": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "description", "resolved"],
+				"additionalProperties": false,
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"description": { "type": "string" },
+					"resolved": { "type": "boolean" }
+				}
+			}
+		},
+		"decay": {
+			"type": "object",
+			"required": ["expires_at", "days_until_expiry", "stale_at_current_rate"],
+			"additionalProperties": false,
+			"properties": {
+				"expires_at": { "type": "string", "format": "date-time" },
+				"days_until_expiry": { "type": "number" },
+				"stale_at_current_rate": { "type": "boolean" }
+			}
+		}
+	}
+}

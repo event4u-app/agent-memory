@@ -1,0 +1,1 @@
+../../.augment/rules/minimal-safe-diff.md

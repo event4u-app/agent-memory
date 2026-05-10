@@ -7,12 +7,17 @@ import { applyPrivacyFilter } from "../ingestion/privacy-filter.js";
 import { hardInvalidate, softInvalidate } from "../invalidation/invalidation-flows.js";
 import { RollbackService } from "../invalidation/rollback.js";
 import {
-	listUnresolved,
 	type ResolutionStrategy,
 	resolveContradiction,
 } from "../quality/contradiction-resolution.js";
-import { findDuplicates, mergeDuplicates } from "../quality/dedup.js";
-import { calculateMetrics } from "../quality/metrics.js";
+import { mergeDuplicates } from "../quality/dedup.js";
+import { buildReviewDigest } from "../quality/review.service.js";
+import {
+	fetchContradictions,
+	fetchPoisonCandidates,
+	fetchStaleHighValue,
+} from "../quality/review-fetchers.js";
+import { toSlackBlockKit } from "../quality/review-slack.js";
 import {
 	BACKEND_FEATURES,
 	CONTRACT_VERSION,
@@ -23,6 +28,15 @@ import {
 	toContractEntry,
 } from "../retrieval/contract.js";
 import type { DisclosureLevel } from "../retrieval/progressive-disclosure.js";
+import {
+	type RetrievalWarning,
+	redactDetailEntry,
+	redactEntriesForRetrieval,
+} from "../security/retrieval-redaction.js";
+import { enforceNoSecretsWithAudit, SecretViolationError } from "../security/secret-guard.js";
+import type { SecretViolation } from "../security/secret-violation.js";
+import { explainEntry } from "../trust/explain.service.js";
+import { buildHistory } from "../trust/history.service.js";
 import type { ImpactLevel, KnowledgeClass, MemoryType } from "../types.js";
 import type { McpContext } from "./context.js";
 
@@ -33,6 +47,17 @@ function ok(data: unknown): CallToolResult {
 function err(message: string): CallToolResult {
 	return {
 		content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+		isError: true,
+	};
+}
+
+/**
+ * Structured ingress-policy error surface. MCP clients key off `code =
+ * INGRESS_POLICY_VIOLATION` and parse the violation body to rephrase input.
+ */
+function secretViolationResult(violation: SecretViolation): CallToolResult {
+	return {
+		content: [{ type: "text", text: JSON.stringify(violation, null, 2) }],
 		isError: true,
 	};
 }
@@ -50,6 +75,21 @@ export async function handleToolCall(
 	args: Args,
 	ctx: McpContext,
 ): Promise<CallToolResult> {
+	try {
+		return await dispatchTool(name, args, ctx);
+	} catch (error) {
+		// Top-level ingress-policy catch — any handler that invokes
+		// `enforceNoSecrets` (propose, observe, observe_failure, future ingress
+		// paths) surfaces as a structured INGRESS_POLICY_VIOLATION result
+		// without leaking the raw value. Other errors propagate unchanged.
+		if (error instanceof SecretViolationError) {
+			return secretViolationResult(error.violation);
+		}
+		throw error;
+	}
+}
+
+async function dispatchTool(name: string, args: Args, ctx: McpContext): Promise<CallToolResult> {
 	switch (name) {
 		case "memory_retrieve":
 			return handleRetrieve(args, ctx);
@@ -69,6 +109,10 @@ export async function handleToolCall(
 			return handleHealth(ctx);
 		case "memory_diagnose":
 			return handleDiagnose(args, ctx);
+		case "memory_explain":
+			return handleExplain(args, ctx);
+		case "memory_history":
+			return handleHistory(args, ctx);
 		case "memory_session_start":
 			return handleSessionStart(args, ctx);
 		case "memory_observe":
@@ -85,6 +129,8 @@ export async function handleToolCall(
 			return handleAudit(args, ctx);
 		case "memory_review":
 			return handleReview(args, ctx);
+		case "memory_contradictions":
+			return handleContradictions(args, ctx);
 		case "memory_resolve_contradiction":
 			return handleResolveContradiction(args, ctx);
 		case "memory_merge_duplicates":
@@ -103,22 +149,31 @@ export async function handleToolCall(
 }
 
 async function handlePropose(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const result = await ctx.promotionService.propose({
-		type: args.type as MemoryType,
-		title: args.title as string,
-		summary: args.summary as string,
-		details: args.details as string | undefined,
-		scope: args.scope as import("../types.js").MemoryScope,
-		impactLevel: args.impactLevel as ImpactLevel,
-		knowledgeClass: args.knowledgeClass as KnowledgeClass,
-		embeddingText: args.embeddingText as string,
-		createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
-		source: args.source as string,
-		confidence: args.confidence as number,
-		futureScenarios: args.futureScenarios as string[] | undefined,
-		gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
-	});
-	return ok(result);
+	try {
+		const result = await ctx.promotionService.propose({
+			type: args.type as MemoryType,
+			title: args.title as string,
+			summary: args.summary as string,
+			details: args.details as string | undefined,
+			scope: args.scope as import("../types.js").MemoryScope,
+			impactLevel: args.impactLevel as ImpactLevel,
+			knowledgeClass: args.knowledgeClass as KnowledgeClass,
+			embeddingText: args.embeddingText as string,
+			createdBy: (args.createdBy as string | undefined) ?? "mcp:propose",
+			source: args.source as string,
+			confidence: args.confidence as number,
+			futureScenarios: args.futureScenarios as string[] | undefined,
+			gateCleanAtProposal: args.gateCleanAtProposal as boolean | undefined,
+			actor: "agent:mcp",
+			ingressPath: "mcp_propose",
+		});
+		return ok(result);
+	} catch (error) {
+		if (error instanceof SecretViolationError) {
+			return secretViolationResult(error.violation);
+		}
+		throw error;
+	}
 }
 
 async function handlePromote(args: Args, ctx: McpContext): Promise<CallToolResult> {
@@ -169,7 +224,11 @@ async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResu
 		lowTrustMode: (args.lowTrustMode as boolean) ?? false,
 	});
 
-	const contractEntries = result.entries.map((e) => toContractEntry(e));
+	const rawContractEntries = result.entries.map((e) => toContractEntry(e));
+	// III2 · Retrieval-Output-Filter: second-pass secret redaction at the
+	// contract boundary. Catches entries that slipped past ingress (legacy
+	// rows, upgrade windows, temporary detector bugs) without re-querying.
+	const { entries: contractEntries, warnings } = redactEntriesForRetrieval(rawContractEntries);
 	const slices: Record<string, SliceSummary> = {};
 	if (types.length > 0) {
 		for (const t of types) {
@@ -186,6 +245,7 @@ async function handleRetrieve(args: Args, ctx: McpContext): Promise<CallToolResu
 		entries: contractEntries,
 		slices,
 		errors: [],
+		...(warnings.length > 0 ? { warnings } : {}),
 	};
 	return ok({ ...envelope, metadata: result.metadata });
 }
@@ -196,18 +256,28 @@ async function loadActiveEntries(ctx: McpContext): Promise<import("../types.js")
 	return [...validated, ...stale];
 }
 
+/** Body fields that `handleRetrieveDetails` exposes and that must be filtered. */
+const DETAIL_REDACTED_FIELDS = ["title", "summary", "details", "embeddingText"] as const;
+
 async function handleRetrieveDetails(args: Args, ctx: McpContext): Promise<CallToolResult> {
 	const ids = args.ids as string[];
-	const entries = [];
+	const entries: Record<string, unknown>[] = [];
+	const warnings: RetrievalWarning[] = [];
 	for (const id of ids) {
 		const entry = await ctx.entryRepo.findById(id);
 		if (entry) {
 			const evidence = await ctx.evidenceRepo.findByEntryId(id);
 			const contradictions = await ctx.contradictionRepo.findByEntryId(id);
-			entries.push({ ...entry, evidence, contradictions });
+			const full = { ...entry, evidence, contradictions } as Record<string, unknown> & {
+				id: string;
+			};
+			// III2 · Retrieval-Output-Filter parity — raw entry shape, flat fields.
+			const { entry: redacted, warning } = redactDetailEntry(full, DETAIL_REDACTED_FIELDS);
+			entries.push(redacted);
+			if (warning) warnings.push(warning);
 		}
 	}
-	return ok(entries);
+	return ok(warnings.length > 0 ? { entries, warnings } : entries);
 }
 
 async function handleIngest(args: Args, ctx: McpContext): Promise<CallToolResult> {
@@ -320,7 +390,78 @@ async function handleDiagnose(args: Args, ctx: McpContext): Promise<CallToolResu
 		await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' LIMIT ${max}`;
 	const lowTrust =
 		await ctx.sql`SELECT id, title, trust_score FROM memory_entries WHERE trust_status = 'validated' AND trust_score < 0.4 LIMIT ${max}`;
-	return ok({ staleEntries: stale, lowTrustEntries: lowTrust });
+	// Secret-safety event counts for the last 24h (IV1 done-criteria).
+	// Surfaces reject/redact pressure and legacy-scan / retrieve-boundary hits.
+	// Rendered as an object keyed by event_type so operators can diff counts
+	// over time without array-index coupling.
+	const SECRET_EVENT_WINDOW_MINUTES = 24 * 60;
+	const eventCounts = ctx.eventRepo
+		? await ctx.eventRepo.countByTypeSince(SECRET_EVENT_WINDOW_MINUTES, [
+				"secret_rejected",
+				"secret_redacted",
+				"secret_detected_on_retrieve",
+				"secret_detected_on_legacy_scan",
+			])
+		: [];
+	const secretEventsLast24h: Record<string, number> = {
+		secret_rejected: 0,
+		secret_redacted: 0,
+		secret_detected_on_retrieve: 0,
+		secret_detected_on_legacy_scan: 0,
+	};
+	for (const r of eventCounts) secretEventsLast24h[r.eventType] = r.count;
+	return ok({
+		staleEntries: stale,
+		lowTrustEntries: lowTrust,
+		secretEventsLast24h,
+	});
+}
+
+// B1 · runtime-trust — `memory_explain` emits the same explain-v1 envelope
+// as the CLI's `memory explain <id>`; both paths go through `explainEntry`
+// so CLI and MCP stay bit-for-bit identical (schema:
+// tests/fixtures/retrieval/explain-v1.schema.json).
+async function handleExplain(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const id = args.id as string | undefined;
+	if (!id) return err("id is required");
+	const entry = await ctx.entryRepo.findById(id);
+	if (!entry) return err(`Entry not found: ${id}`);
+	if (!ctx.eventRepo) return err("eventRepo is not wired on this MCP context");
+	const [evidence, events, contradictions] = await Promise.all([
+		ctx.evidenceRepo.findByEntryId(id),
+		ctx.eventRepo.listByEntry(id, 200),
+		ctx.contradictionRepo.findByEntryId(id),
+	]);
+	return ok(
+		explainEntry({
+			entry,
+			evidenceCount: evidence.length,
+			events,
+			contradictions,
+		}),
+	);
+}
+
+// B2 · runtime-trust — `memory_history` reconstructs the trust-transition
+// timeline from memory_events. CLI and MCP share `buildHistory` so the
+// history-v1 envelope is bit-identical across transports.
+const HISTORY_DEFAULT_LIMIT = 1000;
+async function handleHistory(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const id = args.id as string | undefined;
+	if (!id) return err("id is required");
+	if (!ctx.eventRepo) return err("eventRepo is not wired on this MCP context");
+	const limit = (args.limit as number | undefined) ?? HISTORY_DEFAULT_LIMIT;
+	const sinceRaw = args.since as string | undefined;
+	let since: Date | undefined;
+	if (sinceRaw !== undefined) {
+		const parsed = new Date(sinceRaw);
+		if (Number.isNaN(parsed.getTime())) return err(`since: not an ISO-8601 timestamp: ${sinceRaw}`);
+		since = parsed;
+	}
+	const entry = await ctx.entryRepo.findById(id);
+	if (!entry) return err(`Entry not found: ${id}`);
+	const events = await ctx.eventRepo.listByEntry(id, { limit, since });
+	return ok(buildHistory({ entry, events, since: since ?? null }));
 }
 
 async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallToolResult> {
@@ -347,7 +488,18 @@ async function handleSessionStart(args: Args, ctx: McpContext): Promise<CallTool
 }
 
 async function handleObserve(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const filtered = applyPrivacyFilter(args.content as string);
+	const raw = args.content as string;
+	// Reject-by-default (roadmap principle): any SECRET_DETECTED / HIGH_ENTROPY
+	// hit throws SecretViolationError, which the top-level handleToolCall
+	// turns into INGRESS_POLICY_VIOLATION. PII (email/phone/paths/.env lines)
+	// is still redacted downstream via applyPrivacyFilter.
+	await enforceNoSecretsWithAudit(
+		{ content: raw },
+		config.security.secretPolicy,
+		{ actor: "agent:mcp", ingressPath: "mcp_observe" },
+		ctx.eventRepo,
+	);
+	const filtered = applyPrivacyFilter(raw);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
 		filtered,
@@ -364,7 +516,20 @@ async function handleObserveFailure(args: Args, ctx: McpContext): Promise<CallTo
 	];
 	if (args.stderr) parts.push(`stderr=${String(args.stderr)}`);
 	if (args.stack) parts.push(`stack=${String(args.stack)}`);
-	const content = applyPrivacyFilter(parts.join("\n"));
+	const joined = parts.join("\n");
+	// Same reject-by-default gate as handleObserve — stack traces and stderr
+	// are a well-known leak vector for tokens pasted into error messages.
+	await enforceNoSecretsWithAudit(
+		{
+			errorMessage: args.errorMessage as string | undefined,
+			stderr: args.stderr as string | undefined,
+			stack: args.stack as string | undefined,
+		},
+		config.security.secretPolicy,
+		{ actor: "agent:mcp", ingressPath: "mcp_observe_failure" },
+		ctx.eventRepo,
+	);
+	const content = applyPrivacyFilter(joined);
 	const obs = await ctx.observationRepo.create(
 		args.sessionId as string,
 		content,
@@ -460,21 +625,59 @@ async function handleAudit(args: Args, ctx: McpContext): Promise<CallToolResult>
 	});
 }
 
+// B3 · runtime-trust — `memory_review` returns a review-weekly-v1
+// digest. MCP has no interactive TTY, so accept/defer/skip live only on
+// the CLI; clients orchestrate writes via the per-action tools
+// (memory_resolve_contradiction, memory_deprecate, …).
+const REVIEW_CASES_PER_KIND = 25;
 async function handleReview(args: Args, ctx: McpContext): Promise<CallToolResult> {
-	const max = (args.maxResults as number) ?? 10;
-	const metrics = await calculateMetrics(ctx.sql);
-	const unresolved = await listUnresolved(ctx.sql);
-	const duplicates = await findDuplicates(ctx.sql);
-	const stale =
-		await ctx.sql`SELECT id, title, impact_level FROM memory_entries WHERE trust_status = 'stale' ORDER BY impact_level LIMIT ${max}`;
-	const lowTrust =
-		await ctx.sql`SELECT id, title, trust_score FROM memory_entries WHERE trust_status = 'validated' AND trust_score < 0.4 ORDER BY trust_score LIMIT ${max}`;
+	const format = (args.format as string | undefined) ?? "json";
+	if (format !== "json" && format !== "slack-block-kit") {
+		return err(`unknown format: ${format} (expected json|slack-block-kit)`);
+	}
+	const limit = (args.maxResults as number | undefined) ?? REVIEW_CASES_PER_KIND;
+	const [stale, contradictions, poison, deferredIds] = await Promise.all([
+		fetchStaleHighValue(ctx.sql, limit),
+		fetchContradictions(ctx.sql, { limit }),
+		fetchPoisonCandidates(ctx.sql, limit),
+		ctx.eventRepo
+			? ctx.eventRepo.listCaseIdsByTypeSince("review_deferred", 7 * 24 * 60)
+			: Promise.resolve([]),
+	]);
+	const digest = buildReviewDigest({
+		staleHighValue: stale,
+		contradictions,
+		poisonCandidates: poison,
+		deferredCaseIds: new Set(deferredIds),
+	});
+	if (format === "slack-block-kit") return ok(toSlackBlockKit(digest));
+	return ok(digest);
+}
+
+// B3 · runtime-trust — `memory_contradictions` drill-down tool. Mirrors
+// the `memory contradictions [--repository] [--since]` CLI so agents
+// over MCP can narrow scope without pulling the whole review digest.
+async function handleContradictions(args: Args, ctx: McpContext): Promise<CallToolResult> {
+	const repository = args.repository as string | undefined;
+	const sinceRaw = args.since as string | undefined;
+	const limit = (args.limit as number | undefined) ?? 50;
+	let since: Date | undefined;
+	if (sinceRaw !== undefined) {
+		const parsed = new Date(sinceRaw);
+		if (Number.isNaN(parsed.getTime())) return err(`since: not an ISO-8601 timestamp: ${sinceRaw}`);
+		since = parsed;
+	}
+	const rows = await fetchContradictions(ctx.sql, { repository, since, limit });
 	return ok({
-		metrics,
-		unresolvedContradictions: unresolved.slice(0, max),
-		duplicates: duplicates.slice(0, max),
-		staleEntries: stale,
-		lowTrustEntries: lowTrust,
+		count: rows.length,
+		filter: { repository: repository ?? null, since: since?.toISOString() ?? null, limit },
+		contradictions: rows.map((r) => ({
+			id: r.id,
+			entry_a: { id: r.entryAId, title: r.entryATitle },
+			entry_b: { id: r.entryBId, title: r.entryBTitle },
+			description: r.description,
+			created_at: r.createdAt.toISOString(),
+		})),
 	});
 }
 

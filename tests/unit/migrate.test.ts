@@ -22,8 +22,10 @@ function mockSql(handlers: Record<string, Handler>): postgres.Sql {
 		return Promise.resolve([]);
 	};
 	// `postgres.Sql` exposes helpers like `sql.end()` — only stub what runMigrations
-	// and executeMigrations actually touch. end() is used in the databaseUrl path.
+	// and executeMigrations actually touch. end() is used in the databaseUrl path;
+	// unsafe() is used by migration 005 to interpolate identifier names.
 	(fn as unknown as { end: () => Promise<void> }).end = vi.fn(async () => undefined);
+	(fn as unknown as { unsafe: (text: string) => Promise<unknown> }).unsafe = vi.fn(async () => []);
 	return fn as unknown as postgres.Sql;
 }
 
@@ -41,9 +43,16 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["001_initial", "002_promotion_metadata"]);
+		const all = [
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		];
+		expect(result.applied).toEqual(all);
 		expect(result.skipped).toEqual([]);
-		expect(inserted).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(inserted).toEqual(all);
 	});
 
 	it("is idempotent — skips every migration already recorded", async () => {
@@ -53,13 +62,22 @@ describe("runMigrations — sql option", () => {
 			"SELECT name FROM memory_migrations": [
 				{ name: "001_initial" },
 				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
 			],
 		});
 
 		const result = await runMigrations({ sql });
 
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(result.skipped).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
 	});
 
 	it("applies only the missing migrations when some already ran", async () => {
@@ -71,7 +89,12 @@ describe("runMigrations — sql option", () => {
 
 		const result = await runMigrations({ sql });
 
-		expect(result.applied).toEqual(["002_promotion_metadata"]);
+		expect(result.applied).toEqual([
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
 		expect(result.skipped).toEqual(["001_initial"]);
 	});
 
@@ -101,7 +124,13 @@ describe("runMigrations — databaseUrl option", () => {
 				return Promise.resolve([{ exists: true }]);
 			}
 			if (text.includes("SELECT name FROM memory_migrations")) {
-				return Promise.resolve([{ name: "001_initial" }, { name: "002_promotion_metadata" }]);
+				return Promise.resolve([
+					{ name: "001_initial" },
+					{ name: "002_promotion_metadata" },
+					{ name: "003_memory_events" },
+					{ name: "004_memory_events_trust_extension" },
+					{ name: "005_repair_jsonb_strings" },
+				]);
 			}
 			return Promise.resolve([]);
 		}) as unknown as postgres.Sql;
@@ -121,7 +150,13 @@ describe("runMigrations — databaseUrl option", () => {
 		);
 		expect(endSpy).toHaveBeenCalledTimes(1);
 		expect(result.applied).toEqual([]);
-		expect(result.skipped).toEqual(["001_initial", "002_promotion_metadata"]);
+		expect(result.skipped).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
 	});
 
 	it("closes the dedicated connection even when a migration fails", async () => {
@@ -146,5 +181,110 @@ describe("runMigrations — databaseUrl option", () => {
 			runMigrations({ databaseUrl: "postgresql://u:p@example:5432/db" }),
 		).rejects.toThrow(/boom/);
 		expect(endSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("listPendingMigrations", () => {
+	it("returns every known migration when the tracking table is absent", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({ "information_schema.tables": [{ exists: false }] });
+		expect(await listPendingMigrations(sql)).toEqual([
+			"001_initial",
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
+	});
+
+	it("returns an empty list when every migration is recorded", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "001_initial" },
+				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
+			],
+		});
+		expect(await listPendingMigrations(sql)).toEqual([]);
+	});
+
+	it("returns only the still-missing migrations when the table is partial", async () => {
+		const { listPendingMigrations } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [{ name: "001_initial" }],
+		});
+		expect(await listPendingMigrations(sql)).toEqual([
+			"002_promotion_metadata",
+			"003_memory_events",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
+	});
+});
+
+describe("buildMigrationStatus", () => {
+	it("marks every known migration as pending when the tracking table is absent", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({ "information_schema.tables": [{ exists: false }] });
+		expect(await buildMigrationStatus(sql)).toEqual({
+			applied: [],
+			pending: [
+				"001_initial",
+				"002_promotion_metadata",
+				"003_memory_events",
+				"004_memory_events_trust_extension",
+				"005_repair_jsonb_strings",
+			],
+			total: 5,
+		});
+	});
+
+	it("reports every recorded migration as applied", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "001_initial" },
+				{ name: "002_promotion_metadata" },
+				{ name: "003_memory_events" },
+				{ name: "004_memory_events_trust_extension" },
+				{ name: "005_repair_jsonb_strings" },
+			],
+		});
+		expect(await buildMigrationStatus(sql)).toEqual({
+			applied: [
+				"001_initial",
+				"002_promotion_metadata",
+				"003_memory_events",
+				"004_memory_events_trust_extension",
+				"005_repair_jsonb_strings",
+			],
+			pending: [],
+			total: 5,
+		});
+	});
+
+	it("splits applied vs. pending and preserves the declared migration order", async () => {
+		const { buildMigrationStatus } = await import("../../src/db/migrate.js");
+		const sql = mockSql({
+			"information_schema.tables": [{ exists: true }],
+			"SELECT name FROM memory_migrations": [
+				{ name: "003_memory_events" },
+				{ name: "001_initial" },
+			],
+		});
+		const status = await buildMigrationStatus(sql);
+		expect(status.applied).toEqual(["001_initial", "003_memory_events"]);
+		expect(status.pending).toEqual([
+			"002_promotion_metadata",
+			"004_memory_events_trust_extension",
+			"005_repair_jsonb_strings",
+		]);
+		expect(status.total).toBe(5);
 	});
 });
