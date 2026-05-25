@@ -97,3 +97,26 @@ Patterns with `confidence: medium` may be neutralised by the allow-list
    [`tests/unit/secret-patterns.test.ts`](../tests/unit/secret-patterns.test.ts).
 3. Run `npm run docs:secrets` to refresh the table above. CI fails on
    drift between the catalog and this document.
+
+## Policy floor for shared / team-memory deployments
+
+The pattern catalog above is the **technical floor** — what the package itself refuses to ingest. When `agent-memory` is deployed as a shared team brain (see `agents/roadmaps/team-memory-deployment.md`), the **policy floor** is wider: some classes of content the catalog cannot reliably detect must still never enter the shared store.
+
+These are team agreements, not package-enforced rules. They are listed here so any reviewer, contributor, or auditor has one canonical reference.
+
+| Class | Why it stays out | Even if the technical floor passes |
+|---|---|---|
+| End-customer PII (names, emails, phone numbers, addresses) | The brain is for engineering knowledge, not customer data. GDPR / contractual obligations apply. | Yes — names and emails are not in the secret catalog. |
+| Customer-specific identifiers (account IDs, contract numbers, invoice numbers) | Same as above; can be cross-referenced back to PII. | Yes. |
+| Production database snippets, query results, or logs containing real user rows | Same as above; bypasses the technical floor when quoted as text. | Yes — quoted text is not scanned for PII. |
+| Full URLs to internal admin / staging tooling with embedded session tokens | Tokens may rotate before scanning catches them; the URL itself reveals infrastructure. | Sometimes — only if the token matches a known pattern. |
+| Personal opinions about teammates, customers, or vendors | Not engineering knowledge; no operational value in shared retrieval. | Yes — sentiment is not scanned. |
+| Drafts of legal, HR, or financial communications | Out of scope for an engineering knowledge base. | Yes. |
+
+What **is** appropriate for shared memory:
+
+- Architecture decisions, domain rules, coding conventions, refactoring notes (per ADR-0001 Decision 3).
+- Bug patterns expressed as **shape** (the symptom, the fix, the file/symbol context) — never including real user data that triggered the bug.
+- Integration constraints, deployment warnings, test strategies.
+
+When in doubt: **propose, do not promote** (`memory propose` keeps the entry quarantined and visible only to the author until `memory promote` runs — see ADR-0006). The promotion step is the privacy boundary; pause there if the entry's content is borderline.
